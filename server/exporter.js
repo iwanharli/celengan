@@ -10,7 +10,7 @@ const KIND_LABELS = {
   income: 'Pemasukan', expense: 'Pengeluaran', transfer: 'Transfer', adjustment: 'Penyesuaian',
   debt_in: 'Utang masuk', debt_out: 'Utang keluar', asset_in: 'Jual aset', asset_out: 'Beli aset',
 };
-const ACCOUNT_TYPES = { cash: 'Tunai', bank: 'Bank', ewallet: 'E-Wallet', goal: 'Tabungan impian' };
+const ACCOUNT_TYPES = { cash: 'Tunai', bank: 'Bank', ewallet: 'E-Wallet', emoney: 'E-Money', goal: 'Tabungan impian' };
 const FREQUENCIES = { weekly: 'Mingguan', monthly: 'Bulanan', yearly: 'Tahunan' };
 const DEBT_TYPES = { personal: 'Pribadi', invoice: 'Invoice klien', loan: 'Pinjaman', paylater: 'Paylater', credit_card: 'Kartu kredit' };
 const ASSET_TYPES = {

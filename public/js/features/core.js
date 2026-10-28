@@ -93,6 +93,7 @@ export default {
     const [fromHash, section] = location.hash.slice(1).split('/');
     if (constants.PAGES.some((item) => item.id === fromHash)) this.page = fromHash;
     if (fromHash === 'settings' && constants.SETTINGS_SECTIONS.some((item) => item.id === section)) this.settingsSection = section;
+    if (fromHash === 'accounts' && constants.ACCOUNT_TYPES[section]) this.accountTab = section;
     await this.reload();
   },
 
@@ -145,7 +146,8 @@ export default {
   async goTo(page) {
     this.page = page;
     this.loadPageData().then(() => this.$nextTick(() => this.drawCharts()));
-    history.replaceState(null, '', page === 'settings' ? `#settings/${this.settingsSection}` : `#${page}`);
+    const sub = page === 'settings' ? this.settingsSection : page === 'accounts' && this.accountTab !== 'all' ? this.accountTab : null;
+    history.replaceState(null, '', sub ? `#${page}/${sub}` : `#${page}`);
     window.scrollTo({ top: 0 });
     if (page === 'settings') { this.loadAutoBackups(); this.loadBackupMirror(); }
     if (page === 'reports') this.loadReport();

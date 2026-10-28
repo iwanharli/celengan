@@ -99,3 +99,14 @@ test('selisih penyesuaian bisa dicatat sebagai pengeluaran / pemasukan', async (
   assert.equal(after.income - before.income, 20000);
   assert.equal((await app.api.get('/accounts')).find((a) => a.id === dompet.id).balance, 270000);
 });
+
+test('akun e-money: nomor kartu 16 angka, tanpa atas nama', async () => {
+  const flazz = await app.api.post('/accounts', {
+    name: 'Flazz', type: 'emoney', initial_balance: 150000, provider: 'BCA Flazz', account_number: '6019 0012 3456 7890', holder_name: 'Siapa',
+  });
+  assert.equal(flazz.type, 'emoney');
+  assert.equal(flazz.account_number, '6019001234567890');
+  assert.equal(flazz.holder_name, null);
+  const bad = await app.call('POST', '/accounts', { name: 'E-money', type: 'emoney', initial_balance: 0, account_number: '12345' });
+  assert.equal(bad.status, 400);
+});

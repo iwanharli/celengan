@@ -92,7 +92,6 @@ const modals = {
   'edit transfer': `d.openEditTransaction(${find('transactions', transfer.id)} ?? d.summary.recent[0])`,
   'riwayat transaksi': `d.openTransactionHistory(d.summary.recent[0])`,
   'baru dihapus': 'd.openDeletedTransactions()',
-  'import': 'd.openImport()',
   'akun': 'd.openAccount()',
   'edit akun': `d.openAccount(${find('accounts', bca.id)})`,
   'sesuaikan saldo': `d.openAdjust(${find('accounts', bca.id)})`,
@@ -125,7 +124,7 @@ const modals = {
 };
 // Modal butuh data halamannya: buka halaman terkait dulu.
 const pageFor = (name) => (/utang|invoice|cicilan/.test(name) ? 'debts' : /aset/.test(name) ? 'assets' : /wishlist/.test(name) ? 'wishlist'
-  : /tagihan/.test(name) ? 'bills' : /transaksi|transfer|pemasukan|import|dihapus/.test(name) ? 'transactions' : /penerima/.test(name) ? 'recipients' : 'home');
+  : /tagihan/.test(name) ? 'bills' : /transaksi|transfer|pemasukan|dihapus/.test(name) ? 'transactions' : /penerima/.test(name) ? 'recipients' : 'home');
 for (const [name, open] of Object.entries(modals)) {
   where = `modal ${name}`;
   await evaluate(`${component}.goTo('${pageFor(name)}')`);

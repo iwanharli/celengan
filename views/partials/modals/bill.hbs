@@ -1,22 +1,32 @@
-{{!-- Modal: Tambah / edit tagihan rutin. Tagihan cicilan utang: frekuensi & kategori mengikuti utangnya. --}}
+{{!-- Modal: Tambah / edit tagihan rutin. Tagihan cicilan utang: frekuensi & kategori mengikuti utangnya.
+     Baris: nama | nominal · frekuensi | jatuh tempo · kategori | dibayar dari · potong otomatis --}}
 <template x-if="modal === 'bill'">
   <div class="stack">
     <h2 x-text="form.id ? 'Edit tagihan' : 'Tambah tagihan rutin'"></h2>
-    <div class="field"><label>Nama tagihan</label><input autofocus placeholder="contoh: Spotify, Listrik, Kos" x-model="form.name"></div>
-    {{> components/amount-field label="Nominal" placeholder="contoh: 55rb"
-        hint="parsedAmount ? '= ' + rupiah(parsedAmount) : 'Untuk tagihan yang berubah (listrik), isi perkiraan saja'"}}
+
+    <div class="bill-row-1">
+      <div class="field"><label>Nama tagihan</label><input autofocus placeholder="contoh: Internet rumah, Sewa kos, Langganan musik" x-model="form.name"></div>
+      {{> components/amount-field label="Nominal" placeholder="contoh: 150rb atau 1,2jt"
+          hint="parsedAmount ? '= ' + rupiah(parsedAmount) : 'Kalau berubah tiap periode, isi perkiraan saja'"}}
+    </div>
+
     <div class="grid-2 tight">
       <div class="field" x-show="!form.debt_id">
         <label>Frekuensi</label>
-        <select x-model="form.frequency">
-          <template x-for="[value, label] in Object.entries(FREQUENCIES)"><option :value="value" x-text="label" :selected="value === form.frequency"></option></template>
-        </select>
+        <div class="segmented">
+          <template x-for="[value, label] in Object.entries(FREQUENCIES)" :key="value">
+            <button type="button" :class="{ active: form.frequency === value }" @click="form.frequency = value" x-text="label"></button>
+          </template>
+        </div>
       </div>
       <div class="field">
         <label>Jatuh tempo berikutnya</label>
         <input type="date" x-model="form.date">
-        <p class="hint" x-show="form.frequency !== 'weekly'">Tanggalnya dipakai tiap periode. Tanggal 31 di bulan pendek jadi hari terakhir bulan itu.</p>
+        <p class="hint" x-show="form.frequency !== 'weekly'" title="Tanggal 31 di bulan pendek jadi hari terakhir bulan itu.">Berulang di tanggal yang sama tiap periode.</p>
       </div>
+    </div>
+
+    <div class="grid-2 tight">
       <div class="field" x-show="!form.debt_id">
         <label>Kategori</label>
         <select x-model="form.category_id">
@@ -25,13 +35,14 @@
       </div>
       {{> components/account-select label="Dibayar dari"}}
     </div>
-    <div class="expense-toggle" x-show="form.account_id">
-      <label class="checkbox">
-        <input type="checkbox" x-model="form.auto_pay">
-        <span><strong>Potong otomatis saat jatuh tempo</strong>
-          <small class="muted">Saldo akun langsung dipotong di tanggal jatuh tempo, seperti autodebet. Kalau saldonya tidak cukup, tagihan ditandai "saldo kurang" dan dipotong begitu saldonya cukup.</small></span>
-      </label>
-    </div>
+
+    <label class="expense-toggle auto-pay-toggle" x-show="form.account_id">
+      <input type="checkbox" x-model="form.auto_pay">
+      <span>
+        <strong><i class="ph-duotone ph-lightning"></i> Potong otomatis saat jatuh tempo</strong>
+        <small class="muted">Seperti autodebet: saldo akun langsung dipotong di tanggal jatuh tempo. Kalau saldonya kurang, tagihan ditandai "saldo kurang" dan dipotong begitu saldonya cukup.</small>
+      </span>
+    </label>
     {{> components/form-actions submit="saveBill()"}}
   </div>
 </template>

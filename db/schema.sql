@@ -426,7 +426,8 @@ CREATE TRIGGER transactions_history AFTER INSERT OR UPDATE OR DELETE ON transact
 -- Setiap impian punya akun sendiri (type 'goal'). "Sisihkan" = transfer ke akun itu, jadi uangnya
 -- benar-benar berpindah. Saldo akun impian = uang yang sudah disisihkan.
 ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_type_check;
-ALTER TABLE accounts ADD CONSTRAINT accounts_type_check CHECK (type IN ('cash', 'bank', 'ewallet', 'goal'));
+-- emoney = kartu uang elektronik (Mandiri e-money, BCA Flazz, BRI Brizzi, BNI TapCash, ...), nomor kartu 16 digit.
+ALTER TABLE accounts ADD CONSTRAINT accounts_type_check CHECK (type IN ('cash', 'bank', 'ewallet', 'emoney', 'goal'));
 ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS account_id int REFERENCES accounts ON DELETE SET NULL;
 
 -- Migrasi: impian yang masih diinginkan & belum punya akun → dibuatkan akun. Uang yang dulu

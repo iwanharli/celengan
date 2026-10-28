@@ -1,5 +1,5 @@
-{{!-- Pilihan akun. Parameter: label, model (default form.account_id) --}}
-<div class="field">
+{{!-- Pilihan akun. Parameter: label, model (default form.account_id), show (opsional, ekspresi x-show) --}}
+<div class="field"{{#if show}} x-show="{{show}}"{{/if}}>
   <label>{{label}}</label>
   <select x-model="{{#if model}}{{model}}{{else}}form.account_id{{/if}}">
     <template x-for="a in accounts.filter((a) => a.type !== 'goal' || a.id == {{#if model}}{{model}}{{else}}form.account_id{{/if}})" :key="a.id">

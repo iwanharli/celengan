@@ -1,16 +1,36 @@
-{{!-- Halaman: Akun — ringkasan total & porsi per jenis, lalu kartu akun dikelompokkan (Bank, E-Wallet, Tunai) --}}
-<section class="page stack" x-show="page === 'accounts'">
-  <!-- Ringkasan -->
+{{!-- Halaman: Akun — tab horizontal per jenis (Semua · Bank · E-Wallet · E-Money · Tunai · Tabungan impian),
+     lalu ringkasan jenis terpilih + kartu akunnya. Jenis aktif disimpan di URL: #accounts/bank --}}
+<section class="page stack accounts-page" x-show="page === 'accounts'">
+  <div class="account-tabs-bar">
+  <nav class="account-tabs">
+    <button type="button" class="account-tab" :class="{ active: accountTab === 'all' }" @click="goToAccountTab('all')">
+      <span class="account-tab-icon all"><i class="ph-duotone ph-wallet"></i></span>
+      <strong>Semua</strong>
+      <span class="account-tab-count" x-text="accounts.length"></span>
+    </button>
+    <template x-for="group in accountGroups" :key="group.type">
+      <button type="button" class="account-tab" :class="{ active: accountTab === group.type }" @click="goToAccountTab(group.type)">
+        <span class="account-tab-icon" :class="'share-' + group.type"><i class="ph-duotone" :class="'ph-' + ACCOUNT_TYPES[group.type].icon"></i></span>
+        <strong x-text="ACCOUNT_TYPES[group.type].label"></strong>
+        <span class="account-tab-count" x-text="group.items.length"></span>
+      </button>
+    </template>
+  </nav>
+  </div>
+
+  <!-- Ringkasan: semua akun (dengan porsi per jenis) atau satu jenis -->
   <div class="card accounts-summary">
     <div class="accounts-summary-head">
       <div>
-        <p class="label">Total saldo semua akun</p>
-        <p class="big-number" :class="accountsTotal < 0 && 'tone-negative'" x-text="money(accountsTotal)"></p>
-        <p class="muted" x-text="accounts.length + ' akun'"></p>
+        <p class="label" x-text="accountTab === 'all' ? 'Total saldo semua akun' : 'Total saldo ' + ACCOUNT_TYPES[accountTab].label"></p>
+        <p class="big-number" :class="currentAccountTotal < 0 && 'tone-negative'" x-text="money(currentAccountTotal)"></p>
+        <p class="muted" x-text="accountTab === 'all' ? accounts.length + ' akun' : (currentAccountGroup?.items.length ?? 0) + ' akun · ' + (currentAccountGroup?.percent ?? 0) + '% dari total saldo'"></p>
       </div>
-      <button class="button primary" @click="openAccount()"><i class="ph-duotone ph-plus"></i> Tambah akun</button>
+      <button type="button" class="button primary" x-show="accountTab !== 'goal'" @click="openAccount(null, accountTab === 'all' ? 'bank' : accountTab)">
+        <i class="ph-duotone ph-plus"></i> <span x-text="accountTab === 'all' ? 'Tambah akun' : 'Tambah ' + ACCOUNT_TYPES[accountTab].label"></span>
+      </button>
     </div>
-    <template x-if="accounts.length">
+    <template x-if="accountTab === 'all' && accounts.length">
       <div class="stack-sm">
         <div class="share-bar">
           <template x-for="group in accountGroups" :key="group.type">
@@ -19,16 +39,17 @@
         </div>
         <div class="share-legend">
           <template x-for="group in accountGroups" :key="group.type">
-            <span>
+            <button type="button" class="share-item" @click="goToAccountTab(group.type)">
               <i class="dot" :class="'share-' + group.type"></i>
               <strong x-text="ACCOUNT_TYPES[group.type].label"></strong>
               <span class="muted" x-text="money(group.subtotal) + ' · ' + group.percent + '%'"></span>
-            </span>
+            </button>
           </template>
         </div>
       </div>
     </template>
-    <p class="hint"><i class="ph-duotone ph-info"></i> Tandai ⭐ <strong>akun utama</strong> supaya otomatis terpilih di semua form. Saldo berbeda dengan aslinya? Gunakan <strong>Sesuaikan saldo</strong>.</p>
+    <p class="hint" x-show="accountTab !== 'goal'"><i class="ph-duotone ph-info"></i> Tandai ⭐ <strong>akun utama</strong> supaya otomatis terpilih di semua form. Saldo berbeda dengan aslinya? Gunakan <strong>Sesuaikan saldo</strong>.</p>
+    <p class="hint" x-show="accountTab === 'goal'"><i class="ph-duotone ph-info"></i> Akun tabungan impian dibuat otomatis untuk tiap wishlist. Isi & pakai uangnya dari halaman <button type="button" class="link" @click="goTo('wishlist')">Wishlist</button>.</p>
   </div>
 
   <template x-if="accounts.length === 0">
@@ -37,10 +58,10 @@
     </div>
   </template>
 
-  <!-- Per jenis -->
-  <template x-for="group in accountGroups" :key="group.type">
+  <!-- Per jenis (Semua = semua kelompok; selain itu hanya jenis terpilih) -->
+  <template x-for="group in visibleAccountGroups" :key="group.type">
     <div class="stack-sm">
-      <div class="group-title">
+      <div class="group-title" x-show="accountTab === 'all'">
         <h2><i class="ph-duotone" :class="'ph-' + ACCOUNT_TYPES[group.type].icon"></i> <span x-text="ACCOUNT_TYPES[group.type].label"></span></h2>
         <span class="muted" x-text="group.items.length + ' akun · ' + money(group.subtotal)"></span>
       </div>
@@ -74,13 +95,13 @@
               <div class="account-number">
                 <template x-if="account.account_number">
                   <div class="grow">
-                    <span class="label" x-text="account.type === 'bank' ? 'No. rekening' : 'No. HP'"></span>
+                    <span class="label" x-text="{ bank: 'No. rekening', emoney: 'No. kartu' }[account.type] ?? 'No. HP'"></span>
                     <strong class="mono" x-text="accountNumberText(account)"></strong>
                   </div>
                 </template>
                 <template x-if="!account.account_number">
                   <div class="grow">
-                    <span class="label" x-text="account.type === 'cash' ? 'Disimpan di' : account.type === 'goal' ? 'Untuk' : 'No. rekening'"></span>
+                    <span class="label" x-text="account.type === 'cash' ? 'Disimpan di' : account.type === 'goal' ? 'Untuk' : account.type === 'emoney' ? 'No. kartu' : 'No. rekening'"></span>
                     <strong x-text="account.type === 'cash' ? (account.provider || account.note || 'Tunai') : account.type === 'goal' ? 'Uang yang disisihkan untuk impian ini' : 'Belum diisi'"
                             :class="!['cash', 'goal'].includes(account.type) && 'muted'"></strong>
                   </div>

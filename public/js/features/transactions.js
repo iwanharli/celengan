@@ -24,6 +24,13 @@ export default {
   filters: { kind: '', account_id: '', q: '', recipient_id: '', bill_id: '' },
   clientNames: [],
 
+  showTxFilters: false,
+
+  // Filter di panel "Filter" (selain cari & jenis) yang sedang aktif.
+  get extraFilterCount() {
+    return [this.filters.account_id, this.filters.recipient_id, this.filters.bill_id].filter(Boolean).length;
+  },
+
   get hasFilters() {
     return Boolean(this.filters.kind || this.filters.account_id || this.filters.q || this.filters.recipient_id || this.filters.bill_id);
   },
@@ -245,6 +252,14 @@ export default {
     return WORK_INCOME_CATEGORIES.includes(name);
   },
 
+  // Biaya admin: selalu untuk transfer; untuk pengeluaran kalau ada penerima (non-tunai),
+  // dibuka lewat "+ Biaya admin", atau sudah terisi (saat edit).
+  get showFeeField() {
+    if (this.form.kind === 'transfer') return true;
+    if (this.form.kind !== 'expense') return false;
+    return Boolean((this.form.recipient_id && this.selectedRecipient?.method !== 'cash') || this.form.showFee || parseAmount(this.form.feeText) > 0);
+  },
+
   get showClientField() {
     return this.form.kind === 'income' && (this.incomeFromWork || Boolean(this.form.client));
   },
@@ -307,8 +322,7 @@ export default {
         category_id: Number(this.form.category_id) || null,
         recipient_id: this.form.kind === 'expense' ? Number(this.form.recipient_id) || null : null,
         tax_withheld: this.form.kind === 'income' ? parseAmount(this.form.withheldText) || 0 : 0,
-        fee: this.form.kind === 'transfer' || (this.form.kind === 'expense' && this.form.recipient_id)
-          ? parseAmount(this.form.feeText) || 0 : 0,
+        fee: this.showFeeField ? parseAmount(this.form.feeText) || 0 : 0,
       };
       if (this.form.id) await api.put(`/transactions/${this.form.id}`, body);
       // Simpan id-nya: kalau unggah foto gagal lalu dicoba lagi, transaksi tidak tercatat dua kali.

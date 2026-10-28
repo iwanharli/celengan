@@ -15,19 +15,23 @@ async function feeCategoryId(client) {
 }
 
 // Biaya admin dipotong dari akun pengirim, dicatat sebagai pengeluaran yang menempel ke transaksinya.
-// Berlaku untuk transfer antar akun sendiri & kiriman ke penerima. fee kosong/0 → biaya (kalau ada) dihapus.
+// Berlaku untuk transfer antar akun sendiri & pengeluaran (kiriman ke penerima, bayar ke rekening lain, top up).
+// fee kosong/0 → biaya (kalau ada) dihapus.
 export async function syncTransferFee(client, transfer, fee) {
-  const hasFee = transfer.kind === 'transfer' || transfer.recipient_id;
+  const hasFee = transfer.kind === 'transfer' || transfer.kind === 'expense';
   const amount = hasFee ? Number(fee) || 0 : 0;
   if (amount < 0) throw new HttpError(400, 'Biaya admin tidak valid');
   if (amount === 0) {
     await client.query('DELETE FROM transactions WHERE fee_of = $1', [transfer.id]);
     return;
   }
-  const { rows: [target] } = transfer.recipient_id
-    ? await client.query('SELECT name FROM recipients WHERE id = $1', [transfer.recipient_id])
-    : await client.query('SELECT name FROM accounts WHERE id = $1', [transfer.to_account_id]);
-  const note = `Biaya transfer ke ${target?.name ?? 'akun lain'}`;
+  let note = `Biaya admin${transfer.note ? `: ${transfer.note}` : ''}`;
+  if (transfer.recipient_id || transfer.to_account_id) {
+    const { rows: [target] } = transfer.recipient_id
+      ? await client.query('SELECT name FROM recipients WHERE id = $1', [transfer.recipient_id])
+      : await client.query('SELECT name FROM accounts WHERE id = $1', [transfer.to_account_id]);
+    note = `Biaya transfer ke ${target?.name ?? 'akun lain'}`;
+  }
   const { rowCount } = await client.query(
     'UPDATE transactions SET amount = $1, account_id = $2, date = $3, note = $4 WHERE fee_of = $5',
     [amount, transfer.account_id, transfer.date, note, transfer.id],

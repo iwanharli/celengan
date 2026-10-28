@@ -10,7 +10,8 @@
     "start": "node --env-file=.env server/index.js",
     "reset-password": "node --env-file=.env db/reset-password.js",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
-    "restore": "node --env-file=.env db/restore.js"
+    "restore": "node --env-file=.env db/restore.js",
+    "test:ui": "node test/ui-smoke.mjs"
   },
   "dependencies": {
     "@fontsource/fredoka": "^5.2.7",
@@ -19,6 +20,7 @@
     "express": "^5.1.0",
     "handlebars": "^4.7.8",
     "pdfkit": "^0.19.1",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "web-push": "^3.6.7"
   }
 }

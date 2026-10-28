@@ -97,7 +97,17 @@ router.post('/:id/adjust', async (req, res) => {
   if (!account) throw new HttpError(404, 'Akun tidak ditemukan');
 
   const difference = Number(req.body.actual_balance) - account.balance;
-  if (difference !== 0) {
+  // record_as 'flow': selisih dicatat sebagai pemasukan (lebih) / pengeluaran (kurang) dengan kategori pilihan,
+  // supaya ikut terhitung di laporan. Bawaan: penyesuaian biasa (tidak dihitung pemasukan/pengeluaran).
+  if (difference !== 0 && req.body.record_as === 'flow') {
+    if (!req.body.category_id) throw new HttpError(400, 'Pilih kategori untuk selisihnya');
+    await query(
+      `INSERT INTO transactions (kind, amount, account_id, category_id, date, note)
+       VALUES ($1, $2, $3, $4, current_date, $5)`,
+      [difference > 0 ? 'income' : 'expense', Math.abs(difference), req.params.id, req.body.category_id,
+        req.body.note || 'Selisih saldo'],
+    );
+  } else if (difference !== 0) {
     await query(
       `INSERT INTO transactions (kind, amount, account_id, note)
        VALUES ('adjustment', $1, $2, 'Penyesuaian saldo')`,

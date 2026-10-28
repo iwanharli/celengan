@@ -201,26 +201,8 @@ function drawFooters(doc) {
   }
 }
 
-export function toPdf(datasets, settings) {
-  const doc = new PDFDocument({
-    size: 'A4', layout: 'landscape', margin: MARGIN, bufferPages: true,
-    info: { Title: 'Celengan — Export data', Author: 'Celengan' },
-  });
-  doc.registerFont('body', FONTS.body);
-  doc.registerFont('bold', FONTS.bold);
-  doc.registerFont('title', FONTS.title);
-  doc.registerFont('titleBold', FONTS.titleBold);
-
-  const printedAt = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const names = datasets.map((dataset) => dataset.label).join(', ');
-  drawHeader(doc, {
-    title: datasets.length === 1 ? `Laporan ${datasets[0].label}` : 'Laporan data keuangan',
-    subtitle: [settings.period_label && datasets.some((d) => d.key === 'transactions') ? `Periode ${settings.period_label}` : null, names]
-      .filter(Boolean).join(' · '),
-    printedAt,
-  });
-
-  // Ringkasan: dari transaksi (bila dipilih) + jumlah baris.
+// Ringkasan export biasa: dari transaksi (bila dipilih) + jumlah baris.
+function exportCards(datasets) {
   const transactions = datasets.find((dataset) => dataset.key === 'transactions');
   const totalRows = datasets.reduce((sum, dataset) => sum + dataset.rows.length, 0);
   const cards = [];
@@ -235,7 +217,34 @@ export function toPdf(datasets, settings) {
     );
   }
   cards.push({ label: 'Isi laporan', value: `${datasets.length} data · ${totalRows} baris`, colors: PASTELS[3] });
-  drawSummaryCards(doc, cards);
+  return cards;
+}
+
+// report (opsional): { title, subtitle, cards: [{ label, value, tone? }] } untuk laporan khusus (misal ringkasan pajak).
+export function toPdf(datasets, settings, report = null) {
+  const doc = new PDFDocument({
+    size: 'A4', layout: 'landscape', margin: MARGIN, bufferPages: true,
+    info: { Title: 'Celengan — Export data', Author: 'Celengan' },
+  });
+  doc.registerFont('body', FONTS.body);
+  doc.registerFont('bold', FONTS.bold);
+  doc.registerFont('title', FONTS.title);
+  doc.registerFont('titleBold', FONTS.titleBold);
+
+  const printedAt = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (report) {
+    drawHeader(doc, { title: report.title, subtitle: report.subtitle, printedAt });
+    const tones = { positive: COLOR.positive, negative: COLOR.negative };
+    drawSummaryCards(doc, report.cards.map((card, index) => ({ ...card, colors: PASTELS[index % PASTELS.length], color: tones[card.tone] })));
+  } else {
+    drawHeader(doc, {
+      title: datasets.length === 1 ? `Laporan ${datasets[0].label}` : 'Laporan data keuangan',
+      subtitle: [settings.period_label && datasets.some((d) => d.key === 'transactions') ? `Periode ${settings.period_label}` : null,
+        datasets.map((dataset) => dataset.label).join(', ')].filter(Boolean).join(' · '),
+      printedAt,
+    });
+    drawSummaryCards(doc, exportCards(datasets));
+  }
 
   datasets.forEach((dataset, index) => {
     const colors = PASTELS[index % PASTELS.length];

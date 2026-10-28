@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { celebrate, celebrateBig, emojiUrl } from '../effects.js';
-import { showWarning } from '../alert.js';
+import { showWarning, confirmWarning } from '../alert.js';
 import { drawCategoryChart, drawTrendChart, drawNetWorthChart, drawYearChart } from '../charts.js';
 import {
   rupiah, rupiahShort, parseAmount, formatAmountInput, formatDate, formatMonthYear, monthLabel, daysUntil, todayISO, shiftMonth, currentMonth,
@@ -26,7 +26,7 @@ const DATA_SOURCES = {
 // Data tambahan per halaman (selain data dasar).
 const PAGE_DATA = {
   home: ['bills', 'debts', 'wishlist'],
-  transactions: ['transactions'],
+  transactions: ['transactions', 'bills', 'endedBills'],
   bills: ['bills', 'endedBills'],
   debts: ['debts'],
   assets: ['assets'],
@@ -106,7 +106,7 @@ export default {
       this.loadData(['summary', 'accounts', 'categories', 'templates', 'recipients']),
       this.loadPageData(),
     ]);
-    if (this.page === 'settings') this.loadAutoBackups();
+    if (this.page === 'settings') { this.loadAutoBackups(); this.loadBackupMirror(); this.loadPushState(); }
     if (this.page === 'reports') await this.loadReport();
     if (this.page === 'export') this.refreshExportPreview();
     this.$nextTick(() => this.drawCharts());
@@ -147,7 +147,7 @@ export default {
     this.loadPageData().then(() => this.$nextTick(() => this.drawCharts()));
     history.replaceState(null, '', page === 'settings' ? `#settings/${this.settingsSection}` : `#${page}`);
     window.scrollTo({ top: 0 });
-    if (page === 'settings') this.loadAutoBackups();
+    if (page === 'settings') { this.loadAutoBackups(); this.loadBackupMirror(); }
     if (page === 'reports') this.loadReport();
     if (page === 'export') this.initExport();
     this.$nextTick(() => this.drawCharts());
@@ -194,6 +194,19 @@ export default {
 
   // ---------- Helper tampilan ----------
 
+  // Peringatan saldo minus: uang keluar dari akun melebihi saldonya → minta konfirmasi dulu.
+  // refund = uang yang kembali ke akun yang sama saat mengedit (nominal lama), supaya edit tidak salah hitung.
+  async confirmEnoughBalance(accountId, outflow, refund = 0) {
+    const account = this.accounts.find((item) => item.id === Number(accountId));
+    if (!account || !(outflow > 0)) return true;
+    const after = account.balance + refund - outflow;
+    if (after >= 0) return true;
+    return confirmWarning(
+      `Saldo ${account.name} tinggal ${this.money(account.balance + refund)}. Setelah ini jadi ${this.money(after)}.`,
+      'Saldo tidak cukup',
+    );
+  },
+
   money(amount) {
     return this.hideAmounts ? 'Rp ●●●●●' : rupiah(amount);
   },
@@ -234,9 +247,10 @@ export default {
   // ---------- Form & modal ----------
 
   open(modal, values = {}) {
-    this.modal = modal;
+    // Isi form dulu, baru tampilkan modalnya — supaya modal baru tidak sempat dirender dengan isian modal sebelumnya.
     this.formError = '';
     this.form = { amountText: '', date: todayISO(), account_id: this.defaultAccountId, ...values };
+    this.modal = modal;
     this.$nextTick(() => document.querySelector('.modal [autofocus]')?.focus());
   },
 

@@ -17,6 +17,7 @@
       {{> components/account-select label="Akun"}}
       <div class="field"><label>Tanggal</label><input type="date" x-model="form.date"></div>
     </div>
+    {{> components/tax-withheld show="form.transaction.kind === 'income' && form.transaction.debt_id"}}
     <div class="field"><label>Catatan</label><input x-model="form.note"></div>
     {{> components/form-actions submit="saveLinkedEdit()"}}
   </div>

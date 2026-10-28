@@ -71,3 +71,27 @@ test('unduh & pulihkan backup tidak tersedia lagi dari aplikasi', async () => {
   assert.equal((await app.call('GET', '/backup')).status, 404);
   assert.equal((await app.call('POST', '/backup/restore', backup)).status, 404);
 });
+
+test('salinan backup ke folder kedua (cloud)', async () => {
+  const { mkdtemp, readdir } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = await mkdtemp(join(tmpdir(), 'celengan-mirror-'));
+
+  assert.equal((await app.call('PUT', '/backup/mirror', { dir: 'relatif/saja' })).status, 400);
+  assert.equal((await app.call('PUT', '/backup/mirror', { dir: join(dir, 'tidak-ada') })).status, 400);
+
+  const status = await app.api.put('/backup/mirror', { dir });
+  assert.equal(status.dir, dir);
+  assert.equal(status.error, null);
+  assert.ok(status.last_at);
+  const files = await readdir(join(dir, 'Celengan Backup'));
+  assert.ok(files.some((name) => name.startsWith('auto-')));
+
+  // Backup pengaman (mis. mulai dari nol) juga ikut tersalin.
+  await app.api.post('/backup/reset', { confirm: 'HAPUS' });
+  assert.ok((await readdir(join(dir, 'Celengan Backup'))).some((name) => name.startsWith('sebelum-')));
+
+  await app.api.delete('/backup/mirror');
+  assert.equal((await app.api.get('/backup/mirror')).dir, null);
+});

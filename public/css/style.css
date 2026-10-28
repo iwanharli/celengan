@@ -1982,3 +1982,110 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .recipient-stats > div { display: flex; flex-direction: column; }
 .recipient-stats small { color: var(--text-muted); font-weight: 700; }
 .recipient-dest strong.mono { white-space: normal; overflow: visible; font-size: .98rem; letter-spacing: .02em; word-break: break-all; }
+.mono-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88rem; word-break: break-all; }
+
+/* Beranda: wawasan otomatis */
+.insights .card-header h2 { display: flex; align-items: center; gap: 8px; }
+.insight-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.insight { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); line-height: 1.45; }
+.insight[role="button"] { cursor: pointer; transition: transform .2s var(--spring); }
+.insight[role="button"]:hover { transform: translateX(3px); }
+.insight-icon { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; font-size: 1.3rem; }
+.insight-positive .insight-icon { background: rgba(52, 211, 153, .18); color: var(--positive); }
+.insight-info .insight-icon { background: rgba(99, 102, 241, .14); color: var(--info); }
+.insight-warning .insight-icon { background: rgba(245, 158, 11, .18); color: #d97706; }
+.insight-danger .insight-icon { background: rgba(225, 29, 72, .14); color: var(--negative); }
+
+/* Beranda: kartu angka (pemasukan, pengeluaran, dana darurat / aman dipakai) */
+.kpi-row { align-items: stretch; }
+.kpi { display: flex; flex-direction: column; gap: 10px; padding: 20px 22px; }
+.kpi-head { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+.kpi-head .label { font-weight: 700; color: var(--text-muted); }
+.kpi-head .badge { margin-left: auto; }
+.kpi-icon { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; font-size: 1.05rem; flex-shrink: 0; }
+.kpi-income .kpi-icon { background: rgba(52, 211, 153, .18); color: var(--positive); }
+.kpi-expense .kpi-icon { background: rgba(251, 113, 133, .18); color: var(--negative); }
+.kpi-icon-info { background: rgba(99, 102, 241, .15); color: var(--info); }
+.kpi-emoji { width: 34px; height: 34px; }
+.kpi-change { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: .85rem; font-weight: 800; padding: 3px 9px; border-radius: 99px; background: var(--surface-2); white-space: nowrap; }
+.kpi .stat-value { font-size: 1.75rem; line-height: 1.1; }
+.kpi-spark { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; height: 64px; margin-top: auto; }
+.kpi-spark-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+.kpi-spark-col span { width: 100%; max-width: 30px; border-radius: 7px; opacity: .35; transition: height .8s var(--spring); }
+.kpi-spark-col span.current { opacity: 1; }
+.kpi-spark-col small { font-size: .72rem; color: var(--text-muted); font-weight: 700; }
+.kpi-income .kpi-spark-col span { background: #34d399; }
+.kpi-expense .kpi-spark-col span { background: #fb7185; }
+
+.runway-meter { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+.runway-track { position: relative; height: 12px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.runway-track > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; transition: width .8s var(--spring); }
+.runway-track > i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--surface); }
+.runway-ok { background: linear-gradient(90deg, #34d399, #10b981); }
+.runway-warning { background: linear-gradient(90deg, #fcd34d, #f59e0b); }
+.runway-danger { background: linear-gradient(90deg, #fda4af, #e11d48); }
+.runway-scale { position: relative; height: 16px; }
+.runway-scale small { position: absolute; font-size: .72rem; color: var(--text-muted); font-weight: 700; transform: translateX(-50%); }
+.runway-scale small:first-child { transform: none; }
+.runway-scale small.end { right: 0; transform: none; }
+
+/* Pengaturan pajak: pilihan metode */
+.tax-methods { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.tax-method {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border-radius: 18px; cursor: pointer;
+  font: inherit; color: inherit; background: var(--surface); border: 2px solid var(--border); transition: border-color .2s, transform .2s var(--spring);
+}
+.tax-method:hover { transform: translateY(-2px); }
+.tax-method.active { border-color: var(--primary); background: var(--primary-soft); }
+.tax-method-answer { font-size: .85rem; font-weight: 800; color: var(--primary); }
+.tax-method small { color: var(--text-muted); line-height: 1.4; }
+.tax-note { display: flex; gap: 8px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); }
+.tax-preview { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 16px; background: var(--surface-2); }
+
+/* Modal transaksi: nominal | akun & tanggal, lalu kategori, lalu catatan & isian tambahan | foto */
+.tx-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.tx-where { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.tx-where.transfer { gap: 12px 16px; }
+.tx-where.transfer > .field:last-child { grid-column: 1 / -1; }
+.tx-bottom > .stack:last-child, .tx-bottom > .tx-photos { position: static; }
+.tx-photos .photo-dropzone .filepond--root { margin-bottom: 0; }
+.tx-photos .camera-button { align-self: flex-start; }
+@media (max-width: 860px) {
+  .tx-top { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+}
+.tx-photos .photo-dropzone .filepond--drop-label { min-height: 118px; }
+.swal-celengan .swal2-actions { gap: 10px; }
+.runway-track > i.runway-target { width: 3px; background: var(--text); opacity: .55; }
+.runway-scale small.target { color: var(--text); }
+
+/* Import mutasi */
+.import-file { display: grid; grid-template-columns: minmax(0, 1fr) 140px minmax(0, 1.3fr); gap: 16px; align-items: end; }
+.import-drop {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px; cursor: pointer; text-align: center;
+  border: 2px dashed var(--border); border-radius: 18px; background: var(--surface-2); transition: border-color .2s;
+}
+.import-drop:hover, .import-drop.loaded { border-color: var(--primary); }
+.import-drop i { font-size: 1.6rem; color: var(--primary); }
+.import-drop small { color: var(--text-muted); }
+.import-mapping { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.import-map { display: flex; flex-direction: column; gap: 2px; min-width: 130px; }
+.import-map small { color: var(--text-muted); font-weight: 700; }
+.import-map select { padding: 6px 10px; font-size: .9rem; }
+.import-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.import-table { max-height: 46vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 16px; }
+.import-row { display: grid; grid-template-columns: 22px 92px minmax(0, 1fr) 150px 180px; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px dashed var(--border); }
+.import-row:last-child { border-bottom: 0; }
+.import-row.off { opacity: .45; }
+.import-row input.import-note, .import-row select { padding: 6px 10px; font-size: .92rem; min-width: 0; }
+.import-date { font-size: .9rem; color: var(--text-muted); font-weight: 700; }
+.import-row .chip.kind-income { color: var(--positive); font-weight: 800; }
+.import-row .chip.kind-expense { color: var(--negative); font-weight: 800; }
+.import-desc { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.import-flags { display: flex; gap: 6px; }
+.import-flags .badge { font-size: .75rem; }
+@media (max-width: 860px) {
+  .import-file { grid-template-columns: 1fr 1fr; }
+  .import-drop { grid-column: 1 / -1; }
+  .import-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
+  .import-row .import-desc, .import-row select { grid-column: 2 / -1; }
+}

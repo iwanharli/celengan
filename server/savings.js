@@ -1,6 +1,6 @@
 import { query } from './db.js';
 import { periodRange, shiftMonth } from './period.js';
-import { taxFor } from './tax.js';
+import { annualTax } from '../public/js/tax-calc.js';
 
 // Perkiraan bisa menabung per bulan:
 //   rata-rata pemasukan − rata-rata pengeluaran harian − tagihan rutin − cicilan utang
@@ -16,8 +16,10 @@ const PER_MONTH = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 };
 async function periodTotals({ start, end }, taxCategoryIds = []) {
   const [row] = await query(
     `SELECT COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'income'), 0)::bigint                       AS income,
-            COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'income' AND t.category_id = ANY($3)), 0)::bigint
+            COALESCE(SUM(t.amount + t.tax_withheld) FILTER (WHERE t.kind = 'income' AND t.category_id = ANY($3)), 0)::bigint
               AS taxable_income,
+            COALESCE(SUM(t.tax_withheld) FILTER (WHERE t.kind = 'income' AND t.category_id = ANY($3)), 0)::bigint
+              AS withheld,
             COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'expense'), 0)::bigint                      AS expense,
             COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'expense' AND t.bill_id IS NULL AND t.debt_id IS NULL), 0)::bigint AS daily_expense,
             COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'debt_out' AND d.direction = 'payable'), 0)::bigint
@@ -66,7 +68,9 @@ export async function savingsEstimate(month, startDay, incomeMode, tax = { enabl
   const dailyExpense = average(history, 'daily_expense');
   const recurringBills = monthly(bills.filter((bill) => !bill.debt_id));
   const installments = monthly(bills.filter((bill) => bill.debt_id));
-  const taxReserve = tax.enabled ? taxFor(average(history, 'taxable_income'), tax.rate) : 0;
+  // Pajak per bulan = pajak setahun (dari rata-rata bruto × 12) ÷ 12, dikurangi rata-rata PPh 21 yang sudah dipotong klien.
+  const monthlyTax = (gross, withheld) => (tax.enabled ? Math.max(0, Math.round(annualTax(gross * 12, tax) / 12) - withheld) : 0);
+  const taxReserve = monthlyTax(average(history, 'taxable_income'), average(history, 'withheld'));
   const estimate = income - dailyExpense - recurringBills - installments - taxReserve;
   const monthlyNeed = dailyExpense + recurringBills + installments;
 
@@ -74,7 +78,7 @@ export async function savingsEstimate(month, startDay, incomeMode, tax = { enabl
   const lowestIncome = Math.min(...history.map((row) => row.income));
   const lowestMonth = history.find((row) => row.income === lowestIncome);
   const lowScenario = isFreelance && history.length > 1
-    ? { income: lowestIncome, estimate: lowestIncome - monthlyNeed - (tax.enabled ? taxFor(lowestMonth.taxable_income, tax.rate) : 0) }
+    ? { income: lowestIncome, estimate: lowestIncome - monthlyNeed - monthlyTax(lowestMonth.taxable_income, lowestMonth.withheld) }
     : null;
 
   // "Benar-benar tersisa" bulan lalu, sebagai pembanding perkiraan.

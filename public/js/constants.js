@@ -179,13 +179,14 @@ export const WISH_KINDS = {
 // supaya tidak perlu banyak scroll.
 export const WIDE_MODALS = [
   'transaction', 'account', 'bill', 'debt', 'debtEdit', 'budget', 'category', 'categoryDelete',
-  'asset', 'wish', 'wishBuy', 'wishPartPay', 'schedule', 'photos', 'period',
+  'asset', 'wish', 'wishBuy', 'wishPartPay', 'schedule', 'photos', 'period', 'recipient', 'import',
 ];
 
 // Sub-menu halaman Pengaturan.
 export const SETTINGS_SECTIONS = [
   { id: 'income', label: 'Penghasilan', hint: 'Gaji tetap / freelance', icon: 'briefcase' },
   { id: 'tax', label: 'Pajak', hint: 'Sisihkan untuk pajak', icon: 'receipt', freelanceOnly: true },
+  { id: 'notify', label: 'Notifikasi', hint: 'Pengingat tagihan', icon: 'bell-ringing' },
   { id: 'data', label: 'Data', hint: 'Backup otomatis', icon: 'database' },
   { id: 'security', label: 'Keamanan', hint: 'Password & keluar', icon: 'lock-key' },
   { id: 'danger', label: 'Zona berbahaya', hint: 'Mulai dari nol', icon: 'warning-octagon' },

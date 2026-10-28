@@ -24,8 +24,31 @@
       <i class="ph-duotone ph-lock-simple"></i>
       <span x-text="{ debt: 'Terhubung ke utang/piutang/invoice', bill: 'Pembayaran tagihan rutin', wish_part: 'Pembayaran rincian wishlist', wish: 'Pembelian wishlist' }[form.linked_to] + ' — jenisnya dikunci supaya sisa & statusnya tetap benar. Nominal, tanggal & lainnya tetap bisa diubah.'"></span>
     </p>
-    {{> components/amount-field label="Nominal" autofocus=true placeholder="contoh: 25rb, 1,5jt, 50000" hint="parsedAmount ? '= ' + rupiah(parsedAmount) : 'Bisa ketik 25rb atau 1,5jt'"}}
+    <!-- Baris 1: nominal | akun & tanggal -->
+    <div class="tx-top">
+      {{> components/amount-field label="Nominal" autofocus=true placeholder="contoh: 25rb, 1,5jt, 50000" hint="parsedAmount ? '= ' + rupiah(parsedAmount) : 'Bisa ketik 25rb atau 1,5jt'"}}
+      <div class="tx-where" :class="{ transfer: form.kind === 'transfer' }">
+        <div class="field">
+          <label x-text="form.kind === 'transfer' ? 'Dari akun' : 'Akun'"></label>
+          <select x-model="form.account_id" @change="suggestTransferFee()">
+            <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name" :selected="a.id == form.account_id"></option></template>
+          </select>
+        </div>
+        <div class="field" x-show="form.kind === 'transfer'">
+          <label>Ke akun</label>
+          <select x-model="form.to_account_id" @change="suggestTransferFee()">
+            <option value="">Pilih akun</option>
+            <template x-for="a in accounts.filter(a => a.id != form.account_id)" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tanggal</label>
+          <input type="date" x-model="form.date">
+        </div>
+      </div>
+    </div>
 
+    <!-- Baris 2: kategori (lebar penuh) -->
     <div class="field" x-show="form.kind !== 'transfer'">
       <label>Kategori</label>
       <div class="chips">
@@ -39,97 +62,83 @@
       </div>
     </div>
 
-    <div class="grid-2 tight">
-      <div class="field">
-        <label x-text="form.kind === 'transfer' ? 'Dari akun' : 'Akun'"></label>
-        <select x-model="form.account_id" @change="suggestTransferFee()">
-          <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name" :selected="a.id == form.account_id"></option></template>
-        </select>
-      </div>
-      <div class="field" x-show="form.kind === 'transfer'">
-        <label>Ke akun</label>
-        <select x-model="form.to_account_id" @change="suggestTransferFee()">
-          <option value="">Pilih akun</option>
-          <template x-for="a in accounts.filter(a => a.id != form.account_id)" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
-        </select>
-      </div>
-      <div class="field">
-        <label>Tanggal</label>
-        <input type="date" x-model="form.date">
-      </div>
-    </div>
+    <!-- Baris 3: catatan & isian tambahan | foto -->
+    <div class="modal-columns tx-bottom">
+      <div class="stack">
+        <div class="field">
+          <label>Catatan (opsional)</label>
+          <input placeholder="contoh: Makan siang" x-model="form.note">
+        </div>
 
-    <!-- Kirim ke penerima (orang tua, teman, ...): pengeluaran yang tercatat di riwayat penerima -->
-    <div class="field" x-show="form.kind === 'expense' && recipients.length > 0">
-      <label>Kirim ke penerima (opsional)</label>
-      <select x-model="form.recipient_id" @change="pickRecipient()">
-        <option value="">— Bukan kiriman —</option>
-        <template x-for="r in recipients" :key="r.id">
-          <option :value="r.id" :selected="r.id == form.recipient_id"
-                  x-text="(r.is_favorite ? '⭐ ' : '') + r.name + (r.provider ? ' · ' + r.provider : '')"></option>
-        </template>
-      </select>
-      <p class="hint" x-show="selectedRecipient" x-text="selectedRecipient && recipientDestination(selectedRecipient)"></p>
-    </div>
+        <!-- Kirim ke penerima (orang tua, teman, ...): pengeluaran yang tercatat di riwayat penerima -->
+        <div class="field" x-show="form.kind === 'expense' && recipients.length > 0">
+          <label>Kirim ke penerima (opsional)</label>
+          <select x-model="form.recipient_id" @change="pickRecipient()">
+            <option value="">— Bukan kiriman —</option>
+            <template x-for="r in recipients" :key="r.id">
+              <option :value="r.id" :selected="r.id == form.recipient_id"
+                      x-text="(r.is_favorite ? '⭐ ' : '') + r.name + (r.provider ? ' · ' + r.provider : '')"></option>
+            </template>
+          </select>
+          <p class="hint" x-show="selectedRecipient" x-text="selectedRecipient && recipientDestination(selectedRecipient)"></p>
+        </div>
 
-    <!-- Biaya admin: dipotong dari akun pengirim, dicatat sebagai pengeluaran "Biaya admin" -->
-    <div class="field" x-show="form.kind === 'transfer' || (form.kind === 'expense' && form.recipient_id && selectedRecipient?.method !== 'cash')">
-      <label>Biaya admin</label>
-      <div class="chips">
-        <template x-for="fee in TRANSFER_FEES" :key="fee">
-          <button type="button" class="chip" :class="{ active: parseAmount(form.feeText) === fee }"
-                  @click="form.feeText = fee ? formatAmountInput(fee) : ''" x-text="fee ? rupiah(fee) : 'Gratis'"></button>
-        </template>
-      </div>
-      <input inputmode="numeric" placeholder="atau ketik sendiri" x-model="form.feeText" x-rupiah>
-      <p class="hint" x-show="parseAmount(form.feeText) > 0"
-         x-text="'Dipotong dari akun pengirim. Total keluar: ' + rupiah(parsedAmount + parseAmount(form.feeText))"></p>
-      <p class="hint" x-show="!(parseAmount(form.feeText) > 0)">Sesama bank biasanya gratis · BI-FAST maks. Rp2.500 · top up e-wallet ± Rp1.000</p>
-    </div>
-    <!-- Klien: hanya untuk pemasukan (misal proyek freelance yang sudah dibayar) -->
-    <div class="field" x-show="form.kind === 'income'">
-      <label>Klien (opsional)</label>
-      <input list="client-names" placeholder="contoh: PT Maju Jaya" x-model="form.client" autocomplete="off">
-      <datalist id="client-names">
-        <template x-for="name in clientNames" :key="name"><option :value="name"></option></template>
-      </datalist>
-      <p class="hint">Isi kalau ini bayaran proyek, supaya muncul di laporan per klien.</p>
-    </div>
-    <div class="field">
-      <label>Catatan (opsional)</label>
-      <input placeholder="contoh: Makan siang" x-model="form.note">
-    </div>
-
-    <!-- Foto / bukti: kotak unggah (FilePond) + tombol kamera, bisa lebih dari satu -->
-    <div class="field">
-      <div class="photo-label">
-        <label>Foto struk / bukti <span class="muted">(opsional)</span></label>
-        <span class="badge" x-text="photoCount + ' / 10 foto'"></span>
-      </div>
-
-      <!-- Foto yang sudah tersimpan (saat edit) -->
-      <div class="photo-grid" x-show="form.attachments.length">
-        <template x-for="photo in form.attachments" :key="'a' + photo.id">
-          <div class="photo-thumb" :class="{ removed: photo.removed }">
-            <img :src="attachmentUrl(photo.id)" :alt="photo.name || 'Foto'" loading="lazy">
-            <button type="button" class="photo-remove" @click="toggleAttachmentRemoval(photo)"
-                    :title="photo.removed ? 'Batal hapus' : 'Hapus foto'">
-              <i class="ph-bold" :class="photo.removed ? 'ph-arrow-counter-clockwise' : 'ph-x'"></i>
-            </button>
-            <span class="photo-tag" x-show="photo.removed">Dihapus saat disimpan</span>
+        <!-- Biaya admin: dipotong dari akun pengirim, dicatat sebagai pengeluaran "Biaya admin" -->
+        <div class="field" x-show="form.kind === 'transfer' || (form.kind === 'expense' && form.recipient_id && selectedRecipient?.method !== 'cash')">
+          <label>Biaya admin</label>
+          <div class="chips">
+            <template x-for="fee in TRANSFER_FEES" :key="fee">
+              <button type="button" class="chip small" :class="{ active: parseAmount(form.feeText) === fee }"
+                      @click="form.feeText = fee ? formatAmountInput(fee) : ''" x-text="fee ? rupiah(fee) : 'Gratis'"></button>
+            </template>
           </div>
-        </template>
+          <input inputmode="numeric" placeholder="atau ketik sendiri" x-model="form.feeText" x-rupiah>
+          <p class="hint" x-show="parseAmount(form.feeText) > 0"
+             x-text="'Dipotong dari akun pengirim. Total keluar: ' + rupiah(parsedAmount + parseAmount(form.feeText))"></p>
+          <p class="hint" x-show="!(parseAmount(form.feeText) > 0)">Sesama bank biasanya gratis · BI-FAST maks. Rp2.500 · top up e-wallet ± Rp1.000</p>
+        </div>
+
+        <!-- Pemasukan: klien & potongan PPh 21 (freelance) -->
+        <div class="field" x-show="showClientField">
+          <label>Klien (opsional)</label>
+          <input list="client-names" placeholder="contoh: PT Maju Jaya" x-model="form.client" autocomplete="off">
+          <datalist id="client-names">
+            <template x-for="name in clientNames" :key="name"><option :value="name"></option></template>
+          </datalist>
+        </div>
+        {{> components/tax-withheld show="showWithheldField"}}
       </div>
 
-      <!-- Kotak garis putus-putus: tarik foto ke sini / klik untuk memilih -->
-      <div class="photo-dropzone" x-photo-dropzone></div>
+      <!-- Foto / bukti: kotak unggah (FilePond) + tombol kamera, bisa lebih dari satu -->
+      <div class="field tx-photos">
+        <div class="photo-label">
+          <label>Foto struk / bukti <span class="muted">(opsional)</span></label>
+          <span class="badge" x-text="photoCount + ' / 10'"></span>
+        </div>
 
-      <label class="camera-button" x-show="photoCount < 10">
-        <i class="ph-duotone ph-camera"></i> Ambil foto dengan kamera
-        <input type="file" accept="image/*" capture="environment" hidden @change="addCameraPhotos($event)">
-      </label>
-      <p class="hint" x-show="form.uploading" x-text="form.uploading"></p>
-      <p class="hint" x-show="!form.uploading">Foto dikecilkan otomatis sebelum diunggah supaya hemat ruang.</p>
+        <!-- Foto yang sudah tersimpan (saat edit) -->
+        <div class="photo-grid" x-show="form.attachments.length">
+          <template x-for="photo in form.attachments" :key="'a' + photo.id">
+            <div class="photo-thumb" :class="{ removed: photo.removed }">
+              <img :src="attachmentUrl(photo.id)" :alt="photo.name || 'Foto'" loading="lazy">
+              <button type="button" class="photo-remove" @click="toggleAttachmentRemoval(photo)"
+                      :title="photo.removed ? 'Batal hapus' : 'Hapus foto'">
+                <i class="ph-bold" :class="photo.removed ? 'ph-arrow-counter-clockwise' : 'ph-x'"></i>
+              </button>
+              <span class="photo-tag" x-show="photo.removed">Dihapus saat disimpan</span>
+            </div>
+          </template>
+        </div>
+
+        <!-- Kotak garis putus-putus: tarik foto ke sini / klik untuk memilih -->
+        <div class="photo-dropzone" x-photo-dropzone></div>
+
+        <label class="camera-button" x-show="photoCount < 10" title="Foto dikecilkan otomatis sebelum diunggah">
+          <i class="ph-duotone ph-camera"></i> Ambil foto dengan kamera
+          <input type="file" accept="image/*" capture="environment" hidden @change="addCameraPhotos($event)">
+        </label>
+        <p class="hint" x-show="form.uploading" x-text="form.uploading"></p>
+      </div>
     </div>
 
     <div class="form-actions">

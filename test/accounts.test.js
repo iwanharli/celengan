@@ -82,3 +82,20 @@ test('tanpa pilihan itu, saldo awal tidak dihitung pemasukan', async () => {
   await app.api.post('/accounts', { name: 'Seabank', type: 'bank', initial_balance: 1000000 });
   assert.equal((await app.api.get('/summary?month=2026-10')).income, 2500000);
 });
+
+test('selisih penyesuaian bisa dicatat sebagai pengeluaran / pemasukan', async () => {
+  const dompet = await app.api.post('/accounts', { name: 'Dompet Adj', type: 'cash', initial_balance: 300000 });
+  const food = (await app.api.get('/categories')).find((c) => c.name === 'Makan & Minum');
+  const salary = (await app.api.get('/categories')).find((c) => c.name === 'Gaji');
+  const month = new Date().toLocaleDateString('sv-SE').slice(0, 7);
+  const before = await app.api.get(`/summary?month=${month}`);
+
+  assert.equal((await app.call('POST', `/accounts/${dompet.id}/adjust`, { actual_balance: 250000, record_as: 'flow' })).status, 400);
+  await app.api.post(`/accounts/${dompet.id}/adjust`, { actual_balance: 250000, record_as: 'flow', category_id: food.id });
+  await app.api.post(`/accounts/${dompet.id}/adjust`, { actual_balance: 270000, record_as: 'flow', category_id: salary.id });
+
+  const after = await app.api.get(`/summary?month=${month}`);
+  assert.equal(after.expense - before.expense, 50000);
+  assert.equal(after.income - before.income, 20000);
+  assert.equal((await app.api.get('/accounts')).find((a) => a.id === dompet.id).balance, 270000);
+});

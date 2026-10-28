@@ -41,7 +41,7 @@ function withPaymentStatus(installments, payments) {
 }
 
 const PAYMENTS_SQL = `
-  SELECT t.debt_id, t.amount, t.date
+  SELECT t.debt_id, t.amount + t.tax_withheld AS amount, t.date
   FROM transactions t
   JOIN debts d ON d.id = t.debt_id
   WHERE ((d.direction = 'payable' AND t.kind IN ('debt_out', 'expense'))
@@ -292,8 +292,8 @@ router.post('/:id/pay', async (req, res) => {
     const isInvoice = debt.type === 'invoice';
     const payment = await debtPaymentKind(client, debt);
     await client.query(
-      `INSERT INTO transactions (kind, amount, account_id, category_id, debt_id, date, note, client)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `INSERT INTO transactions (kind, amount, account_id, category_id, debt_id, date, note, client, tax_withheld)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         isInvoice ? 'income' : payment.kind,
         req.body.amount,
@@ -305,6 +305,8 @@ router.post('/:id/pay', async (req, res) => {
           ? `Invoice ${debt.counterparty}${debt.note ? ` · ${debt.note}` : ''}`
           : isPayable ? `Bayar ${debt.counterparty}` : `Diterima dari ${debt.counterparty}`,
         isInvoice ? debt.counterparty : null,
+        // Invoice: PPh 21 yang dipotong klien ikut melunasi invoice (lihat view debt_status).
+        isInvoice ? Math.max(0, Number(req.body.tax_withheld) || 0) : 0,
       ],
     );
     // Tagihan cicilannya ikut maju ke cicilan berikutnya yang belum lunas.

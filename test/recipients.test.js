@@ -48,3 +48,14 @@ test('favorit tampil paling atas; hapus penerima tidak menghapus kirimannya', as
   assert.ok(sent);
   assert.equal(sent.recipient_id, null);
 });
+
+test('transaksi bisa difilter per penerima (termasuk biaya adminnya)', async () => {
+  const account = await app.api.post('/accounts', { name: 'Mandiri F', type: 'bank', initial_balance: 1000000 });
+  const category = await categoryId(app.api, 'Lainnya');
+  const bapak = await app.api.post('/recipients', { name: 'Bapak', relation: 'parent', method: 'bank' });
+  const today = new Date().toLocaleDateString('sv-SE');
+  await app.api.post('/transactions', { kind: 'expense', amount: 300000, account_id: account.id, category_id: category, date: today, recipient_id: bapak.id, fee: 2500 });
+  await app.api.post('/transactions', { kind: 'expense', amount: 10000, account_id: account.id, category_id: category, date: today });
+  const rows = await app.api.get(`/transactions?month=${today.slice(0, 7)}&recipient_id=${bapak.id}`);
+  assert.deepEqual(rows.map((t) => t.amount).sort((a, b) => a - b), [2500, 300000]);
+});

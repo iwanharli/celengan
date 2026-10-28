@@ -13,6 +13,7 @@ const ALL_TABLES = [
   'wishlist_events', 'wishlist_parts', 'wishlist_items', 'transaction_attachments', 'transaction_templates',
   'transaction_history', 'transactions', 'bills', 'debt_installments', 'debts',
   'assets', 'accounts', 'net_worth_snapshots', 'categories', 'sessions', 'owner',
+  'recipients', 'bill_skips', 'bill_reminders', 'push_subscriptions',
 ];
 
 export async function startTestApp() {
@@ -103,6 +104,7 @@ export async function startTestApp() {
 
   return {
     baseUrl,
+    token, // cookie sid, untuk uji tampilan di browser (test/ui-smoke.mjs)
     exportData: backup.exportData,
     restoreData: backup.restoreData,
     pool,

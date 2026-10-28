@@ -3,8 +3,11 @@ import { query, withTransaction, required, HttpError } from '../db.js';
 import { revertWishlistPurchase } from './wishlist.js';
 import { afterDebtPayment } from './debts.js';
 import { periodFromQuery } from '../period.js';
+import { syncTransferFee } from '../transfer-fee.js';
+import historyRoutes from './transaction-history.js';
 
 const router = Router();
+router.use(historyRoutes); // /history/deleted & /:id/history
 
 router.get('/', async (req, res) => {
   const { start, end } = await periodFromQuery(req.query);
@@ -18,6 +21,14 @@ router.get('/', async (req, res) => {
   if (req.query.account_id) {
     params.push(req.query.account_id);
     where.push(`(t.account_id = $${params.length} OR t.to_account_id = $${params.length})`);
+  }
+  if (req.query.recipient_id) {
+    params.push(req.query.recipient_id);
+    where.push(`(t.recipient_id = $${params.length} OR t.fee_of IN (SELECT id FROM transactions WHERE recipient_id = $${params.length}))`);
+  }
+  if (req.query.bill_id) {
+    params.push(req.query.bill_id);
+    where.push(`t.bill_id = $${params.length}`);
   }
   if (req.query.q) {
     params.push(`%${req.query.q}%`);
@@ -51,6 +62,12 @@ router.get('/', async (req, res) => {
 // Transaksi utang/aset/penyesuaian dibuat dari halamannya masing-masing.
 const EDITABLE_KINDS = ['income', 'expense', 'transfer'];
 
+function withheldOf(body) {
+  const withheld = Number(body.tax_withheld) || 0;
+  if (withheld < 0) throw new HttpError(400, 'Potongan PPh 21 tidak valid');
+  return withheld;
+}
+
 function validTransactionValues(body) {
   required(body, ['kind', 'amount', 'account_id', 'date']);
   const { kind, amount, account_id, to_account_id, category_id, date, note, client } = body;
@@ -75,6 +92,7 @@ function validTransactionValues(body) {
     note || null,
     kind === 'income' ? client?.trim() || null : null, // nama klien, hanya untuk pemasukan
     kind === 'expense' ? Number(body.recipient_id) || null : null, // kiriman ke penerima, hanya pengeluaran
+    kind === 'income' ? withheldOf(body) : 0, // PPh 21 yang dipotong klien, hanya pemasukan
   ];
 }
 
@@ -95,8 +113,8 @@ router.post('/', async (req, res) => {
   const values = validTransactionValues(req.body);
   const transaction = await withTransaction(async (client) => {
     const { rows: [transaction] } = await client.query(
-      `INSERT INTO transactions (kind, amount, account_id, to_account_id, category_id, date, note, client, recipient_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO transactions (kind, amount, account_id, to_account_id, category_id, date, note, client, recipient_id, tax_withheld)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
       values,
     );
     await syncTransferFee(client, transaction, req.body.fee);
@@ -117,44 +135,6 @@ router.get('/transfer-fee', async (req, res) => {
   res.json({ fee: last?.fee ?? null });
 });
 
-async function feeCategoryId(client) {
-  const { rows: [existing] } = await client.query(
-    `SELECT id FROM categories WHERE kind = 'expense' AND name = 'Biaya admin' LIMIT 1`,
-  );
-  if (existing) return existing.id;
-  const { rows: [created] } = await client.query(
-    `INSERT INTO categories (name, kind, icon, color) VALUES ('Biaya admin', 'expense', 'bank', '#94a3b8') RETURNING id`,
-  );
-  return created.id;
-}
-
-// Biaya admin dipotong dari akun pengirim, dicatat sebagai pengeluaran yang menempel ke transaksinya.
-// Berlaku untuk transfer antar akun sendiri & kiriman ke penerima. fee kosong/0 → biaya (kalau ada) dihapus.
-async function syncTransferFee(client, transfer, fee) {
-  const hasFee = transfer.kind === 'transfer' || transfer.recipient_id;
-  const amount = hasFee ? Number(fee) || 0 : 0;
-  if (amount < 0) throw new HttpError(400, 'Biaya admin tidak valid');
-  if (amount === 0) {
-    await client.query('DELETE FROM transactions WHERE fee_of = $1', [transfer.id]);
-    return;
-  }
-  const { rows: [target] } = transfer.recipient_id
-    ? await client.query('SELECT name FROM recipients WHERE id = $1', [transfer.recipient_id])
-    : await client.query('SELECT name FROM accounts WHERE id = $1', [transfer.to_account_id]);
-  const note = `Biaya transfer ke ${target?.name ?? 'akun lain'}`;
-  const { rowCount } = await client.query(
-    'UPDATE transactions SET amount = $1, account_id = $2, date = $3, note = $4 WHERE fee_of = $5',
-    [amount, transfer.account_id, transfer.date, note, transfer.id],
-  );
-  if (!rowCount) {
-    await client.query(
-      `INSERT INTO transactions (kind, amount, account_id, category_id, date, note, fee_of)
-       VALUES ('expense', $1, $2, $3, $4, $5, $6)`,
-      [amount, transfer.account_id, await feeCategoryId(client), transfer.date, note, transfer.id],
-    );
-  }
-}
-
 // Transaksi yang terhubung ke invoice/utang, tagihan, rincian wishlist, atau pembelian wishlist
 // tidak boleh diganti jenisnya (misal pemasukan → pengeluaran), karena sisa utang, pajak,
 // dan status wishlist dihitung dari jenis transaksi itu.
@@ -166,28 +146,6 @@ const LINK_SQL = `CASE
   WHEN EXISTS (SELECT 1 FROM wishlist_items w WHERE w.transaction_id = t.id) THEN 'wish'
 END`;
 
-// ---------- Riwayat perubahan (dicatat trigger di database) ----------
-
-// Transaksi yang baru dihapus (30 terakhir), untuk melihat apa yang hilang.
-router.get('/history/deleted', async (req, res) => {
-  res.json(await query(
-    `SELECT h.id, h.transaction_id, h.snapshot, h.created_at,
-            a.name AS account_name, c.name AS category_name, c.icon AS category_icon, c.color AS category_color
-     FROM transaction_history h
-     LEFT JOIN accounts a   ON a.id = (h.snapshot ->> 'account_id')::int
-     LEFT JOIN categories c ON c.id = (h.snapshot ->> 'category_id')::int
-     WHERE h.action = 'deleted'
-     ORDER BY h.id DESC LIMIT 30`,
-  ));
-});
-
-router.get('/:id/history', async (req, res) => {
-  res.json(await query(
-    'SELECT id, action, changes, snapshot, created_at FROM transaction_history WHERE transaction_id = $1 ORDER BY id DESC',
-    [req.params.id],
-  ));
-});
-
 // Edit transaksi utang/aset/penyesuaian: jenis & keterkaitannya tetap, yang bisa diubah hanya
 // nominal, akun, tanggal & catatan. Sisa utang & nilai aset ikut menyesuaikan.
 async function updateLinkedTransaction(id, body) {
@@ -196,9 +154,11 @@ async function updateLinkedTransaction(id, body) {
   await withTransaction(async (client) => {
     const { rows: [old] } = await client.query('SELECT * FROM transactions WHERE id = $1 FOR UPDATE', [id]);
     if (old.kind === 'adjustment' ? amount === 0 : !(amount > 0)) throw new HttpError(400, 'Nominal tidak valid');
+    // Pembayaran invoice: potongan PPh 21 klien ikut bisa diubah (ikut melunasi invoice).
+    const withheld = old.kind === 'income' && body.tax_withheld !== undefined ? Math.max(0, Number(body.tax_withheld) || 0) : old.tax_withheld;
     await client.query(
-      'UPDATE transactions SET amount = $1, account_id = $2, date = $3, note = $4 WHERE id = $5',
-      [amount, body.account_id, body.date, body.note || null, id],
+      'UPDATE transactions SET amount = $1, account_id = $2, date = $3, note = $4, tax_withheld = $5 WHERE id = $6',
+      [amount, body.account_id, body.date, body.note || null, withheld, id],
     );
     // Beli aset menambah nilai aset, jual mengurangi: geser sebesar selisih nominalnya.
     if (old.asset_id && amount !== old.amount) {
@@ -229,8 +189,8 @@ router.put('/:id', async (req, res) => {
     const { rows: [transaction] } = await client.query(
       `UPDATE transactions
        SET kind = $1, amount = $2, account_id = $3, to_account_id = $4, category_id = $5, date = $6, note = $7, client = $8,
-           recipient_id = $9
-       WHERE id = $10 AND kind = ANY($11)
+           recipient_id = $9, tax_withheld = $10
+       WHERE id = $11 AND kind = ANY($12)
        RETURNING *`,
       [...values, req.params.id, EDITABLE_KINDS],
     );

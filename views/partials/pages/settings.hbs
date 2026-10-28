@@ -49,6 +49,16 @@
         </select>
         <p class="hint">Laporan dan anggaran dihitung dari tanggal ini sampai sehari sebelum gajian berikutnya.</p>
       </div>
+      <div class="field" x-show="settingsForm.income_mode === 'freelance'">
+        <label>Target dana darurat</label>
+        <div class="chips">
+          <template x-for="months in [3, 6, 9, 12]" :key="months">
+            <button type="button" class="chip" :class="{ active: Number(settingsForm.emergency_months) === months }"
+                    @click="settingsForm.emergency_months = months" x-text="months + ' bulan'"></button>
+          </template>
+        </div>
+        <p class="hint">Berapa bulan kebutuhan yang ingin selalu tersedia kalau pemasukan berhenti. Freelancer idealnya 6–12 bulan.</p>
+      </div>
       <div class="panel-actions">
         <button type="button" class="link" x-show="settingsForm.income_mode === 'freelance'" @click="goToSettings('tax')">Atur pajak freelance →</button>
         <span class="spacer"></span>
@@ -74,7 +84,52 @@
       </template>
       <template x-if="settingsForm.income_mode === 'freelance'">
         <div class="stack">
+          <!-- Metode: pilih lewat satu pertanyaan, atau langsung klik kartunya -->
           <div class="field">
+            <label>Pekerjaanmu termasuk jasa yang kamu kerjakan sendiri (desainer, programmer, konsultan, kreator, penerjemah, dll.)?</label>
+            <div class="tax-methods">
+              <template x-for="[key, method] in Object.entries(TAX_METHODS)" :key="key">
+                <button type="button" class="tax-method" :class="{ active: settingsForm.tax_method === key }" @click="settingsForm.tax_method = key">
+                  <span class="tax-method-answer" x-text="{ nppn: 'Ya, saya kerjakan sendiri', final: 'Tidak, saya punya usaha / karyawan', flat: 'Saya ikut arahan konsultan' }[key]"></span>
+                  <strong x-text="method.label"></strong>
+                  <small x-text="method.hint"></small>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- NPPN: norma & PTKP -->
+          <template x-if="settingsForm.tax_method === 'nppn'">
+            <div class="grid-2 tight">
+              <div class="field">
+                <label>Persentase norma (%)</label>
+                <div class="percent-input">
+                  <input inputmode="decimal" placeholder="lihat tabel norma DJP" x-model="settingsForm.tax_norma">
+                  <span>%</span>
+                </div>
+                <p class="hint">Berbeda per profesi & kota (10 ibu kota provinsi / ibu kota provinsi lain / daerah lain). Cek tabel norma DJP atau tanya Kring Pajak 1500200.</p>
+              </div>
+              <div class="field">
+                <label>Status PTKP</label>
+                <select x-model="settingsForm.tax_ptkp">
+                  <template x-for="[code, amount] in Object.entries(PTKP)" :key="code">
+                    <option :value="code" :selected="code === settingsForm.tax_ptkp" x-text="code + ' · ' + ptkpLabel(code)"></option>
+                  </template>
+                </select>
+                <p class="hint" x-text="'Penghasilan tidak kena pajak ' + rupiah(PTKP[settingsForm.tax_ptkp] ?? 0) + ' per tahun.'"></p>
+              </div>
+            </div>
+          </template>
+
+          <!-- PPh Final 0,5% -->
+          <p class="hint tax-note" x-show="settingsForm.tax_method === 'final'">
+            <i class="ph-duotone ph-info"></i>
+            Omzet <strong>Rp500 juta pertama</strong> tiap tahun bebas pajak; 0,5% hanya untuk kelebihannya (PP 20/2026).
+            Penghasilan jasa pekerjaan bebas yang dikerjakan sendiri <strong>tidak bisa</strong> memakai tarif ini.
+          </p>
+
+          <!-- Persentase tetap (cara lama) -->
+          <div class="field" x-show="settingsForm.tax_method === 'flat'">
             <label>Persentase yang disisihkan</label>
             <div class="chips">
               <button type="button" class="chip" :class="{ active: !Number(settingsForm.tax_rate) }" @click="settingsForm.tax_rate = 0">Tidak</button>
@@ -87,12 +142,21 @@
               <input inputmode="decimal" placeholder="atau ketik sendiri" x-model="settingsForm.tax_rate">
               <span>%</span>
             </div>
-            <p class="hint">
-              Contoh: 0,5% PPh final UMKM, 2,5% perkiraan PPh freelancer dengan NPPN.
-              Sesuaikan dengan kondisimu atau tanyakan konsultan pajak.
-            </p>
           </div>
-          <div class="field" x-show="Number(String(settingsForm.tax_rate).replace(',', '.')) > 0">
+
+          <!-- Contoh hitungan dengan pengaturan di atas -->
+          <div class="tax-preview" x-show="taxPreview">
+            <span class="muted">Contoh: penghasilan bruto</span>
+            <div class="chips">
+              <template x-for="gross in [60000000, 120000000, 300000000, 600000000]" :key="gross">
+                <button type="button" class="chip small" :class="{ active: taxPreviewGross === gross }" @click="taxPreviewGross = gross" x-text="rupiahShortLabel(gross) + '/tahun'"></button>
+              </template>
+            </div>
+            <p>Perkiraan pajak setahun <strong x-text="rupiah(taxPreview?.tax ?? 0)"></strong>
+              (<span x-text="taxPreview?.rate"></span>% dari bruto) · sisihkan ± <strong x-text="rupiah(Math.round((taxPreview?.tax ?? 0) / 12))"></strong>/bulan</p>
+          </div>
+
+          <div class="field">
             <label>Pemasukan yang kena pajak</label>
             <div class="chips">
               <template x-for="category in categoriesOf('income')" :key="category.id">
@@ -105,12 +169,38 @@
             </div>
             <p class="hint">Kosongkan untuk memakai kategori <strong>Freelance</strong> (dibuat otomatis). Pembayaran invoice klien masuk ke kategori Freelance.</p>
           </div>
+          <p class="hint"><i class="ph-duotone ph-warning-circle"></i> Ini perkiraan untuk menyisihkan dana, bukan perhitungan resmi. Pastikan metode & normanya dengan konsultan pajak.</p>
           <div class="panel-actions">
             <span class="spacer"></span>
             <button class="button primary" @click="saveSettings()"><i class="ph-duotone ph-check"></i> Simpan</button>
           </div>
         </div>
       </template>
+    </div>
+
+    <!-- ========== Notifikasi ========== -->
+    <div class="card settings-panel" x-show="settingsSection === 'notify'">
+      <div class="panel-head">
+        <span class="panel-icon"><i class="ph-duotone ph-bell-ringing"></i></span>
+        <div>
+          <h2>Pengingat tagihan</h2>
+          <p class="muted">Notifikasi di browser <strong>H-1</strong> dan <strong>di hari jatuh tempo</strong>, termasuk tagihan yang dipotong otomatis. Tetap muncul walau tab Celengan tertutup, selama browser & server menyala.</p>
+        </div>
+      </div>
+      <div class="backup-status" :class="{ off: pushState !== 'on' }">
+        <i class="ph-fill" :class="pushState === 'on' ? 'ph-bell-ringing' : pushState === 'blocked' ? 'ph-bell-slash' : 'ph-bell'"></i>
+        <div class="grow">
+          <strong x-text="{ on: 'Aktif di browser ini', off: 'Belum aktif di browser ini', blocked: 'Notifikasi diblokir browser', unsupported: 'Browser ini tidak mendukung notifikasi', loading: 'Memeriksa…' }[pushState]"></strong>
+          <p class="muted" x-show="pushState === 'blocked'">Izinkan notifikasi untuk situs ini lewat ikon gembok di address bar, lalu muat ulang.</p>
+          <p class="muted" x-show="pushDevices > 0" x-text="pushDevices + ' perangkat/browser menerima pengingat'"></p>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button class="button" x-show="pushState === 'on'" @click="sendTestNotification()"><i class="ph-duotone ph-paper-plane-tilt"></i> Kirim tes</button>
+        <span class="spacer"></span>
+        <button class="button" x-show="pushState === 'on'" @click="disablePush()">Matikan</button>
+        <button class="button primary" x-show="pushState === 'off'" @click="enablePush()"><i class="ph-duotone ph-bell-ringing"></i> Aktifkan pengingat</button>
+      </div>
     </div>
 
     <!-- ========== Data ========== -->
@@ -132,6 +222,52 @@
             <p class="muted" x-show="!lastAutoBackup">Dibuat otomatis saat server berjalan, sekali sehari.</p>
           </div>
         </div>
+      </div>
+
+      <!-- Salinan backup ke folder kedua (cloud) -->
+      <div class="card settings-panel">
+        <div class="panel-head">
+          <span class="panel-icon"><i class="ph-duotone ph-cloud-arrow-up"></i></span>
+          <div>
+            <h2>Salinan ke cloud</h2>
+            <p class="muted">Backup di atas masih di komputer yang sama dengan datanya. Salin juga ke folder yang tersinkron ke cloud, supaya aman kalau laptop rusak atau hilang.</p>
+          </div>
+        </div>
+
+        <template x-if="backupMirror?.dir">
+          <div class="backup-status" :class="{ off: backupMirror.error }">
+            <i class="ph-fill" :class="backupMirror.error ? 'ph-warning-circle' : 'ph-cloud-check'"></i>
+            <div class="grow">
+              <strong x-text="backupMirror.error ? 'Salinan terakhir gagal' : 'Salinan aktif'"></strong>
+              <p class="muted mono-path" x-text="backupMirror.folder"></p>
+              <p class="muted" x-show="!backupMirror.error && backupMirror.last_at"
+                 x-text="'Terakhir disalin: ' + new Date(backupMirror.last_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) + ' · ' + backupMirror.files + ' file'"></p>
+              <p class="tone-negative" x-show="backupMirror.error" x-text="backupMirror.error"></p>
+            </div>
+            <button class="button small" @click="stopBackupMirror()">Matikan</button>
+          </div>
+        </template>
+
+        <template x-if="backupMirror && !backupMirror.dir">
+          <div class="stack">
+            <div class="chips" x-show="backupMirror.suggestions.length">
+              <template x-for="option in backupMirror.suggestions" :key="option.path">
+                <button type="button" class="chip" :class="{ active: mirrorDirInput === option.path }" @click="mirrorDirInput = option.path">
+                  <i class="ph-duotone ph-cloud"></i> <span x-text="option.label"></span>
+                </button>
+              </template>
+            </div>
+            <div class="field">
+              <label>Folder tujuan</label>
+              <input class="mono-path" placeholder="/Users/nama/Library/Mobile Documents/com~apple~CloudDocs" x-model="mirrorDirInput">
+              <p class="hint">Backup disimpan di subfolder <strong>Celengan Backup</strong>, ikut terhapus otomatis kalau sudah lebih dari 14 hari.</p>
+            </div>
+            <div class="panel-actions">
+              <span class="spacer"></span>
+              <button class="button primary" @click="saveBackupMirror()" :disabled="!mirrorDirInput"><i class="ph-duotone ph-cloud-arrow-up"></i> Aktifkan & salin sekarang</button>
+            </div>
+          </div>
+        </template>
       </div>
 
       <div class="card settings-panel">

@@ -1,4 +1,6 @@
-import { mkdir, readdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { access, constants, copyFile, mkdir, readdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { query, withTransaction, HttpError } from './db.js';
 
@@ -21,9 +23,77 @@ const AUTO_BACKUP_KEEP = 14;   // backup harian
 const SAFETY_BACKUP_KEEP = 20; // backup sebelum aksi besar (gabung kategori, restore, mulai dari nol)
 const BACKUP_NAME = /^(auto-\d{4}-\d{2}-\d{2}|sebelum-[a-z0-9-]+-\d{8}-\d{6})\.json$/;
 
-async function keepNewest(prefix, keep) {
-  const files = (await readdir(AUTO_BACKUP_DIR)).filter((name) => name.startsWith(prefix)).sort();
-  for (const old of files.slice(0, -keep)) await unlink(new URL(old, AUTO_BACKUP_DIR));
+async function keepNewest(prefix, keep, dir = AUTO_BACKUP_DIR) {
+  const files = (await readdir(dir)).filter((name) => name.startsWith(prefix)).sort();
+  for (const old of files.slice(0, -keep)) await unlink(new URL(old, dir));
+}
+
+// ---------- Salinan ke folder kedua (iCloud Drive, Google Drive, flashdisk, ...) ----------
+// Backup ditulis ke <folder>/Celengan Backup/. Gagal menyalin tidak menggagalkan backup utama,
+// tapi pesannya disimpan supaya tampil di Pengaturan.
+const MIRROR_SUBDIR = 'Celengan Backup';
+
+const mirrorUrl = (dir) => pathToFileURL(`${join(dir, MIRROR_SUBDIR)}/`);
+
+// Folder sinkron cloud yang umum di Mac, untuk pilihan cepat di Pengaturan.
+export async function mirrorSuggestions() {
+  const home = homedir();
+  const candidates = [{ label: 'iCloud Drive', path: join(home, 'Library/Mobile Documents/com~apple~CloudDocs') }];
+  try {
+    for (const name of await readdir(join(home, 'Library/CloudStorage'))) {
+      const base = join(home, 'Library/CloudStorage', name);
+      if (name.startsWith('GoogleDrive-')) candidates.push({ label: 'Google Drive', path: join(base, 'My Drive') });
+      else if (name.startsWith('OneDrive')) candidates.push({ label: 'OneDrive', path: base });
+      else if (name.startsWith('Dropbox')) candidates.push({ label: 'Dropbox', path: base });
+    }
+  } catch {}
+  candidates.push({ label: 'Dropbox', path: join(home, 'Dropbox') });
+  const found = [];
+  for (const candidate of candidates) {
+    try {
+      if ((await stat(candidate.path)).isDirectory() && !found.some((f) => f.path === candidate.path)) found.push(candidate);
+    } catch {}
+  }
+  return found;
+}
+
+export async function checkMirrorDir(dir) {
+  if (!dir || !isAbsolute(dir)) throw new HttpError(400, 'Isi alamat folder lengkap, misal /Users/nama/Library/...');
+  try {
+    if (!(await stat(dir)).isDirectory()) throw new Error();
+    await access(dir, constants.W_OK);
+  } catch {
+    throw new HttpError(400, 'Folder tidak ditemukan atau tidak bisa ditulisi');
+  }
+}
+
+async function copyToMirror(fileName, prefix, keep) {
+  const [settings] = await query('SELECT backup_mirror_dir FROM settings WHERE id = 1');
+  if (!settings?.backup_mirror_dir) return;
+  try {
+    const target = mirrorUrl(settings.backup_mirror_dir);
+    await mkdir(target, { recursive: true });
+    await copyFile(new URL(fileName, AUTO_BACKUP_DIR), new URL(fileName, target));
+    await keepNewest(prefix, keep, target);
+    await query('UPDATE settings SET backup_mirror_at = now(), backup_mirror_error = NULL WHERE id = 1');
+  } catch (error) {
+    await query('UPDATE settings SET backup_mirror_error = $1 WHERE id = 1', [error.message.slice(0, 300)]);
+  }
+}
+
+export async function mirrorStatus() {
+  const [settings] = await query('SELECT backup_mirror_dir, backup_mirror_at, backup_mirror_error FROM settings WHERE id = 1');
+  let files = 0;
+  if (settings.backup_mirror_dir) {
+    try { files = (await readdir(mirrorUrl(settings.backup_mirror_dir))).filter((name) => BACKUP_NAME.test(name)).length; } catch {}
+  }
+  return {
+    dir: settings.backup_mirror_dir,
+    folder: settings.backup_mirror_dir ? join(settings.backup_mirror_dir, MIRROR_SUBDIR) : null,
+    last_at: settings.backup_mirror_at,
+    error: settings.backup_mirror_error,
+    files,
+  };
 }
 
 export async function exportData() {
@@ -100,6 +170,7 @@ export async function writeAutoBackup(now = new Date()) {
   await writeFile(new URL(fileName, AUTO_BACKUP_DIR), JSON.stringify(await exportData()));
 
   await keepNewest('auto-', AUTO_BACKUP_KEEP);
+  await copyToMirror(fileName, 'auto-', AUTO_BACKUP_KEEP);
   return fileName;
 }
 
@@ -112,6 +183,7 @@ export async function writeSafetyBackup(label) {
   const fileName = `sebelum-${slug}-${stamp}.json`;
   await writeFile(new URL(fileName, AUTO_BACKUP_DIR), JSON.stringify(await exportData()));
   await keepNewest('sebelum-', SAFETY_BACKUP_KEEP);
+  await copyToMirror(fileName, 'sebelum-', SAFETY_BACKUP_KEEP);
   return fileName;
 }
 

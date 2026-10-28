@@ -19,6 +19,7 @@
       </template>
     </div>
     {{> components/amount-field label="Nominal" autofocus=true}}
+    {{> components/tax-withheld show="form.debt.type === 'invoice'"}}
     <div class="grid-2 tight">
       {{> components/account-select label="Akun"}}
       <div class="field"><label>Tanggal</label><input type="date" x-model="form.date"></div>

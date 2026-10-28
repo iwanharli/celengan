@@ -4,9 +4,18 @@ import { query } from '../db.js';
 import { periodFromQuery, periodRange, shiftMonth, getStartDay } from '../period.js';
 import { savingsEstimate } from '../savings.js';
 import { effectiveBudget } from '../budget.js';
-import { getTaxSettings, taxStatus, taxTotals, taxFor } from '../tax.js';
+import { getTaxSettings, taxStatus, periodTaxReserve } from '../tax.js';
+import { buildInsights } from '../insights.js';
 
 const router = Router();
+
+function emergencyStatus(targetMonths, savings, spendableBalance) {
+  if (!(savings.monthlyNeed > 0)) return { targetMonths, target: null };
+  const target = targetMonths * savings.monthlyNeed;
+  const gap = Math.max(0, target - Math.max(0, spendableBalance));
+  const monthsToGo = gap > 0 && savings.estimate > 0 ? Math.ceil(gap / savings.estimate) : null;
+  return { targetMonths, target, gap, monthsToGo, monthlySaving: savings.estimate };
+}
 
 async function incomeAndExpense({ start, end }) {
   const [totals] = await query(
@@ -27,7 +36,7 @@ router.get('/', async (req, res) => {
   const lastSixPeriods = [5, 4, 3, 2, 1, 0].map((offset) =>
     periodRange(shiftMonth(period.month, -offset), startDay));
 
-  const [{ income_mode: incomeMode }] = await query('SELECT income_mode FROM settings WHERE id = 1');
+  const [{ income_mode: incomeMode, emergency_months: emergencyMonths }] = await query('SELECT income_mode, emergency_months FROM settings WHERE id = 1');
   const taxSettings = await getTaxSettings();
 
   const [accounts, totals, categories, trend, upcomingBills, debtTotals, billsBeforePeriodEnd, recent, savings, invoices] =
@@ -106,8 +115,7 @@ router.get('/', async (req, res) => {
   let tax = null;
   if (taxSettings.enabled) {
     const year = Number(period.month.slice(0, 4));
-    const thisPeriod = await taxTotals(period.start, period.end, taxSettings.categoryIds);
-    tax = { ...(await taxStatus(year)), periodReserve: taxFor(thisPeriod.taxable_income, taxSettings.rate) };
+    tax = { ...(await taxStatus(year)), periodReserve: await periodTaxReserve(period, taxSettings) };
   }
   // Dana pajak yang belum dibayar bukan uang yang bisa dipakai.
   // Uang di akun tabungan impian (wishlist) & dana pajak bukan uang yang bisa dipakai.
@@ -137,7 +145,10 @@ router.get('/', async (req, res) => {
     savings,
     // Freelance: berapa bulan saldo bisa menutup kebutuhan bulanan tanpa pemasukan baru.
     runwayMonths: savings.monthlyNeed > 0 ? Math.max(0, spendableBalance) / savings.monthlyNeed : null,
+    // Target dana darurat: kekurangan & perkiraan kapan tercapai dengan kecepatan menabung sekarang.
+    emergency: emergencyStatus(emergencyMonths, savings, spendableBalance),
     tax,
+    insights: await buildInsights(period, startDay, undefined, tax ? await taxStatus(new Date().getFullYear()) : null),
     invoices: {
       items: invoices,
       total: invoices.reduce((sum, invoice) => sum + invoice.remaining, 0),

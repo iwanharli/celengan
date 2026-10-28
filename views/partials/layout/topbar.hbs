@@ -1,0 +1,31 @@
+{{!-- Topbar: judul halaman (kiri) · periode di tengah (klik = pilih periode/rentang) · catat & sembunyikan nominal (kanan) --}}
+<header class="topbar">
+  <div class="topbar-left">
+    <template x-for="current in PAGES.filter(p => p.id === page)" :key="current.id">
+      <h1 class="page-title"><img :src="emojiUrl(current.emoji)" alt=""> <span x-text="current.label"></span></h1>
+    </template>
+  </div>
+
+  <div class="period-picker" x-show="['home','transactions','budget','export'].includes(page)">
+    <button class="period-nav" @click="shiftPeriod(-1)" aria-label="Periode sebelumnya"><i class="ph-bold ph-caret-left"></i></button>
+    <button class="period-current" @click="openPeriodPicker()" title="Pilih bulan atau rentang tanggal">
+      <i class="ph-duotone" :class="range ? 'ph-calendar-dots' : 'ph-calendar-blank'"></i>
+      <span>
+        <strong x-text="periodLabel"></strong>
+        <small x-text="periodText"></small>
+      </span>
+      <i class="ph-bold ph-caret-down period-caret"></i>
+    </button>
+    <button class="period-nav" @click="shiftPeriod(1)" aria-label="Periode berikutnya"><i class="ph-bold ph-caret-right"></i></button>
+  </div>
+
+  <div class="topbar-actions">
+    <!-- Aksi paling sering: catat transaksi (di HP diganti tombol bulat melayang) -->
+    <button class="topbar-add" @click="openTransaction()" title="Catat transaksi">
+      <i class="ph-bold ph-plus"></i> <span>Catat</span>
+    </button>
+    <button class="icon-button" @click="toggleHideAmounts()" :title="hideAmounts ? 'Tampilkan nominal' : 'Sembunyikan nominal'">
+      <i class="ph-duotone" :class="hideAmounts ? 'ph-eye-slash' : 'ph-eye'"></i>
+    </button>
+  </div>
+</header>

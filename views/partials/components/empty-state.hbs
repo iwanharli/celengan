@@ -1,0 +1,17 @@
+{{!--
+  Tampilan saat data masih kosong.
+  Parameter: emoji (kode Fluent Emoji), title, text,
+             action + actionLabel (opsional tombol), icon (default "plus"), secondary (tombol abu), wide (versi melebar)
+--}}
+<div class="empty-state{{#if wide}} wide{{/if}}">
+  <img :src="emojiUrl('{{emoji}}')" alt="">
+  <div class="empty-state-text">
+    <h3>{{title}}</h3>
+    <p>{{text}}</p>
+  </div>
+  {{#if action}}
+  <button class="button {{#unless secondary}}primary {{/unless}}small" @click="{{action}}">
+    <i class="ph-duotone ph-{{#if icon}}{{icon}}{{else}}plus{{/if}}"></i> {{actionLabel}}
+  </button>
+  {{/if}}
+</div>

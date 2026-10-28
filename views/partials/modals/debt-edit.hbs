@@ -1,0 +1,34 @@
+{{!-- Modal: Edit utang / piutang / invoice. Jadwal cicilan diubah lewat tombol "Ubah jadwal". --}}
+<template x-if="modal === 'debtEdit'">
+  <div class="stack">
+    <h2 x-text="form.debt.type === 'invoice' ? 'Edit invoice' : form.debt.direction === 'payable' ? 'Edit utang' : 'Edit piutang'"></h2>
+    <div class="grid-2 tight">
+      <div class="field">
+        <label x-text="form.debt.type === 'invoice' ? 'Klien' : form.debt.direction === 'payable' ? 'Pinjam dari' : 'Dipinjam oleh'"></label>
+        <input autofocus x-model="form.counterparty">
+      </div>
+      <div class="field" x-show="form.debt.type !== 'invoice'">
+        <label>Jenis</label>
+        <select x-model="form.type">
+          <template x-for="[value, label] in debtTypesFor(form.debt.direction).filter(([type]) => type !== 'invoice')">
+            <option :value="value" x-text="label" :selected="value === form.type"></option>
+          </template>
+        </select>
+      </div>
+    </div>
+    <div class="grid-2 tight">
+      {{> components/amount-field label="Jumlah pokok"}}
+      {{> components/amount-field label="Total harus dibayar" model="form.totalText"
+          hint="'Pokok + bunga/biaya. Sudah dibayar ' + rupiah(form.debt.paid)"}}
+    </div>
+    <p class="cost-warning" x-show="form.debt.installments.length">
+      <i class="ph-duotone ph-info"></i> Kalau total diubah, jadwal cicilan dihitung ulang dengan tenor & tanggal yang sama.
+    </p>
+    <div class="field" x-show="!form.debt.tenor">
+      <label x-text="form.debt.type === 'invoice' ? 'Jatuh tempo pembayaran' : 'Jatuh tempo pelunasan (opsional)'"></label>
+      <input type="date" x-model="form.due_date">
+    </div>
+    <div class="field"><label>Catatan (opsional)</label><input x-model="form.note"></div>
+    {{> components/form-actions submit="saveDebtEdit()"}}
+  </div>
+</template>

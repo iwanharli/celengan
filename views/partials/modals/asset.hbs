@@ -1,0 +1,29 @@
+{{!-- Modal: Tambah / edit aset. Nilai sekarang diubah lewat "Perbarui nilai". --}}
+<template x-if="modal === 'asset'">
+  <div class="stack">
+    <h2 x-text="form.id ? 'Edit aset' : 'Tambah aset'"></h2>
+    <div class="field"><label>Nama aset</label><input autofocus placeholder="contoh: Emas Antam 5 gram" x-model="form.name"></div>
+    <div class="field">
+      <label>Jenis</label>
+      <div class="chips">
+        <template x-for="[type, info] in Object.entries(ASSET_TYPES)" :key="type">
+          <button type="button" class="chip" :class="{ active: form.type === type }"
+            :style="form.type === type && { background: info.color, borderColor: info.color }" @click="form.type = type">
+            <i class="ph-duotone" :class="'ph-' + info.icon"></i> <span x-text="info.label"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+    <div class="grid-2 tight">
+      {{> components/amount-field label="Modal awal / harga beli" placeholder="contoh: 10jt"}}
+      <div class="field" x-show="!form.id">
+        <label>Nilai sekarang</label>
+        <input inputmode="decimal" x-rupiah placeholder="kosongkan jika sama" x-model="form.valueText">
+      </div>
+    </div>
+    <p class="hint" x-show="!form.id">Aset yang sudah kamu miliki tidak mengurangi saldo akun. Untuk pembelian baru, tambahkan aset lalu pakai tombol <strong>Beli</strong>.</p>
+    <p class="hint" x-show="form.id">Modal awal = modal sebelum dicatat di aplikasi. Pembelian & penjualan lewat tombol Beli/Jual dihitung terpisah.</p>
+    <div class="field"><label>Catatan (opsional)</label><input x-model="form.note"></div>
+    {{> components/form-actions submit="saveAsset()"}}
+  </div>
+</template>

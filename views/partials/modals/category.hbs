@@ -1,0 +1,45 @@
+{{!-- Modal: Kategori --}}
+<template x-if="modal === 'category'">
+  <div class="stack">
+    <h2 x-text="form.id ? 'Edit kategori' : 'Kategori baru'"></h2>
+    <div class="category-preview">
+      <span class="avatar large" :style="{ background: form.color }"><i class="ph-duotone" :class="'ph-' + form.icon"></i></span>
+      <strong x-text="form.name || 'Nama kategori'"></strong>
+    </div>
+    <div class="field"><label>Nama</label><input autofocus placeholder="contoh: Kopi, Hewan peliharaan" x-model="form.name"></div>
+    <div class="field" x-show="!form.id">
+      <label>Jenis</label>
+      <div class="segmented">
+        <button type="button" :class="{ active: form.kind === 'expense' }" @click="form.kind = 'expense'">Pengeluaran</button>
+        <button type="button" :class="{ active: form.kind === 'income' }" @click="form.kind = 'income'">Pemasukan</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ikon</label>
+      <div class="icon-grid">
+        <template x-for="icon in ICON_CHOICES" :key="icon">
+          <button type="button" :class="{ active: form.icon === icon }" @click="form.icon = icon" :title="icon">
+            <i class="ph-duotone" :class="'ph-' + icon"></i>
+          </button>
+        </template>
+      </div>
+    </div>
+    <div class="field">
+      <label>Warna</label>
+      <div class="color-grid">
+        <template x-for="color in COLOR_CHOICES" :key="color">
+          <button type="button" :class="{ active: form.color === color }" :style="{ background: color }" @click="form.color = color" :aria-label="color"></button>
+        </template>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="button danger-text" x-show="form.id"
+        @click="openCategoryDelete(categories.find((category) => category.id === form.id))">
+        <i class="ph-duotone ph-trash"></i> Hapus
+      </button>
+      <span class="spacer"></span>
+      <button type="button" class="button" @click="close()">Batal</button>
+      <button class="button primary" @click="saveCategory()">Simpan</button>
+    </div>
+  </div>
+</template>

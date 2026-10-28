@@ -1,0 +1,175 @@
+{{!-- Halaman: Export — pilih data, periode, filter & format, lihat pratinjau, lalu unduh. --}}
+<section class="page export-page" x-show="page === 'export'">
+  <div class="stack">
+    <!-- 1. Data -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2><span class="step">1</span> Pilih data</h2>
+          <p class="muted">Excel: satu sheet per data. CSV: satu file per data.</p>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="link" @click="selectAllDatasets(true)">Pilih semua</button>
+          <span class="muted">·</span>
+          <button type="button" class="link" @click="selectAllDatasets(false)">Kosongkan</button>
+        </div>
+      </div>
+      <div class="dataset-grid">
+        <template x-for="item in EXPORT_DATASETS" :key="item.key">
+          <label class="dataset-option" :class="{ active: exportSettings.datasets.includes(item.key) }">
+            <input type="checkbox" :checked="exportSettings.datasets.includes(item.key)" @change="toggleExportValue('datasets', item.key)">
+            <span class="dataset-icon"><i class="ph-duotone" :class="'ph-' + item.icon"></i></span>
+            <span class="grow">
+              <strong x-text="item.label"></strong>
+              <small x-text="item.hint"></small>
+            </span>
+            <span class="badge" x-show="exportPreview?.find((p) => p.key === item.key)"
+                  x-text="exportPreview?.find((p) => p.key === item.key)?.count + ' baris'"></span>
+          </label>
+        </template>
+      </div>
+    </div>
+
+    <!-- 2. Transaksi: periode & filter -->
+    <div class="card" x-show="hasTransactionsSelected">
+      <h2><span class="step">2</span> Periode & filter transaksi</h2>
+      <div class="field">
+        <label>Periode</label>
+        <div class="segmented">
+          <button type="button" :class="{ active: exportSettings.period === 'current' }" @click="exportSettings.period = 'current'; exportChanged()">
+            <i class="ph-duotone ph-calendar-check"></i> Ikut topbar
+          </button>
+          <button type="button" :class="{ active: exportSettings.period === 'all' }" @click="exportSettings.period = 'all'; exportChanged()">
+            <i class="ph-duotone ph-infinity"></i> Semua
+          </button>
+          <button type="button" :class="{ active: exportSettings.period === 'custom' }" @click="exportSettings.period = 'custom'; exportChanged()">
+            <i class="ph-duotone ph-calendar-dots"></i> Rentang sendiri
+          </button>
+        </div>
+        <p class="hint" x-show="exportSettings.period === 'current'" x-text="'Sekarang: ' + periodLabel + ' (ubah lewat pemilih tanggal di atas)'"></p>
+      </div>
+      <div class="grid-2 tight" x-show="exportSettings.period === 'custom'">
+        <div class="field"><label>Dari tanggal</label><input type="date" x-model="exportSettings.start" @change="exportChanged()"></div>
+        <div class="field"><label>Sampai tanggal</label><input type="date" x-model="exportSettings.end" @change="exportChanged()"></div>
+      </div>
+
+      <div class="field">
+        <label>Jenis <span class="muted">(kosong = semua)</span></label>
+        <div class="chips">
+          <template x-for="[kind, label] in [['income','Pemasukan'],['expense','Pengeluaran'],['transfer','Transfer'],['debt_in','Utang masuk'],['debt_out','Utang keluar'],['asset_out','Beli aset'],['asset_in','Jual aset'],['adjustment','Penyesuaian']]" :key="kind">
+            <button type="button" class="chip" :class="{ active: exportSettings.kinds.includes(kind) }" @click="toggleExportValue('kinds', kind)" x-text="label"></button>
+          </template>
+        </div>
+      </div>
+      <div class="field">
+        <label>Akun <span class="muted">(kosong = semua)</span></label>
+        <div class="chips">
+          <template x-for="account in accounts" :key="account.id">
+            <button type="button" class="chip" :class="{ active: exportSettings.account_ids.includes(account.id) }"
+                    @click="toggleExportValue('account_ids', account.id)">
+              <i class="ph-duotone" :class="'ph-' + ACCOUNT_TYPES[account.type].icon"></i> <span x-text="account.name"></span>
+            </button>
+          </template>
+        </div>
+      </div>
+      <div class="field">
+        <label>Kategori <span class="muted">(kosong = semua)</span></label>
+        <div class="chips">
+          <template x-for="category in categories.filter((c) => !c.archived)" :key="category.id">
+            <button type="button" class="chip" :class="{ active: exportSettings.category_ids.includes(category.id) }"
+                    :style="exportSettings.category_ids.includes(category.id) && { background: category.color, borderColor: category.color }"
+                    @click="toggleExportValue('category_ids', category.id)">
+              <i class="ph-duotone" :class="'ph-' + category.icon"></i> <span x-text="category.name"></span>
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Format -->
+    <div class="card">
+      <h2><span class="step" x-text="hasTransactionsSelected ? 3 : 2"></span> Format file</h2>
+      <div class="format-grid">
+        <label class="format-option" :class="{ active: exportSettings.format === 'xlsx' }">
+          <input type="radio" value="xlsx" x-model="exportSettings.format" @change="exportChanged()">
+          <i class="ph-duotone ph-microsoft-excel-logo"></i>
+          <span><strong>Excel (.xlsx)</strong><small>Satu file, satu sheet per data, angka & tanggal siap dihitung</small></span>
+        </label>
+        <label class="format-option" :class="{ active: exportSettings.format === 'pdf' }">
+          <input type="radio" value="pdf" x-model="exportSettings.format" @change="exportChanged()">
+          <i class="ph-duotone ph-file-pdf"></i>
+          <span><strong>PDF</strong><small>Laporan siap cetak & dibagikan, lengkap dengan ringkasan</small></span>
+        </label>
+        <label class="format-option" :class="{ active: exportSettings.format === 'csv' }">
+          <input type="radio" value="csv" x-model="exportSettings.format" @change="exportChanged()">
+          <i class="ph-duotone ph-file-csv"></i>
+          <span><strong>CSV</strong><small>Satu file per data, bisa dibuka di aplikasi mana pun</small></span>
+        </label>
+      </div>
+      <div class="grid-2 tight">
+        <div class="field">
+          <label>Format tanggal</label>
+          <div class="segmented">
+            <button type="button" :class="{ active: exportSettings.date_format === 'dmy' }" @click="exportSettings.date_format = 'dmy'; exportChanged()">28/10/2026</button>
+            <button type="button" :class="{ active: exportSettings.date_format === 'iso' }" @click="exportSettings.date_format = 'iso'; exportChanged()">2026-10-28</button>
+          </div>
+        </div>
+        <div class="field" x-show="exportSettings.format !== 'pdf'">
+          <label>Format nominal</label>
+          <div class="segmented">
+            <button type="button" :class="{ active: exportSettings.money_format === 'number' }" @click="exportSettings.money_format = 'number'; exportChanged()">1500000</button>
+            <button type="button" :class="{ active: exportSettings.money_format === 'rupiah' }" @click="exportSettings.money_format = 'rupiah'; exportChanged()">Rp 1.500.000</button>
+          </div>
+        </div>
+        <div class="field" x-show="exportSettings.format === 'csv'">
+          <label>Pemisah kolom CSV</label>
+          <div class="segmented">
+            <button type="button" :class="{ active: exportSettings.separator === ';' }" @click="exportSettings.separator = ';'; exportChanged()">; (Excel Indonesia)</button>
+            <button type="button" :class="{ active: exportSettings.separator === ',' }" @click="exportSettings.separator = ','; exportChanged()">, (internasional)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ringkasan & unduh (menempel di kanan) -->
+  <aside class="card export-summary">
+    <div class="row">
+      <img class="stat-emoji" :src="emojiUrl('1f4e4')" alt="">
+      <div>
+        <h2>Siap diekspor</h2>
+        <p class="muted" x-text="exportSettings.datasets.length + ' data · ' + exportTotalRows + ' baris'"></p>
+      </div>
+    </div>
+    <ul class="savings-breakdown">
+      <template x-for="item in exportPreview ?? []" :key="item.key">
+        <li><span x-text="item.label"></span><strong x-text="item.count"></strong></li>
+      </template>
+    </ul>
+    <p class="hint" x-show="hasTransactionsSelected" x-text="'Periode transaksi: ' + exportPeriodLabel"></p>
+    <p class="form-error" x-show="exportError" x-text="exportError"></p>
+    <button class="button primary block" :disabled="!exportSettings.datasets.length || exportLoading" @click="downloadExport()">
+      <i class="ph-duotone" :class="exportLoading ? 'ph-spinner' : 'ph-download-simple'"></i>
+      <span x-text="exportLoading ? 'Menyiapkan file…' : exportSettings.format === 'xlsx' ? 'Unduh Excel' : exportSettings.format === 'pdf' ? 'Unduh PDF' : 'Unduh ' + exportSettings.datasets.length + ' file CSV'"></span>
+    </button>
+    <button type="button" class="link center-text" @click="resetExportSettings()">Kembalikan pengaturan awal</button>
+  </aside>
+
+  <!-- Pratinjau transaksi -->
+  <template x-if="exportPreview?.find((p) => p.key === 'transactions')?.sample.length">
+    <div class="card export-sample" x-data="{ get preview() { return exportPreview.find((p) => p.key === 'transactions') } }">
+      <h2><i class="ph-duotone ph-eye"></i> Contoh isi: Transaksi</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><template x-for="column in preview.columns" :key="column"><th x-text="column"></th></template></tr></thead>
+          <tbody>
+            <template x-for="(row, index) in preview.sample" :key="index">
+              <tr><template x-for="(cell, cellIndex) in row" :key="cellIndex"><td x-text="cell"></td></template></tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint" x-text="'Menampilkan ' + preview.sample.length + ' dari ' + preview.count + ' baris.'"></p>
+    </div>
+  </template>
+</section>

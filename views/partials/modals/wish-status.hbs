@@ -1,0 +1,25 @@
+{{!-- Modal: Tidak jadi beli (cancel) / batalkan pembelian (unbuy). Alasan opsional disimpan di riwayat. --}}
+<template x-if="modal === 'wishStatus'">
+  <div class="stack">
+    <div class="category-preview">
+      <img class="wish-emoji" :src="emojiUrl(form.item.emoji)" alt="">
+      <div>
+        <h2 x-text="form.action === 'cancel' ? 'Tidak jadi beli ' + form.item.name + '?' : 'Batalkan pembelian ' + form.item.name + '?'"></h2>
+        <p class="muted" x-show="form.action === 'cancel'">
+          Barang dipindah ke tab <strong>Dibatalkan</strong> dan bisa dikembalikan kapan saja.
+          <span x-show="form.item.saved > 0">Uang yang disisihkan (<strong x-text="rupiah(form.item.saved)"></strong>) dilepas.</span>
+        </p>
+        <p class="muted" x-show="form.action === 'unbuy'">
+          Misalnya barang dikembalikan atau salah catat. Transaksi pengeluarannya
+          (<strong x-text="rupiah(form.item.paid_amount ?? form.item.price)"></strong>) dihapus dan barang kembali ke <strong>Diinginkan</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Alasan (opsional)</label>
+      <input autofocus x-model="form.reason"
+             :placeholder="form.action === 'cancel' ? 'contoh: ternyata belum butuh, nemu yang lebih murah' : 'contoh: barang rusak, dikembalikan'">
+    </div>
+    {{> components/form-actions submit="saveWishStatus()" variant="danger" label="Ya, lanjutkan"}}
+  </div>
+</template>

@@ -1,0 +1,39 @@
+{{!-- Menu samping (desktop) / bawah (HP), dikelompokkan sesuai NAV_GROUPS di constants.js --}}
+<nav class="sidebar">
+  <div class="sidebar-head">
+    <div class="brand">
+      <span class="brand-logo"><img src="https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/1f437.webp" alt=""></span>
+      <span class="brand-name">Celengan</span>
+    </div>
+  </div>
+
+  <!-- Tombol kecilkan/lebarkan: menempel di tepi luar sidebar -->
+  <button class="collapse-toggle edge" @click="toggleSidebar()" :title="sidebarCollapsed ? 'Lebarkan menu' : 'Kecilkan menu'">
+    <i class="ph-bold" :class="sidebarCollapsed ? 'ph-caret-right' : 'ph-caret-left'"></i>
+  </button>
+
+
+  <div class="nav-scroll">
+    <template x-for="group in NAV_GROUPS" :key="group.pages.join()">
+      <div class="nav-group" :class="{ 'nav-bottom': group.bottom, 'has-label': group.label }">
+        <p class="nav-label" x-show="group.label" x-text="group.label"></p>
+        <template x-for="item in navItems(group)" :key="item.id">
+          <button class="nav-item" :class="{ active: page === item.id }" @click="goTo(item.id)" :title="item.label">
+            <span class="nav-icon"><img class="nav-emoji" :src="emojiUrl(item.emoji)" alt=""></span>
+            <span class="nav-text" x-text="item.label"></span>
+          </button>
+        </template>
+      </div>
+    </template>
+  </div>
+
+  <!-- Profil + pengaturan (desktop) -->
+  <button class="nav-user" :class="{ active: page === 'settings' }" @click="goTo('settings')" title="Pengaturan">
+    <span class="user-avatar" x-text="(auth.name || '?').trim().charAt(0).toUpperCase()"></span>
+    <span class="user-info">
+      <strong x-text="auth.name || 'Pemilik'"></strong>
+      <small>Pengaturan</small>
+    </span>
+    <i class="ph-duotone ph-gear-six user-gear"></i>
+  </button>
+</nav>

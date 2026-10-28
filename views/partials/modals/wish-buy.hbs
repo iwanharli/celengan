@@ -1,0 +1,33 @@
+{{!-- Modal: Wishlist: beli --}}
+<template x-if="modal === 'wishBuy'">
+  <div class="stack">
+    <div class="category-preview">
+      <img class="wish-emoji" :src="emojiUrl(form.item.emoji)" alt="">
+      <div>
+        <h2>Beli <span x-text="form.item.name"></span></h2>
+        <p class="muted">Dicatat sebagai pengeluaran dan pindah ke "Sudah terbeli".</p>
+      </div>
+    </div>
+    <p class="cost-warning" x-show="wishPlan(form.item).cooldownLeft > 0">
+      🧊 Masih masa tahan <strong x-text="wishPlan(form.item).cooldownLeft"></strong> hari. Yakin mau beli sekarang?
+    </p>
+    {{> components/amount-field label="Harga akhir" autofocus=true hint="'= ' + rupiah(parsedAmount) + (parsedAmount < form.item.price ? ' · hemat ' + rupiah(form.item.price - parsedAmount) + ' 🎉' : '')"}}
+    <div class="field">
+      <label>Kategori</label>
+      <div class="chips">
+        <template x-for="category in categoriesOf('expense')" :key="category.id">
+          <button type="button" class="chip" :class="{ active: form.category_id == category.id }"
+            :style="form.category_id == category.id && { background: category.color, borderColor: category.color }"
+            @click="form.category_id = category.id">
+            <i class="ph-duotone" :class="'ph-' + category.icon"></i> <span x-text="category.name"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+    <div class="grid-2 tight">
+      {{> components/account-select label="Bayar dari akun"}}
+      <div class="field"><label>Tanggal beli</label><input type="date" x-model="form.date"></div>
+    </div>
+    <div class="form-actions"><button type="button" class="button" @click="close()">Batal</button><button class="button positive" @click="buyWish()"><i class="ph-duotone ph-shopping-bag"></i> Beli sekarang</button></div>
+  </div>
+</template>

@@ -1,0 +1,26 @@
+{{!-- Modal: Wishlist: sisihkan uang --}}
+<template x-if="modal === 'wishSave'">
+  <div class="stack">
+    <h2>Sisihkan untuk <span x-text="form.item.name"></span></h2>
+    <p class="muted">
+      Sudah <strong x-text="rupiah(form.item.saved)"></strong> dari <strong x-text="rupiah(form.item.price)"></strong>.
+      Ini hanya penanda, saldo akunmu tidak berubah.
+    </p>
+    <div class="segmented">
+      <button type="button" :class="{ active: form.direction === 'add' }" @click="form.direction = 'add'">
+        <i class="ph-duotone ph-plus-circle"></i> Sisihkan
+      </button>
+      <button type="button" :class="{ active: form.direction === 'take' }" @click="form.direction = 'take'">
+        <i class="ph-duotone ph-minus-circle"></i> Ambil kembali
+      </button>
+    </div>
+    <div class="chips" x-show="form.direction === 'add'">
+      <template x-for="amount in [50000, 100000, 250000, 500000, Math.max(0, form.item.price - form.item.saved)]" :key="amount">
+        <button type="button" class="chip" x-show="amount > 0" :class="{ active: parsedAmount === amount }" @click="form.amountText = formatAmountInput(amount)"
+                x-text="amount === form.item.price - form.item.saved ? 'Lunasi ' + rupiah(amount) : rupiah(amount)"></button>
+      </template>
+    </div>
+    {{> components/amount-field label="Nominal" autofocus=true placeholder="contoh: 200rb"}}
+    {{> components/form-actions submit="saveWishSave()"}}
+  </div>
+</template>

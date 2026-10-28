@@ -1,0 +1,36 @@
+{{!-- Modal: Bayar satu rincian impian (misal DP gedung) → dicatat sebagai pengeluaran --}}
+<template x-if="modal === 'wishPartPay'">
+  <div class="stack">
+    <div class="category-preview">
+      <img class="wish-emoji" :src="emojiUrl(form.item.emoji)" alt="">
+      <div>
+        <h2>Bayar <span x-text="form.part.name"></span></h2>
+        <p class="muted" x-text="form.item.name + ' · rincian ' + rupiah(form.part.amount) + (form.part.paid ? ', sudah dibayar ' + rupiah(form.part.paid) : '')"></p>
+      </div>
+    </div>
+    <div class="chips">
+      <button type="button" class="chip" :class="{ active: parsedAmount === form.part.amount - form.part.paid }"
+              @click="form.amountText = formatAmountInput(form.part.amount - form.part.paid)"
+              x-text="'Lunasi ' + rupiah(form.part.amount - form.part.paid)"></button>
+      <button type="button" class="chip" :class="{ active: parsedAmount === Math.round((form.part.amount - form.part.paid) / 2) }"
+              @click="form.amountText = formatAmountInput(Math.round((form.part.amount - form.part.paid) / 2))">DP 50%</button>
+    </div>
+    {{> components/amount-field label="Nominal dibayar" autofocus=true}}
+    <div class="grid-2 tight">
+      {{> components/account-select label="Dari akun"}}
+      <div class="field"><label>Tanggal</label><input type="date" x-model="form.date"></div>
+    </div>
+    <div class="field">
+      <label>Kategori pengeluaran</label>
+      <select x-model="form.category_id">
+        <template x-for="c in categoriesOf('expense')" :key="c.id"><option :value="c.id" x-text="c.name" :selected="c.id == form.category_id"></option></template>
+      </select>
+    </div>
+    <label class="checkbox" x-show="form.item.saved > 0">
+      <input type="checkbox" x-model="form.use_saved">
+      <span>Ambil dari dana yang sudah disisihkan (<span x-text="rupiah(form.item.saved)"></span>)</span>
+    </label>
+    <p class="hint">Dicatat sebagai pengeluaran. Progres impian tetap dihitung: yang disisihkan + yang sudah dibayar.</p>
+    {{> components/form-actions submit="payWishPart()" label="Simpan pembayaran" variant="positive"}}
+  </div>
+</template>

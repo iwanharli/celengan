@@ -1,0 +1,51 @@
+{{!-- Halaman: Akun — bank, e-wallet, tunai beserta detailnya --}}
+<section class="page stack" x-show="page === 'accounts'">
+  <p class="intro">Saldo di aplikasi berbeda dengan saldo asli? Gunakan <strong>Sesuaikan saldo</strong>.</p>
+  <div class="grid-3">
+    <template x-for="account in accounts" :key="account.id">
+      <div class="card account" :class="'account-' + account.type">
+        <div class="row">
+          <span class="avatar large"><i class="ph-duotone" :class="'ph-' + ACCOUNT_TYPES[account.type].icon"></i></span>
+          <div class="row-main">
+            <strong x-text="account.name"></strong>
+            <span class="muted" x-text="ACCOUNT_TYPES[account.type].label + (account.provider && account.provider !== account.name ? ' · ' + account.provider : '')"></span>
+          </div>
+          <button class="icon-button subtle" title="Edit akun" @click="openAccount(account)"><i class="ph-duotone ph-pencil-simple"></i></button>
+        </div>
+
+        <p class="big-number" :class="account.balance < 0 && 'tone-negative'" x-text="money(account.balance)"></p>
+
+        <!-- Nomor rekening / HP (disamarkan) -->
+        <template x-if="account.account_number || account.holder_name">
+          <div class="account-number">
+            <div class="row-main">
+              <span class="label" x-text="account.type === 'bank' ? 'No. rekening' : 'No. HP'"></span>
+              <strong class="mono" x-show="account.account_number" x-text="accountNumberText(account)"></strong>
+              <span class="muted" x-show="account.holder_name" x-text="'a.n. ' + account.holder_name"></span>
+            </div>
+            <template x-if="account.account_number">
+              <div class="row-actions">
+                <button class="icon-button subtle" :title="revealedAccounts[account.id] ? 'Sembunyikan' : 'Tampilkan'" @click="toggleAccountNumber(account)" :disabled="hideAmounts">
+                  <i class="ph-duotone" :class="revealedAccounts[account.id] ? 'ph-eye-slash' : 'ph-eye'"></i>
+                </button>
+                <button class="icon-button subtle" title="Salin nomor" @click="copyAccountNumber(account)"><i class="ph-duotone ph-copy"></i></button>
+              </div>
+            </template>
+          </div>
+        </template>
+        <p class="muted account-note" x-show="account.note"><i class="ph-duotone ph-note"></i> <span x-text="account.note"></span></p>
+
+        <div class="row-actions">
+          <button class="button small" @click="openAdjust(account)"><i class="ph-duotone ph-scales"></i> Sesuaikan saldo</button>
+          <span class="spacer"></span>
+          <button class="icon-button subtle" title="Hapus" @click="deleteAccount(account)">
+            <i class="ph-duotone ph-trash"></i>
+          </button>
+        </div>
+      </div>
+    </template>
+    <button class="card add-card" @click="openAccount()">
+      <i class="ph-duotone ph-plus-circle"></i> Tambah akun
+    </button>
+  </div>
+</section>

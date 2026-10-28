@@ -1,0 +1,97 @@
+{{!-- Modal: Transaksi --}}
+<template x-if="modal === 'transaction'">
+  <div class="stack">
+    <h2 x-text="form.id ? 'Edit transaksi' : form.paidProject ? 'Proyek sudah dibayar' : 'Tambah transaksi'"></h2>
+    <div class="segmented">
+      <template x-for="[kind, label] in [['expense','Pengeluaran'],['income','Pemasukan'],['transfer','Transfer']]">
+        <button type="button" :class="{ active: form.kind === kind }" :disabled="form.linked_to && form.kind !== kind"
+                @click="form.kind = kind; form.category_id = ''" x-text="label"></button>
+      </template>
+    </div>
+    <p class="hint locked-hint" x-show="form.linked_to">
+      <i class="ph-duotone ph-lock-simple"></i>
+      <span x-text="{ debt: 'Terhubung ke utang/piutang/invoice', bill: 'Pembayaran tagihan rutin', wish_part: 'Pembayaran rincian wishlist', wish: 'Pembelian wishlist' }[form.linked_to] + ' — jenisnya dikunci supaya sisa & statusnya tetap benar. Nominal, tanggal & lainnya tetap bisa diubah.'"></span>
+    </p>
+    {{> components/amount-field label="Nominal" autofocus=true placeholder="contoh: 25rb, 1,5jt, 50000" hint="parsedAmount ? '= ' + rupiah(parsedAmount) : 'Bisa ketik 25rb atau 1,5jt'"}}
+
+    <div class="field" x-show="form.kind !== 'transfer'">
+      <label>Kategori</label>
+      <div class="chips">
+        <template x-for="category in categoriesOf(form.kind)" :key="category.id">
+          <button type="button" class="chip" :class="{ active: form.category_id == category.id }"
+            :style="form.category_id == category.id && { background: category.color, borderColor: category.color }"
+            @click="form.category_id = category.id">
+            <i class="ph-duotone" :class="'ph-' + category.icon"></i> <span x-text="category.name"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <div class="grid-2 tight">
+      <div class="field">
+        <label x-text="form.kind === 'transfer' ? 'Dari akun' : 'Akun'"></label>
+        <select x-model="form.account_id">
+          <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name" :selected="a.id == form.account_id"></option></template>
+        </select>
+      </div>
+      <div class="field" x-show="form.kind === 'transfer'">
+        <label>Ke akun</label>
+        <select x-model="form.to_account_id">
+          <option value="">Pilih akun</option>
+          <template x-for="a in accounts.filter(a => a.id != form.account_id)" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tanggal</label>
+        <input type="date" x-model="form.date">
+      </div>
+    </div>
+    <!-- Klien: hanya untuk pemasukan (misal proyek freelance yang sudah dibayar) -->
+    <div class="field" x-show="form.kind === 'income'">
+      <label>Klien (opsional)</label>
+      <input list="client-names" placeholder="contoh: PT Maju Jaya" x-model="form.client" autocomplete="off">
+      <datalist id="client-names">
+        <template x-for="name in clientNames" :key="name"><option :value="name"></option></template>
+      </datalist>
+      <p class="hint">Isi kalau ini bayaran proyek, supaya muncul di laporan per klien.</p>
+    </div>
+    <div class="field">
+      <label>Catatan (opsional)</label>
+      <input placeholder="contoh: Makan siang" x-model="form.note">
+    </div>
+
+    <!-- Foto / bukti: kotak unggah (FilePond) + tombol kamera, bisa lebih dari satu -->
+    <div class="field">
+      <div class="photo-label">
+        <label>Foto struk / bukti <span class="muted">(opsional)</span></label>
+        <span class="badge" x-text="photoCount + ' / 10 foto'"></span>
+      </div>
+
+      <!-- Foto yang sudah tersimpan (saat edit) -->
+      <div class="photo-grid" x-show="form.attachments.length">
+        <template x-for="photo in form.attachments" :key="'a' + photo.id">
+          <div class="photo-thumb" :class="{ removed: photo.removed }">
+            <img :src="attachmentUrl(photo.id)" :alt="photo.name || 'Foto'" loading="lazy">
+            <button type="button" class="photo-remove" @click="toggleAttachmentRemoval(photo)"
+                    :title="photo.removed ? 'Batal hapus' : 'Hapus foto'">
+              <i class="ph-bold" :class="photo.removed ? 'ph-arrow-counter-clockwise' : 'ph-x'"></i>
+            </button>
+            <span class="photo-tag" x-show="photo.removed">Dihapus saat disimpan</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Kotak garis putus-putus: tarik foto ke sini / klik untuk memilih -->
+      <div class="photo-dropzone" x-photo-dropzone></div>
+
+      <label class="camera-button" x-show="photoCount < 10">
+        <i class="ph-duotone ph-camera"></i> Ambil foto dengan kamera
+        <input type="file" accept="image/*" capture="environment" hidden @change="addCameraPhotos($event)">
+      </label>
+      <p class="hint" x-show="form.uploading" x-text="form.uploading"></p>
+      <p class="hint" x-show="!form.uploading">Foto dikecilkan otomatis sebelum diunggah supaya hemat ruang.</p>
+    </div>
+
+    {{> components/form-actions submit="saveTransaction()"}}
+  </div>
+</template>

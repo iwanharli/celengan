@@ -1,0 +1,55 @@
+{{!-- Modal: Pilih periode — pilihan cepat, per bulan (12 bulan + ganti tahun), atau rentang tanggal (flatpickr) --}}
+<template x-if="modal === 'period'">
+  <div class="stack period-modal">
+    <h2><i class="ph-duotone ph-calendar-dots"></i> Pilih periode</h2>
+
+    <div class="period-presets">
+      <template x-for="preset in periodPresets" :key="preset.key">
+        <button type="button" class="preset" :class="{ active: isPresetActive(preset) }" @click="applyPeriod(preset)">
+          <i class="ph-duotone" :class="'ph-' + preset.icon"></i>
+          <span x-text="preset.label"></span>
+        </button>
+      </template>
+    </div>
+
+    <div class="segmented">
+      <button type="button" :class="{ active: form.tab === 'month' }" @click="form.tab = 'month'"><i class="ph-duotone ph-calendar-blank"></i> Per bulan</button>
+      <button type="button" :class="{ active: form.tab === 'range' }" @click="form.tab = 'range'"><i class="ph-duotone ph-calendar-dots"></i> Rentang tanggal</button>
+    </div>
+
+    <!-- Per bulan -->
+    <template x-if="form.tab === 'month'">
+      <div class="stack-sm">
+        <div class="year-nav">
+          <button type="button" class="icon-button subtle" @click="form.year--" aria-label="Tahun sebelumnya"><i class="ph-bold ph-caret-left"></i></button>
+          <strong x-text="form.year"></strong>
+          <button type="button" class="icon-button subtle" @click="form.year++" aria-label="Tahun berikutnya"><i class="ph-bold ph-caret-right"></i></button>
+        </div>
+        <div class="month-grid">
+          <template x-for="item in periodMonths(form.year)" :key="item.month">
+            <button type="button" :class="{ active: !range && month === item.month, future: item.future }"
+                    @click="applyPeriod({ month: item.month })" x-text="item.label"></button>
+          </template>
+        </div>
+        <p class="hint" x-show="monthStartDay > 1" x-text="'Satu bulan dihitung dari tanggal gajian (tanggal ' + monthStartDay + ').'"></p>
+      </div>
+    </template>
+
+    <!-- Rentang tanggal -->
+    <template x-if="form.tab === 'range'">
+      <div class="stack-sm">
+        <div class="range-calendar" x-range-picker></div>
+        <div class="range-summary">
+          <span x-show="form.start && form.end">
+            <strong x-text="formatRange(form.start, form.end)"></strong> · <span x-text="customRangeDays + ' hari'"></span>
+          </span>
+          <span class="muted" x-show="!(form.start && form.end)">Klik tanggal awal, lalu tanggal akhir.</span>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="button" @click="close()">Batal</button>
+          <button type="button" class="button primary" :disabled="!(form.start && form.end)" @click="applyCustomRange()">Terapkan rentang</button>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>

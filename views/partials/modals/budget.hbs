@@ -1,0 +1,94 @@
+{{!--
+  Modal: Atur anggaran satu kategori.
+  - Grafik belanja 6 bulan terakhir + garis anggaran yang sedang diisi
+  - Saran sekali klik (rata-rata, hemat 10%, bulan lalu, tertinggi) & panduan umum % pemasukan
+  - Mode nominal (Rp) atau persen dari rata-rata pemasukan
+--}}
+<template x-if="modal === 'budget'">
+  <div class="stack">
+    <div class="category-preview">
+      <span class="avatar large" :style="{ background: form.category.color }"><i class="ph-duotone" :class="'ph-' + form.category.icon"></i></span>
+      <div>
+        <h2>Anggaran <span x-text="form.category.name"></span></h2>
+        <p class="muted" x-show="budgetSuggestions?.average3"
+           x-text="'Rata-rata belanja ' + rupiah(budgetSuggestions?.average3) + '/bulan' + (budgetSuggestions?.averagePercent ? ' (' + String(budgetSuggestions.averagePercent).replace('.', ',') + '% pemasukan)' : '')"></p>
+        <p class="muted" x-show="budgetSuggestions && !budgetSuggestions.average3">Belum ada riwayat belanja di kategori ini.</p>
+      </div>
+    </div>
+
+    <div class="modal-columns">
+      <div class="stack">
+      <!-- Riwayat 6 bulan + garis anggaran -->
+      <template x-if="budgetSuggestions?.history.some((row) => row.spent > 0)">
+        <div class="budget-history">
+          <div class="bars">
+            <template x-for="row in budgetSuggestions.history" :key="row.month">
+              <div class="bar-col" :title="budgetMonthLabel(row.month) + ': ' + rupiah(row.spent)">
+                <div class="bar" :class="{ over: budgetFormAmount && row.spent > budgetFormAmount }" :style="{ height: budgetBarHeight(row.spent) + '%' }"></div>
+                <small x-text="budgetMonthLabel(row.month)"></small>
+              </div>
+            </template>
+            <div class="budget-line" x-show="budgetFormAmount > 0" :style="{ bottom: budgetBarHeight(budgetFormAmount) + '%' }">
+              <span x-text="rupiah(budgetFormAmount)"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Panduan umum -->
+      <template x-if="budgetSuggestions?.guideline">
+        <div class="guideline">
+          <img :src="emojiUrl('1f4a1')" alt="">
+          <p>
+            Panduan umum: <strong x-text="form.category.name"></strong> sekitar
+            <strong x-text="budgetSuggestions.guideline.min + '–' + budgetSuggestions.guideline.max + '%'"></strong> dari pemasukan.
+            <button type="button" class="link" @click="applyBudgetGuideline(budgetSuggestions.guideline.suggested)"
+                    x-text="'Pakai ' + budgetSuggestions.guideline.suggested + '%'"></button>
+          </p>
+        </div>
+      </template>
+
+      </div>
+      <div class="stack">
+      <!-- Nominal atau persen -->
+      <div class="segmented">
+        <button type="button" :class="{ active: form.mode === 'amount' }" @click="form.mode = 'amount'"><i class="ph-duotone ph-money"></i> Nominal (Rp)</button>
+        <button type="button" :class="{ active: form.mode === 'percent' }" @click="form.mode = 'percent'"><i class="ph-duotone ph-percent"></i> % dari pemasukan</button>
+      </div>
+
+      <template x-if="form.mode === 'amount'">
+        <div class="stack-sm">
+          {{> components/amount-field label="Batas per bulan" autofocus=true placeholder="contoh: 2jt"
+              hint="parsedAmount ? '= ' + rupiah(parsedAmount) + (budgetSuggestions?.referenceIncome ? ' · ' + Math.round(parsedAmount / budgetSuggestions.referenceIncome * 100) + '% dari pemasukan' : '') : 'Kosongkan untuk menghapus anggaran'"}}
+          <div class="chips" x-show="budgetSuggestions?.options.length">
+            <template x-for="option in budgetSuggestions?.options ?? []" :key="option.key">
+              <button type="button" class="chip suggestion" :class="{ active: parseAmount(form.amountText) === option.amount }" @click="applyBudgetSuggestion(option)">
+                <span x-text="option.label"></span> <strong x-text="rupiah(option.amount)"></strong>
+              </button>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="form.mode === 'percent'">
+        <div class="stack-sm">
+          <div class="field">
+            <label>Persen dari pemasukan per bulan</label>
+            <div class="percent-input">
+              <input autofocus inputmode="decimal" placeholder="contoh: 15" x-model="form.percentText">
+              <span>%</span>
+            </div>
+            <p class="hint" x-show="budgetSuggestions?.referenceIncome"
+               x-text="'≈ ' + rupiah(budgetFormAmount) + '/bulan dari rata-rata pemasukan ' + rupiah(budgetSuggestions?.referenceIncome) + '. Nominalnya ikut naik-turun sesuai pemasukan.'"></p>
+            <p class="hint tone-negative" x-show="budgetSuggestions && !budgetSuggestions.referenceIncome">
+              Belum ada data pemasukan, jadi nominalnya belum bisa dihitung. Catat pemasukan dulu.
+            </p>
+          </div>
+        </div>
+      </template>
+
+      </div>
+    </div>
+    {{> components/form-actions submit="saveBudget()"}}
+  </div>
+</template>

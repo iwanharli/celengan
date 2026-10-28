@@ -1,0 +1,19 @@
+{{!-- Modal: Bayar pajak — dicatat sebagai pengeluaran kategori "Pajak" --}}
+<template x-if="modal === 'taxPay'">
+  <div class="stack">
+    <div class="category-preview">
+      <img class="wish-emoji" :src="emojiUrl('1f9fe')" alt="">
+      <div>
+        <h2>Bayar pajak <span x-text="summary.tax.year"></span></h2>
+        <p class="muted">Sisa dana pajak: <strong x-text="rupiah(summary.tax.outstanding)"></strong></p>
+      </div>
+    </div>
+    {{> components/amount-field label="Nominal dibayar" autofocus=true}}
+    <div class="grid-2 tight">
+      {{> components/account-select label="Dari akun"}}
+      <div class="field"><label>Tanggal bayar</label><input type="date" x-model="form.date"></div>
+    </div>
+    <div class="field"><label>Catatan (opsional)</label><input placeholder="contoh: PPh Oktober, kode billing …" x-model="form.note"></div>
+    {{> components/form-actions submit="payTax()" label="Simpan pembayaran"}}
+  </div>
+</template>

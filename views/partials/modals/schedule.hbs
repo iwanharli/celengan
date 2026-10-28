@@ -1,0 +1,31 @@
+{{!-- Modal: Atur jadwal cicilan untuk utang/piutang yang sudah ada --}}
+<template x-if="modal === 'schedule'">
+  <div class="stack">
+    <h2>Jadwal cicilan <span x-text="form.debt.counterparty"></span></h2>
+    <p class="muted">
+      Total <strong x-text="rupiah(form.debt.total_amount)"></strong>.
+      Pembayaran yang sudah ada (<strong x-text="rupiah(form.debt.paid)"></strong>) otomatis menandai cicilan paling awal sebagai lunas.
+    </p>
+    <div class="field">
+      <label>Tenor</label>
+      <div class="chips">
+        <template x-for="months in TENOR_CHOICES" :key="months">
+          <button type="button" class="chip" :class="{ active: form.tenor == months }" @click="form.tenor = months" x-text="months + ' bulan'"></button>
+        </template>
+      </div>
+      <input type="number" min="1" max="360" class="tenor-input" placeholder="atau ketik jumlah bulan lain" x-model="form.tenor">
+    </div>
+    <div class="grid-2 tight">
+      <div class="field">
+        <label>Cicilan pertama jatuh tempo</label>
+        <input type="date" x-model="form.first_due">
+      </div>
+      <div class="field">
+        <label>Cicilan per bulan</label>
+        <input inputmode="decimal" x-rupiah x-model="form.installmentText"
+               :placeholder="'otomatis ' + rupiah(Math.ceil(form.debt.total_amount / (form.tenor || 1)))">
+      </div>
+    </div>
+    {{> components/form-actions submit="saveSchedule()" label="Simpan jadwal"}}
+  </div>
+</template>

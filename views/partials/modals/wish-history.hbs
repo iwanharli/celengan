@@ -1,0 +1,30 @@
+{{!-- Modal: Riwayat satu barang wishlist (dibuat, disisihkan, dibeli, dibatalkan, ...) --}}
+<template x-if="modal === 'wishHistory'">
+  <div class="stack">
+    <div class="category-preview">
+      <img class="wish-emoji" :src="emojiUrl(form.item.emoji)" alt="">
+      <div>
+        <h2>Riwayat <span x-text="form.item.name"></span></h2>
+        <p class="muted" x-text="rupiah(form.item.price) + ' · ' + form.item.events.length + ' catatan'"></p>
+      </div>
+    </div>
+    <ol class="timeline">
+      <template x-for="event in form.item.events" :key="event.id">
+        <li>
+          <span class="timeline-dot" :class="'tone-' + WISH_EVENTS[event.type].tone">
+            <i class="ph-fill" :class="'ph-' + WISH_EVENTS[event.type].icon"></i>
+          </span>
+          <div class="row-main">
+            <strong>
+              <span x-text="WISH_EVENTS[event.type].label"></span>
+              <span x-show="event.amount" x-text="' · ' + rupiah(event.amount)"></span>
+            </strong>
+            <span class="hint" x-show="event.note" x-text="event.note"></span>
+          </div>
+          <span class="muted" x-text="formatDate(new Date(event.created_at).toLocaleDateString('sv-SE'))"></span>
+        </li>
+      </template>
+    </ol>
+    <div class="form-actions"><button type="button" class="button" @click="close()">Tutup</button></div>
+  </div>
+</template>

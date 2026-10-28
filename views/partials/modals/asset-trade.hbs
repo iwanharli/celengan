@@ -1,0 +1,18 @@
+{{!-- Modal: Beli / jual aset --}}
+<template x-if="modal === 'assetTrade'">
+  <div class="stack">
+    <h2 x-text="(form.action === 'buy' ? 'Beli ' : 'Jual ') + form.asset.name"></h2>
+    {{> components/amount-field label="Nominal" autofocus=true}}
+    <div class="grid-2 tight">
+      <div class="field">
+        <label x-text="form.action === 'buy' ? 'Bayar dari akun' : 'Uang masuk ke akun'"></label>
+        <select x-model="form.account_id">
+          <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name" :selected="a.id == form.account_id"></option></template>
+        </select>
+      </div>
+      <div class="field"><label>Tanggal</label><input type="date" x-model="form.date"></div>
+    </div>
+    <p class="hint">Bukan pengeluaran: uang hanya berpindah dari akun ke aset (atau sebaliknya).</p>
+    {{> components/form-actions submit="saveAssetTrade()"}}
+  </div>
+</template>

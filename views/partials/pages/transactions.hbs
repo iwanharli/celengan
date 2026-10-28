@@ -1,0 +1,53 @@
+{{!-- Halaman: Transaksi --}}
+<section class="page stack" x-show="page === 'transactions'">
+  <div class="toolbar">
+    <label class="search">
+      <i class="ph-duotone ph-magnifying-glass"></i>
+      <input type="search" placeholder="Cari catatan atau kategori…" x-model.debounce.400ms="filters.q" @input.debounce.400ms="reload()">
+    </label>
+    <select x-model="filters.kind" @change="reload()">
+      <option value="">Semua jenis</option>
+      <option value="income">Pemasukan</option>
+      <option value="expense">Pengeluaran</option>
+      <option value="transfer">Transfer</option>
+    </select>
+    <select x-model="filters.account_id" @change="reload()">
+      <option value="">Semua akun</option>
+      <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
+    </select>
+    <button class="button primary" @click="openTransaction()"><i class="ph-duotone ph-plus"></i> Tambah</button>
+  </div>
+
+  <div class="card">
+    <template x-if="transactions.length === 0 && hasFilters">
+      {{> components/empty-state emoji="1f50d" title="Tidak ditemukan" text="Tidak ada transaksi yang cocok dengan pencarian atau filter ini." action="resetFilters()" actionLabel="Hapus filter" icon="x" secondary=true}}
+    </template>
+    <template x-if="transactions.length === 0 && !hasFilters">
+      {{> components/empty-state emoji="1f4dd" title="Belum ada transaksi di bulan ini" text="Transaksi yang kamu catat akan muncul di sini, lengkap dengan kategori dan akunnya." action="openTransaction()" actionLabel="Catat transaksi"}}
+    </template>
+    <ul class="list">
+      <template x-for="t in transactions" :key="t.id">
+        <li class="row" x-data="{ s: style(t) }">
+          <span class="avatar" :style="{ background: t.category_color ?? '#64748b' }">
+            <i class="ph-duotone" :class="'ph-' + (t.category_icon ?? s.icon)"></i>
+          </span>
+          <div class="row-main">
+            <strong x-text="transactionTitle(t)"></strong>
+            <span class="muted" x-text="formatDate(t.date) + ' · ' + transactionSubtitle(t)"></span>
+          </div>
+          <button class="photo-badge" x-show="t.attachments.length" @click="openPhotos(t)" :title="t.attachments.length + ' foto'">
+            <i class="ph-duotone ph-paperclip"></i> <span x-text="t.attachments.length"></span>
+          </button>
+          <strong :class="'tone-' + s.tone" x-text="transactionAmount(t)"></strong>
+          <button class="icon-button subtle" title="Edit" :class="{ invisible: !isEditable(t) }" @click="openEditTransaction(t)">
+            <i class="ph-duotone ph-pencil-simple"></i>
+          </button>
+          <button class="icon-button subtle" title="Hapus"
+            @click="deleteTransaction(t)">
+            <i class="ph-duotone ph-trash"></i>
+          </button>
+        </li>
+      </template>
+    </ul>
+  </div>
+</section>

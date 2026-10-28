@@ -1,0 +1,9 @@
+{{!-- Pilihan akun. Parameter: label, model (default form.account_id) --}}
+<div class="field">
+  <label>{{label}}</label>
+  <select x-model="{{#if model}}{{model}}{{else}}form.account_id{{/if}}">
+    <template x-for="a in accounts" :key="a.id">
+      <option :value="a.id" x-text="a.name" :selected="a.id == {{#if model}}{{model}}{{else}}form.account_id{{/if}}"></option>
+    </template>
+  </select>
+</div>

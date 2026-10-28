@@ -1,0 +1,74 @@
+{{!-- Halaman: Aset & Kekayaan Bersih --}}
+<section class="page stack" x-show="page === 'assets'" x-data="{ nw: null }" x-effect="nw = assets.netWorth">
+  <template x-if="nw">
+    <div class="hero card">
+      <div>
+        <p class="label">Kekayaan bersih</p>
+        <p class="big-number" x-countup="nw.total"></p>
+        <p class="hero-note">Saldo akun + aset + piutang − utang</p>
+      </div>
+      <img class="hero-emoji" src="https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/1f48e.webp" alt="">
+      <div class="hero-actions">
+        <button class="button" @click="openAsset()">
+          <i class="ph-duotone ph-plus"></i> Tambah aset
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <template x-if="nw">
+    <div class="grid-4">
+      <div class="card mini"><span class="label"><i class="ph-duotone ph-wallet"></i> Saldo akun</span><strong x-text="money(nw.cash)"></strong></div>
+      <div class="card mini"><span class="label"><i class="ph-duotone ph-chart-line-up"></i> Nilai aset</span><strong x-text="money(nw.assets)"></strong></div>
+      <div class="card mini"><span class="label"><i class="ph-duotone ph-arrow-circle-down"></i> Piutang</span><strong class="tone-positive" x-text="money(nw.receivable)"></strong></div>
+      <div class="card mini"><span class="label"><i class="ph-duotone ph-arrow-circle-up"></i> Utang</span><strong class="tone-negative" x-text="'−' + money(nw.payable)"></strong></div>
+    </div>
+  </template>
+
+  <div class="card">
+    <h2>Pertumbuhan kekayaan bersih</h2>
+    <div class="trend" x-show="assets.history.length > 1"><canvas x-ref="netWorthChart"></canvas></div>
+    <p class="empty-hint" x-show="assets.history.length <= 1">
+      <img :src="emojiUrl('1f4c8')" alt="">
+      Grafik akan terbentuk setelah lebih dari satu bulan. Data bulan ini sudah tersimpan otomatis.
+    </p>
+  </div>
+
+  <h2>Daftar aset</h2>
+  <template x-if="assets.assets.length === 0">
+    <div class="card">{{> components/empty-state emoji="1f48e" title="Belum ada aset" text="Catat emas, reksa dana, saham, deposito, atau kendaraan supaya kekayaan bersihmu terlihat utuh." action="openAsset()" actionLabel="Tambah aset"}}</div>
+  </template>
+  <div class="grid-2">
+    <template x-for="asset in assets.assets" :key="asset.id">
+      <div class="card">
+        <div class="row">
+          <span class="avatar" :style="{ background: ASSET_TYPES[asset.type].color }">
+            <i class="ph-duotone" :class="'ph-' + ASSET_TYPES[asset.type].icon"></i>
+          </span>
+          <div class="row-main">
+            <strong x-text="asset.name"></strong>
+            <span class="muted" x-text="ASSET_TYPES[asset.type].label + (asset.note ? ' · ' + asset.note : '')"></span>
+          </div>
+          <span class="badge" :class="assetGain(asset) >= 0 ? 'badge-ok' : 'badge-danger'"
+                x-text="(assetGain(asset) >= 0 ? '+' : '') + assetGainPercent(asset) + '%'"></span>
+        </div>
+        <div class="debt-numbers">
+          <div><span class="muted">Modal</span><strong x-text="money(asset.invested)"></strong></div>
+          <div><span class="muted">Nilai sekarang</span><strong x-text="money(asset.current_value)"></strong></div>
+        </div>
+        <p class="hint" :class="assetGain(asset) >= 0 ? 'tone-positive' : 'tone-negative'"
+           x-text="(assetGain(asset) >= 0 ? 'Untung ' : 'Rugi ') + money(Math.abs(assetGain(asset)))"></p>
+        <div class="row-actions">
+          <button class="button small" @click="openAssetValue(asset)"><i class="ph-duotone ph-arrows-clockwise"></i> Perbarui nilai</button>
+          <button class="button small" @click="openAssetTrade(asset, 'buy')"><i class="ph-duotone ph-plus"></i> Beli</button>
+          <button class="button small" @click="openAssetTrade(asset, 'sell')"><i class="ph-duotone ph-minus"></i> Jual</button>
+          <button class="icon-button subtle" title="Edit" @click="openAsset(asset)"><i class="ph-duotone ph-pencil-simple"></i></button>
+          <button class="icon-button subtle" title="Hapus"
+            @click="deleteAsset(asset)">
+            <i class="ph-duotone ph-trash"></i>
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+</section>

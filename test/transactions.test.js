@@ -116,3 +116,15 @@ test('biaya admin transfer dipotong dari akun pengirim sebagai pengeluaran', asy
   await app.api.delete(`/transactions/${transfer.id}`);
   assert.equal(await balance(bca.id), 1000000);
 });
+
+test('pengeluaran biasa (bayar ke rekening lain) bisa punya biaya admin', async () => {
+  const bca = await app.api.post('/accounts', { name: 'BCA Exp Fee', type: 'bank', initial_balance: 500000 });
+  const category = (await app.api.get('/categories')).find((c) => c.name === 'Belanja').id;
+  const expense = await app.api.post('/transactions', {
+    kind: 'expense', amount: 200000, account_id: bca.id, category_id: category, date: '2026-10-12', note: 'Bayar toko online', fee: 2500,
+  });
+  assert.equal((await app.api.get('/accounts')).find((a) => a.id === bca.id).balance, 297500);
+  const fee = (await app.api.get('/transactions?month=2026-10')).find((t) => t.fee_of === expense.id);
+  assert.equal(fee.note, 'Biaya admin: Bayar toko online');
+  assert.equal((await app.api.get('/transactions?month=2026-10')).find((t) => t.id === expense.id).fee, 2500);
+});

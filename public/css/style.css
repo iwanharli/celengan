@@ -2058,34 +2058,76 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .runway-track > i.runway-target { width: 3px; background: var(--text); opacity: .55; }
 .runway-scale small.target { color: var(--text); }
 
-/* Import mutasi */
-.import-file { display: grid; grid-template-columns: minmax(0, 1fr) 140px minmax(0, 1.3fr); gap: 16px; align-items: end; }
-.import-drop {
-  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px; cursor: pointer; text-align: center;
-  border: 2px dashed var(--border); border-radius: 18px; background: var(--surface-2); transition: border-color .2s;
+.account.account-emoney .avatar { background: #f59e0b; }
+.share-emoney { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.type-emoney .account-head { background: linear-gradient(120deg, #fbbf24, #f97316); }
+
+/* Modal tagihan */
+.bill-row-1 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.auto-pay-toggle { display: flex; gap: 14px; align-items: flex-start; cursor: pointer; }
+.auto-pay-toggle input { margin-top: 4px; width: 20px; height: 20px; accent-color: var(--primary); flex-shrink: 0; }
+.auto-pay-toggle span { display: flex; flex-direction: column; gap: 4px; }
+.auto-pay-toggle strong { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 640px) { .bill-row-1 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Modal utang */
+.debt-section { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 18px; background: var(--surface-2); }
+.tenor-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.tenor-row .chips { flex: 1; }
+.tenor-row .tenor-input { width: 130px; margin: 0; }
+.debt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 640px) { .debt-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Menu samping di layar yang tidak terlalu tinggi (laptop): lebih rapat supaya semua kelompok muat tanpa scroll */
+@media (min-width: 861px) and (max-height: 940px) {
+  .nav-item { padding: 4px 10px; }
+  .nav-icon { width: 30px; height: 30px; }
+  .nav-emoji { width: 22px; height: 22px; }
+  .nav-group + .nav-group { margin-top: 5px; padding-top: 5px; }
+  .nav-label { padding: 2px 12px; }
+  .brand { padding-bottom: 10px; }
 }
-.import-drop:hover, .import-drop.loaded { border-color: var(--primary); }
-.import-drop i { font-size: 1.6rem; color: var(--primary); }
-.import-drop small { color: var(--text-muted); }
-.import-mapping { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
-.import-map { display: flex; flex-direction: column; gap: 2px; min-width: 130px; }
-.import-map small { color: var(--text-muted); font-weight: 700; }
-.import-map select { padding: 6px 10px; font-size: .9rem; }
-.import-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.import-table { max-height: 46vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 16px; }
-.import-row { display: grid; grid-template-columns: 22px 92px minmax(0, 1fr) 150px 180px; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px dashed var(--border); }
-.import-row:last-child { border-bottom: 0; }
-.import-row.off { opacity: .45; }
-.import-row input.import-note, .import-row select { padding: 6px 10px; font-size: .92rem; min-width: 0; }
-.import-date { font-size: .9rem; color: var(--text-muted); font-weight: 700; }
-.import-row .chip.kind-income { color: var(--positive); font-weight: 800; }
-.import-row .chip.kind-expense { color: var(--negative); font-weight: 800; }
-.import-desc { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.import-flags { display: flex; gap: 6px; }
-.import-flags .badge { font-size: .75rem; }
-@media (max-width: 860px) {
-  .import-file { grid-template-columns: 1fr 1fr; }
-  .import-drop { grid-column: 1 / -1; }
-  .import-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
-  .import-row .import-desc, .import-row select { grid-column: 2 / -1; }
+
+/* Halaman Transaksi: baris alat ringkas + panel filter */
+.tx-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tx-toolbar .search { flex: 1 1 260px; min-width: 200px; }
+.kind-filter { padding: 4px; }
+.kind-filter button { padding: 8px 14px; }
+.tx-toolbar .button.filter-on { border-color: var(--primary); color: var(--primary); }
+.tx-toolbar .count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: inline-grid; place-items: center; font-size: .78rem; background: var(--primary); color: #fff; }
+.tx-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 18px; background: var(--surface-2); }
+.tx-filters select { width: auto; min-width: 180px; flex: 0 1 240px; }
+@media (max-width: 640px) {
+  .kind-filter { order: 3; width: 100%; }
+  .kind-filter button { flex: 1; }
+  .tx-filters select { flex: 1 1 100%; }
+}
+.guideline p { flex: 1; margin: 0; }
+.guideline .button { flex-shrink: 0; }
+.add-fee { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: .92rem; white-space: nowrap; width: auto; }
+
+/* Halaman Akun: tab horizontal per jenis */
+.account-tabs-bar { display: flex; gap: 12px; align-items: center; }
+.account-tabs {
+  flex: 1; min-width: 0; display: flex; gap: 6px; padding: 6px; overflow-x: auto; scrollbar-width: none;
+  border-radius: 20px; background: var(--surface); border: 2px solid var(--border); box-shadow: var(--shadow);
+}
+.account-tabs::-webkit-scrollbar { display: none; }
+.account-tab {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 0; border-radius: 15px;
+  background: none; cursor: pointer; text-align: left; color: var(--text-muted); font: inherit; transition: background .2s;
+}
+.account-tab:hover { background: var(--surface-2); }
+.account-tab.active { background: var(--primary-soft); }
+.account-tab-icon { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px; color: #fff; font-size: 1.1rem; }
+.account-tab-icon.all { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
+.account-tab-icon.share-goal { background: linear-gradient(135deg, #f472b6, #a855f7); }
+.account-tab strong { color: var(--text); font-size: .95rem; white-space: nowrap; }
+.account-tab.active strong { color: var(--primary); }
+.account-tab-count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: inline-grid; place-items: center; font-size: .78rem; font-weight: 800; background: var(--surface-2); }
+.account-tab.active .account-tab-count { background: var(--primary); color: #fff; }
+.share-legend .share-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 0; border-radius: 10px; background: none; font: inherit; color: inherit; cursor: pointer; }
+.share-legend .share-item:hover { background: var(--surface-2); }
+@media (max-width: 640px) {
+  .account-tabs-bar { flex-direction: column; align-items: stretch; }
 }

@@ -84,7 +84,11 @@
         </div>
 
         <!-- Biaya admin: dipotong dari akun pengirim, dicatat sebagai pengeluaran "Biaya admin" -->
-        <div class="field" x-show="form.kind === 'transfer' || (form.kind === 'expense' && form.recipient_id && selectedRecipient?.method !== 'cash')">
+        <button type="button" class="link add-fee" x-show="form.kind === 'expense' && !showFeeField" @click="form.showFee = true"
+                title="Misal bayar dengan transfer ke rekening lain, atau top up e-wallet">
+          <i class="ph-bold ph-plus-circle"></i> Tambah biaya admin
+        </button>
+        <div class="field" x-show="showFeeField">
           <label>Biaya admin</label>
           <div class="chips">
             <template x-for="fee in TRANSFER_FEES" :key="fee">

@@ -15,7 +15,6 @@ import tax from './routes/tax.js';
 import templates from './routes/templates.js';
 import recipients from './routes/recipients.js';
 import notifications from './routes/notifications.js';
-import importRoutes from './routes/import.js';
 import reports from './routes/reports.js';
 import attachments from './routes/attachments.js';
 import auth, { requireLogin } from './routes/auth.js';
@@ -26,10 +25,14 @@ export function createApp() {
   app.use(express.json({ limit: '25mb' })); // besar karena restore backup dikirim sebagai JSON
 
   // Halaman utama disusun dari views/ (layout + halaman + komponen).
+  // no-cache: browser boleh menyimpan, tapi selalu mengecek versi terbaru (ETag) — supaya tampilan
+  // tidak tertinggal setelah file diperbarui.
   app.get('/', async (req, res) => {
-    res.type('html').send(await appHtml());
+    res.set('Cache-Control', 'no-cache').type('html').send(await appHtml());
   });
-  app.use(express.static(new URL('../public', import.meta.url).pathname));
+  app.use(express.static(new URL('../public', import.meta.url).pathname, {
+    setHeaders: (res) => res.set('Cache-Control', 'no-cache'),
+  }));
 
   // Endpoint login terbuka; semua endpoint data di bawahnya wajib login.
   app.use('/api/auth', auth);
@@ -51,7 +54,6 @@ export function createApp() {
   app.use('/api/templates', templates);
   app.use('/api/recipients', recipients);
   app.use('/api/notifications', notifications);
-  app.use('/api/import', importRoutes);
   app.use('/api/reports', reports);
 
   // Express 5 otomatis meneruskan error dari handler async ke sini.

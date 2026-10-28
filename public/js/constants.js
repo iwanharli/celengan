@@ -3,16 +3,16 @@
 export const PAGES = [
   { id: 'home', label: 'Beranda', emoji: '1f3e0' },
   { id: 'transactions', label: 'Transaksi', emoji: '1f4dd' },
-  { id: 'budget', label: 'Anggaran', emoji: '1f967' },
-  { id: 'bills', label: 'Tagihan', emoji: '1f4c5' },
-  { id: 'categories', label: 'Kategori', emoji: '1f3f7-fe0f' },
-  { id: 'recipients', label: 'Penerima', emoji: '1f4ec' },
-  { id: 'debts', label: 'Utang', emoji: '1f91d' },
   { id: 'assets', label: 'Aset', emoji: '1f48e' },
+  { id: 'accounts', label: 'Akun', emoji: '1f45b' },
+  { id: 'recipients', label: 'Penerima', emoji: '1f4ec' },
+  { id: 'bills', label: 'Tagihan', emoji: '1f4c5' },
+  { id: 'debts', label: 'Utang', emoji: '1f91d' },
+  { id: 'budget', label: 'Anggaran', emoji: '1f967' },
+  { id: 'categories', label: 'Kategori', emoji: '1f3f7-fe0f' },
   { id: 'wishlist', label: 'Wishlist', emoji: '1f381' },
   { id: 'reports', label: 'Laporan', emoji: '1f4ca' },
   { id: 'export', label: 'Export', emoji: '1f4e4' },
-  { id: 'accounts', label: 'Akun', emoji: '1f45b' },
   { id: 'settings', label: 'Pengaturan', emoji: '2699-fe0f' },
 ];
 
@@ -20,6 +20,7 @@ export const ACCOUNT_TYPES = {
   cash: { label: 'Tunai', icon: 'money' },
   bank: { label: 'Bank', icon: 'bank' },
   ewallet: { label: 'E-Wallet', icon: 'device-mobile' },
+  emoney: { label: 'E-Money', icon: 'credit-card' }, // kartu uang elektronik (tol, KRL, parkir)
   goal: { label: 'Tabungan impian', icon: 'gift' }, // dibuat otomatis untuk tiap wishlist
 };
 
@@ -126,11 +127,19 @@ export const BUDGET_ALERT_STYLE = {
 
 // Pengelompokan menu samping. Kelompok tanpa label tidak diberi judul.
 // "bottom: true" = ditempel di bagian bawah menu.
+// Kelompok menu (samping di desktop, bawah di HP):
+//   Harian          = yang dicatat sehari-hari (transaksi & aset)
+//   Uang saya       = akun sendiri & rekening tujuan kiriman
+//   Tagihan & utang = yang harus dibayar (rutin & sampai lunas)
+//   Rencana         = mengatur pengeluaran & menabung untuk impian
+//   Laporan & data  = melihat & mengunduh data
 export const NAV_GROUPS = [
   { label: null, pages: ['home'] },
-  { label: 'Harian', pages: ['transactions', 'budget', 'bills', 'recipients', 'categories'] },
-  { label: 'Kekayaan', pages: ['accounts', 'assets', 'debts'] },
-  { label: 'Rencana', pages: ['wishlist', 'reports', 'export'] },
+  { label: 'Harian', pages: ['transactions', 'assets'] },
+  { label: 'Uang saya', pages: ['accounts', 'recipients'] },
+  { label: 'Tagihan & utang', pages: ['bills', 'debts'] },
+  { label: 'Rencana', pages: ['budget', 'categories', 'wishlist'] },
+  { label: 'Laporan & data', pages: ['reports', 'export'] },
   { label: null, pages: ['settings'], bottom: true },
 ];
 
@@ -149,6 +158,7 @@ export const ACCOUNT_PROVIDERS = {
     'Bank Jago', 'SeaBank', 'blu by BCA Digital', 'Jenius', 'Allo Bank', 'Bank Neo Commerce', 'Bank DKI', 'Bank Jatim',
   ],
   ewallet: ['GoPay', 'OVO', 'DANA', 'ShopeePay', 'LinkAja', 'i.saku', 'Sakuku', 'Flip'],
+  emoney: ['Mandiri e-money', 'BCA Flazz', 'BRI Brizzi', 'BNI TapCash', 'JakCard', 'KMT KAI'],
   cash: ['Dompet', 'Celengan', 'Brankas', 'Amplop', 'Laci'],
 };
 
@@ -156,6 +166,7 @@ export const ACCOUNT_PROVIDERS = {
 export const ACCOUNT_FIELDS = {
   bank: { provider: 'Nama bank', number: 'Nomor rekening', numberHint: '5–20 angka, spasi/tanda hubung boleh' },
   ewallet: { provider: 'Penyedia e-wallet', number: 'Nomor HP terdaftar', numberHint: 'contoh: 0812 3456 7890' },
+  emoney: { provider: 'Jenis kartu', number: 'Nomor kartu', numberHint: '16 angka di kartu, untuk membedakan kalau punya beberapa' },
   cash: { provider: 'Tempat simpan' },
 };
 
@@ -178,8 +189,8 @@ export const WISH_KINDS = {
 // Modal yang isinya panjang ditampilkan lebih lebar (dan dua kolom bila ada .modal-columns),
 // supaya tidak perlu banyak scroll.
 export const WIDE_MODALS = [
-  'transaction', 'account', 'bill', 'debt', 'debtEdit', 'budget', 'category', 'categoryDelete',
-  'asset', 'wish', 'wishBuy', 'wishPartPay', 'schedule', 'photos', 'period', 'recipient', 'import',
+  'transaction', 'account', 'bill', 'debt', 'debtEdit', 'category', 'categoryDelete',
+  'asset', 'wish', 'wishBuy', 'wishPartPay', 'schedule', 'photos', 'period', 'recipient',
 ];
 
 // Sub-menu halaman Pengaturan.

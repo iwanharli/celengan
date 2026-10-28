@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
 });
 
 // Nomor rekening / HP disimpan sebagai angka saja ("123-456 789" → "123456789").
-// Bank: 5–20 digit. E-wallet: nomor HP 9–15 digit. Tunai: tidak punya nomor.
+// Bank: 5–20 digit. E-wallet: nomor HP 9–15 digit. E-money: nomor kartu 16 digit. Tunai: tidak punya nomor.
 function accountValues(body) {
   required(body, ['name', 'type']);
   const { name, type, initial_balance = 0, provider, holder_name, note } = body;
@@ -25,11 +25,14 @@ function accountValues(body) {
   if (number && type === 'ewallet' && (number.length < 9 || number.length > 15)) {
     throw new HttpError(400, 'Nomor HP e-wallet harus 9–15 angka');
   }
+  if (number && type === 'emoney' && number.length !== 16) {
+    throw new HttpError(400, 'Nomor kartu e-money harus 16 angka');
+  }
 
   const clean = (value) => String(value ?? '').trim() || null;
   return [
     name.trim(), type, initial_balance,
-    clean(provider), type === 'cash' ? null : number || null, type === 'cash' ? null : clean(holder_name), clean(note),
+    clean(provider), type === 'cash' ? null : number || null, ['cash', 'emoney'].includes(type) ? null : clean(holder_name), clean(note),
   ];
 }
 

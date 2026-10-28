@@ -19,7 +19,7 @@
       <div class="field">
         <label x-text="ACCOUNT_FIELDS[form.type].provider"></label>
         <input list="account-providers" x-model="form.provider" autocomplete="off" autofocus
-               :placeholder="form.type === 'bank' ? 'contoh: BCA, Mandiri, Bank Jago' : form.type === 'ewallet' ? 'contoh: GoPay, OVO, DANA' : 'contoh: Dompet, Celengan'">
+               :placeholder="{ bank: 'contoh: BCA, Mandiri, Bank Jago', ewallet: 'contoh: GoPay, OVO, DANA', emoney: 'contoh: Mandiri e-money, BCA Flazz' }[form.type] ?? 'contoh: Dompet, Celengan'">
         <datalist id="account-providers">
           <template x-for="name in ACCOUNT_PROVIDERS[form.type]" :key="name"><option :value="name"></option></template>
         </datalist>
@@ -35,10 +35,10 @@
           <div class="field">
             <label x-text="ACCOUNT_FIELDS[form.type].number + ' (opsional)'"></label>
             <input inputmode="numeric" autocomplete="off" x-model="form.account_number"
-                   :placeholder="form.type === 'bank' ? 'contoh: 1234 5678 90' : 'contoh: 0812 3456 7890'">
+                   :placeholder="{ bank: 'contoh: 1234 5678 90', emoney: 'contoh: 6032 9812 3456 7890' }[form.type] ?? 'contoh: 0812 3456 7890'">
             <p class="hint" x-text="ACCOUNT_FIELDS[form.type].numberHint"></p>
           </div>
-          <div class="field">
+          <div class="field" x-show="form.type !== 'emoney'">
             <label>Atas nama (opsional)</label>
             <input autocomplete="off" placeholder="nama pemilik" x-model="form.holder_name">
           </div>

@@ -1,16 +1,25 @@
 {{!-- Halaman: Transaksi --}}
 <section class="page stack" x-show="page === 'transactions'">
-  <div class="toolbar">
+  <!-- Baris alat: cari · jenis · filter lain (panel) · baru dihapus · tambah -->
+  <div class="tx-toolbar">
     <label class="search">
       <i class="ph-duotone ph-magnifying-glass"></i>
       <input type="search" placeholder="Cari catatan atau kategori…" x-model.debounce.400ms="filters.q" @input.debounce.400ms="reload()">
     </label>
-    <select x-model="filters.kind" @change="reload()">
-      <option value="">Semua jenis</option>
-      <option value="income">Pemasukan</option>
-      <option value="expense">Pengeluaran</option>
-      <option value="transfer">Transfer</option>
-    </select>
+    <div class="segmented kind-filter">
+      <template x-for="[value, label] in [['', 'Semua'], ['income', 'Masuk'], ['expense', 'Keluar'], ['transfer', 'Transfer']]" :key="value">
+        <button type="button" :class="{ active: filters.kind === value }" @click="filters.kind = value; reload()" x-text="label"></button>
+      </template>
+    </div>
+    <button type="button" class="button" :class="{ 'filter-on': extraFilterCount }" @click="showTxFilters = !showTxFilters">
+      <i class="ph-duotone ph-funnel-simple"></i> Filter
+      <span class="count" x-show="extraFilterCount" x-text="extraFilterCount"></span>
+    </button>
+    <button type="button" class="icon-button" @click="openDeletedTransactions()" title="Transaksi yang baru dihapus"><i class="ph-duotone ph-trash-simple"></i></button>
+    <button class="button primary" @click="openTransaction()"><i class="ph-duotone ph-plus"></i> Tambah</button>
+  </div>
+
+  <div class="tx-filters" x-show="showTxFilters || extraFilterCount">
     <select x-model="filters.account_id" @change="reload()">
       <option value="">Semua akun</option>
       <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
@@ -23,9 +32,7 @@
       <option value="">Semua tagihan</option>
       <template x-for="b in [...bills.filter((b) => !b.debt_id), ...endedBills]" :key="b.id"><option :value="b.id" x-text="b.name + (b.active === false ? ' (berhenti)' : '')"></option></template>
     </select>
-    <button class="button" @click="openImport()" title="Import mutasi rekening dari CSV / Excel"><i class="ph-duotone ph-file-arrow-up"></i> Import</button>
-    <button class="button" @click="openDeletedTransactions()" title="Transaksi yang baru dihapus"><i class="ph-duotone ph-trash-simple"></i> Baru dihapus</button>
-    <button class="button primary" @click="openTransaction()"><i class="ph-duotone ph-plus"></i> Tambah</button>
+    <button type="button" class="link" x-show="hasFilters" @click="resetFilters()">Hapus filter</button>
   </div>
 
   <div class="card">

@@ -15,9 +15,28 @@ export default {
   revealedAccounts: {}, // id akun → nomor sedang ditampilkan
 
   // Akun dikelompokkan per jenis (Bank, E-Wallet, Tunai) dengan subtotal & porsi dari total.
+  accountTab: 'all',
+
+  goToAccountTab(tab) {
+    this.accountTab = tab;
+    history.replaceState(null, '', tab === 'all' ? '#accounts' : `#accounts/${tab}`);
+  },
+
+  get visibleAccountGroups() {
+    return this.accountTab === 'all' ? this.accountGroups : this.accountGroups.filter((group) => group.type === this.accountTab);
+  },
+
+  get currentAccountGroup() {
+    return this.accountGroups.find((group) => group.type === this.accountTab) ?? null;
+  },
+
+  get currentAccountTotal() {
+    return this.accountTab === 'all' ? this.accountsTotal : this.currentAccountGroup?.subtotal ?? 0;
+  },
+
   get accountGroups() {
     const total = this.accountsTotal;
-    return ['bank', 'ewallet', 'cash', 'goal']
+    return ['bank', 'ewallet', 'emoney', 'cash', 'goal']
       .map((type) => {
         const items = this.accounts.filter((account) => account.type === type);
         const subtotal = items.reduce((sum, account) => sum + account.balance, 0);
@@ -55,7 +74,8 @@ export default {
   },
 
   // Tanpa argumen: akun baru. Dengan akun: edit semua detail & saldo awal.
-  openAccount(account = null) {
+  // type: jenis awal untuk akun baru (dari tab yang sedang dibuka).
+  openAccount(account = null, type = 'bank') {
     this.open('account', account
       ? {
         id: account.id,
@@ -68,7 +88,7 @@ export default {
         note: account.note ?? '',
       }
       : {
-        type: 'bank', name: '', provider: '', account_number: '', holder_name: this.auth.name ?? '', note: '',
+        type, name: '', provider: '', account_number: '', holder_name: this.auth.name ?? '', note: '',
         asIncome: false, income_category_id: this.categoriesOf('income')[0]?.id ?? '', income_date: todayISO(),
       });
   },

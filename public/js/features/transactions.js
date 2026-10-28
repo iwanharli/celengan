@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { TRANSACTION_STYLE, EDITABLE_KINDS } from '../constants.js';
-import { formatDate, formatAmountInput, parseAmount } from '../format.js';
+import { formatDate, formatAmountInput, parseAmount, rupiah } from '../format.js';
 import { compressImage, formatFileSize } from '../photos.js';
 import { addToDropzone, removeFromDropzone } from '../photo-dropzone.js';
 
@@ -62,6 +62,8 @@ export default {
   deleteTransaction(t) {
     const effects = [];
     if (t.kind === 'transfer') effects.push('Saldo kedua akun kembali seperti sebelum transfer.');
+    if (t.fee) effects.push(`Biaya admin ${rupiah(t.fee)} ikut terhapus.`);
+    if (t.fee_of) effects.push('Ini biaya admin sebuah transfer; transfernya sendiri tetap ada.');
     if (t.debt_id) effects.push(`Ini terhubung ke utang/piutang "${t.debt_name}": sisa dan jadwal cicilannya ikut menyesuaikan.`);
     if (t.asset_id) effects.push(`Ini transaksi aset "${t.asset_name}": modal aset ikut berubah.`);
     if (t.bill_id) effects.push('Ini pembayaran tagihan: jatuh tempo tagihannya tidak mundur otomatis.');
@@ -217,7 +219,7 @@ export default {
 
   openTransaction(kind = 'expense', values = {}) {
     this.open('transaction', {
-      kind, category_id: '', to_account_id: '', note: '', client: '', attachments: [], photos: [], ...values,
+      kind, category_id: '', to_account_id: '', note: '', client: '', feeText: '', attachments: [], photos: [], ...values,
     });
     this.loadClientNames();
   },
@@ -226,6 +228,15 @@ export default {
   openPaidProject() {
     const freelance = this.categoriesOf('income').find((category) => category.name === 'Freelance');
     this.openTransaction('income', { category_id: freelance?.id ?? '', paidProject: true });
+  },
+
+  // Transfer baru: isi biaya admin dengan biaya terakhir untuk pasangan akun yang sama.
+  async suggestTransferFee() {
+    if (this.form.id || this.form.kind !== 'transfer' || !this.form.account_id || !this.form.to_account_id) return;
+    try {
+      const { fee } = await api.get(`/transactions/transfer-fee?from=${this.form.account_id}&to=${this.form.to_account_id}`);
+      if (fee !== null) this.form.feeText = fee ? formatAmountInput(fee) : '';
+    } catch {}
   },
 
   async loadClientNames() {
@@ -244,6 +255,7 @@ export default {
       date: t.date,
       note: t.note ?? '',
       client: t.client ?? '',
+      feeText: t.fee ? formatAmountInput(t.fee) : '',
       linked_to: t.linked_to, // jenisnya dikunci bila terhubung ke utang/tagihan/wishlist
       attachments: t.attachments.map((photo) => ({ ...photo, removed: false })), // foto yang sudah ada
       photos: [], // foto baru yang belum diunggah
@@ -261,6 +273,7 @@ export default {
         account_id: Number(this.form.account_id),
         to_account_id: Number(this.form.to_account_id) || null,
         category_id: Number(this.form.category_id) || null,
+        fee: this.form.kind === 'transfer' ? parseAmount(this.form.feeText) || 0 : 0,
       };
       if (this.form.id) await api.put(`/transactions/${this.form.id}`, body);
       // Simpan id-nya: kalau unggah foto gagal lalu dicoba lagi, transaksi tidak tercatat dua kali.

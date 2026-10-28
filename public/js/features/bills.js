@@ -11,6 +11,7 @@ const PER_MONTH = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 };
 
 // Halaman Tagihan: tagihan rutin, bayar, lewati, tambah & edit.
 export default {
+  billTab: 'active',
   billStatus(bill) {
     if (bill.auto_pay_blocked) return { text: 'Saldo kurang, belum terpotong', tone: 'danger' };
     const days = daysUntil(bill.next_due);
@@ -102,15 +103,44 @@ export default {
     }, () => api.post(`/bills/${bill.id}/skip`));
   },
 
-  deleteBill(bill) {
+  // Berhenti langganan: tagihan pindah ke tab "Berhenti", riwayatnya tetap bisa dibuka.
+  stopBill(bill) {
     this.askConfirm({
-      title: `Hapus tagihan ${bill.name}?`,
+      title: `Berhenti langganan ${bill.name}?`,
+      emoji: '1f6d1',
       tone: 'warning',
-      message: 'Pengingat untuk tagihan ini berhenti.',
+      message: 'Pengingat dan potong otomatis berhenti mulai hari ini. Tagihannya pindah ke tab Berhenti dan bisa diaktifkan lagi kapan saja.',
       details: [
         { icon: 'coins', text: `${this.money(bill.amount)} · ${this.FREQUENCIES[bill.frequency]}` },
-        { icon: 'check-circle', text: 'Riwayat pembayaran sebelumnya tetap ada di Transaksi' },
+        { icon: 'clock-counter-clockwise', text: 'Riwayat pembayaran tetap tersimpan' },
       ],
+      confirmLabel: 'Berhenti',
+      successMessage: `${bill.name} dihentikan`,
+    }, () => api.post(`/bills/${bill.id}/stop`));
+  },
+
+  resumeBill(bill) {
+    this.askConfirm({
+      title: `Aktifkan lagi ${bill.name}?`,
+      emoji: '1f504',
+      tone: 'info',
+      message: 'Tagihan kembali ke daftar aktif. Periode selama berhenti tidak ditagih; jatuh tempo berikutnya mulai dari hari ini.',
+      details: [{ icon: 'coins', text: `${this.money(bill.amount)} · ${this.FREQUENCIES[bill.frequency]}` }],
+      confirmLabel: 'Aktifkan',
+      successMessage: `${bill.name} aktif lagi`,
+    }, async () => { await api.post(`/bills/${bill.id}/resume`); this.billTab = 'active'; });
+  },
+
+  deleteBill(bill) {
+    this.askConfirm({
+      title: `Hapus permanen ${bill.name}?`,
+      tone: 'danger',
+      message: 'Tagihan dan riwayat periode yang dilewati dihapus. Pakai ini untuk tagihan yang salah input — untuk langganan yang diputus, cukup "Berhenti".',
+      details: [
+        { icon: 'coins', text: `${this.money(bill.amount)} · ${this.FREQUENCIES[bill.frequency]}` },
+        { icon: 'check-circle', text: 'Transaksi pembayarannya tetap ada di Transaksi' },
+      ],
+      confirmLabel: 'Hapus permanen',
       successMessage: 'Tagihan dihapus',
     }, () => api.delete(`/bills/${bill.id}`));
   },

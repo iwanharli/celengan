@@ -224,6 +224,13 @@ ALTER TABLE bills ADD COLUMN IF NOT EXISTS due_day int CHECK (due_day BETWEEN 1 
 -- Potong otomatis: saat jatuh tempo, saldo akun langsung dipotong (kalau saldonya cukup).
 ALTER TABLE bills ADD COLUMN IF NOT EXISTS auto_pay boolean NOT NULL DEFAULT false;
 
+-- Tagihan yang dihentikan (berhenti langganan): tidak aktif, tapi riwayatnya tetap bisa dilihat.
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS ended_at date;
+
+-- Biaya admin transfer: pengeluaran (kategori "Biaya admin") dari akun pengirim yang menempel
+-- ke transfernya. Ikut terhapus saat transfernya dihapus.
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS fee_of int REFERENCES transactions ON DELETE CASCADE;
+
 -- Periode tagihan yang dilewati (tombol "Lewati"). Pembayarannya sendiri ada di transactions.bill_id.
 CREATE TABLE IF NOT EXISTS bill_skips (
   id         serial PRIMARY KEY,

@@ -86,3 +86,33 @@ test('jenis transaksi yang terhubung (invoice, tagihan, wishlist) tidak bisa dig
   const [plain] = await app.api.get('/transactions?month=2026-10&kind=expense');
   assert.equal(plain.linked_to, null);
 });
+
+test('biaya admin transfer dipotong dari akun pengirim sebagai pengeluaran', async () => {
+  const bca = await app.api.post('/accounts', { name: 'BCA Fee', type: 'bank', initial_balance: 1000000 });
+  const gopay = await app.api.post('/accounts', { name: 'GoPay Fee', type: 'ewallet', initial_balance: 0 });
+  const balance = async (id) => (await app.api.get('/accounts')).find((a) => a.id === id).balance;
+
+  const transfer = await app.api.post('/transactions', {
+    kind: 'transfer', amount: 100000, account_id: bca.id, to_account_id: gopay.id, date: '2026-10-10', fee: 1000,
+  });
+  assert.equal(await balance(bca.id), 899000);
+  assert.equal(await balance(gopay.id), 100000);
+  const rows = await app.api.get('/transactions?month=2026-10');
+  assert.equal(rows.find((t) => t.id === transfer.id).fee, 1000);
+  const fee = rows.find((t) => t.fee_of === transfer.id);
+  assert.equal(fee.kind, 'expense');
+  assert.equal(fee.category_name, 'Biaya admin');
+  assert.deepEqual(await app.api.get(`/transactions/transfer-fee?from=${bca.id}&to=${gopay.id}`), { fee: 1000 });
+
+  // Edit biaya, lalu hapus biaya.
+  const body = { kind: 'transfer', amount: 100000, account_id: bca.id, to_account_id: gopay.id, date: '2026-10-10' };
+  await app.api.put(`/transactions/${transfer.id}`, { ...body, fee: 2500 });
+  assert.equal(await balance(bca.id), 897500);
+  await app.api.put(`/transactions/${transfer.id}`, { ...body, fee: 0 });
+  assert.equal(await balance(bca.id), 900000);
+
+  // Hapus transfer: biayanya ikut terhapus.
+  await app.api.put(`/transactions/${transfer.id}`, { ...body, fee: 1000 });
+  await app.api.delete(`/transactions/${transfer.id}`);
+  assert.equal(await balance(bca.id), 1000000);
+});

@@ -203,3 +203,6 @@ export const EXPORT_DATASETS = [
   { key: 'budgets', label: 'Anggaran', icon: 'chart-pie-slice', hint: 'Batas per kategori' },
   { key: 'categories', label: 'Kategori', icon: 'tag', hint: 'Daftar kategori & pemakaiannya' },
 ];
+
+// Pilihan cepat biaya admin transfer (0 = gratis). Rp6.500 = transfer antarbank online non BI-FAST.
+export const TRANSFER_FEES = [0, 1000, 2500, 6500];

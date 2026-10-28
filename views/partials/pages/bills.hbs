@@ -12,7 +12,18 @@
     </button>
   </div>
 
-  <div class="card">
+  <div class="toolbar" x-show="endedBills.length > 0">
+    <div class="segmented">
+      <button type="button" :class="{ active: billTab === 'active' }" @click="billTab = 'active'">
+        <i class="ph-duotone ph-calendar-check"></i> Aktif <span class="count" x-text="bills.length"></span>
+      </button>
+      <button type="button" :class="{ active: billTab === 'ended' }" @click="billTab = 'ended'">
+        <i class="ph-duotone ph-pause-circle"></i> Berhenti <span class="count" x-text="endedBills.length"></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="card" x-show="billTab === 'active' || endedBills.length === 0">
     <template x-if="bills.length === 0">
       {{> components/empty-state emoji="1f4c5" title="Belum ada tagihan rutin" text="Netflix, listrik, internet, kos, asuransi… catat sekali, nanti diingatkan setiap periode." action="openBill()" actionLabel="Tambah tagihan"}}
     </template>
@@ -36,10 +47,34 @@
             <button class="button small" @click="skipBill(bill)">Lewati</button>
             <button class="icon-button subtle" title="Riwayat" @click="openBillHistory(bill)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
             <button class="icon-button subtle" title="Edit" @click="openBill(bill)"><i class="ph-duotone ph-pencil-simple"></i></button>
-            <button class="icon-button subtle" title="Hapus" :class="{ invisible: bill.debt_id }"
-              @click="deleteBill(bill)">
-              <i class="ph-duotone ph-trash"></i>
+            <button class="icon-button subtle" title="Berhenti langganan" :class="{ invisible: bill.debt_id }"
+              @click="stopBill(bill)">
+              <i class="ph-duotone ph-pause-circle"></i>
             </button>
+          </div>
+        </li>
+      </template>
+    </ul>
+  </div>
+
+  <!-- ========== Berhenti ========== -->
+  <div class="card" x-show="billTab === 'ended' && endedBills.length > 0">
+    <ul class="list">
+      <template x-for="bill in endedBills" :key="bill.id">
+        <li class="row bill-row ended">
+          <span class="avatar" :style="{ background: bill.category_color ?? '#8b5cf6' }">
+            <i class="ph-duotone" :class="'ph-' + (bill.category_icon ?? 'receipt')"></i>
+          </span>
+          <div class="row-main">
+            <strong x-text="bill.name"></strong>
+            <span class="muted" x-text="FREQUENCIES[bill.frequency] + ' · ' + money(bill.amount)
+              + (bill.paid_count ? ' · total dibayar ' + money(bill.total_paid) + ' (' + bill.paid_count + '×)' : '')"></span>
+          </div>
+          <span class="badge badge-neutral" x-text="bill.ended_at ? 'Berhenti ' + formatDate(bill.ended_at) : 'Berhenti'"></span>
+          <div class="row-actions">
+            <button class="button small" @click="resumeBill(bill)"><i class="ph-duotone ph-play"></i> Aktifkan lagi</button>
+            <button class="icon-button subtle" title="Riwayat" @click="openBillHistory(bill)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
+            <button class="icon-button subtle" title="Hapus permanen" @click="deleteBill(bill)"><i class="ph-duotone ph-trash"></i></button>
           </div>
         </li>
       </template>

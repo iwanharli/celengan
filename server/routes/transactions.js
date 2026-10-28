@@ -26,6 +26,7 @@ router.get('/', async (req, res) => {
 
   const rows = await query(
     `SELECT t.*, ${LINK_SQL} AS linked_to,
+            (SELECT f.amount FROM transactions f WHERE f.fee_of = t.id) AS fee,
             a.name  AS account_name,
             ta.name AS to_account_name,
             c.name  AS category_name, c.icon AS category_icon, c.color AS category_color,
@@ -89,13 +90,65 @@ router.get('/clients', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const [transaction] = await query(
-    `INSERT INTO transactions (kind, amount, account_id, to_account_id, category_id, date, note, client)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    validTransactionValues(req.body),
-  );
+  const values = validTransactionValues(req.body);
+  const transaction = await withTransaction(async (client) => {
+    const { rows: [transaction] } = await client.query(
+      `INSERT INTO transactions (kind, amount, account_id, to_account_id, category_id, date, note, client)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      values,
+    );
+    await syncTransferFee(client, transaction, req.body.fee);
+    return transaction;
+  });
   res.status(201).json(transaction);
 });
+
+// Biaya admin terakhir untuk pasangan akun yang sama (misal BCA → GoPay selalu Rp1.000), untuk isian awal form.
+router.get('/transfer-fee', async (req, res) => {
+  const [last] = await query(
+    `SELECT COALESCE(f.amount, 0)::bigint AS fee
+     FROM transactions t LEFT JOIN transactions f ON f.fee_of = t.id
+     WHERE t.kind = 'transfer' AND t.account_id = $1 AND t.to_account_id = $2
+     ORDER BY t.date DESC, t.id DESC LIMIT 1`,
+    [req.query.from, req.query.to],
+  );
+  res.json({ fee: last?.fee ?? null });
+});
+
+async function feeCategoryId(client) {
+  const { rows: [existing] } = await client.query(
+    `SELECT id FROM categories WHERE kind = 'expense' AND name = 'Biaya admin' LIMIT 1`,
+  );
+  if (existing) return existing.id;
+  const { rows: [created] } = await client.query(
+    `INSERT INTO categories (name, kind, icon, color) VALUES ('Biaya admin', 'expense', 'bank', '#94a3b8') RETURNING id`,
+  );
+  return created.id;
+}
+
+// Biaya admin transfer dipotong dari akun pengirim, dicatat sebagai pengeluaran yang menempel ke transfernya.
+// fee kosong/0 → biaya (kalau ada) dihapus. Bukan transfer → tidak ada biaya.
+async function syncTransferFee(client, transfer, fee) {
+  const amount = transfer.kind === 'transfer' ? Number(fee) || 0 : 0;
+  if (amount < 0) throw new HttpError(400, 'Biaya admin tidak valid');
+  if (amount === 0) {
+    await client.query('DELETE FROM transactions WHERE fee_of = $1', [transfer.id]);
+    return;
+  }
+  const { rows: [toAccount] } = await client.query('SELECT name FROM accounts WHERE id = $1', [transfer.to_account_id]);
+  const note = `Biaya transfer ke ${toAccount?.name ?? 'akun lain'}`;
+  const { rowCount } = await client.query(
+    'UPDATE transactions SET amount = $1, account_id = $2, date = $3, note = $4 WHERE fee_of = $5',
+    [amount, transfer.account_id, transfer.date, note, transfer.id],
+  );
+  if (!rowCount) {
+    await client.query(
+      `INSERT INTO transactions (kind, amount, account_id, category_id, date, note, fee_of)
+       VALUES ('expense', $1, $2, $3, $4, $5, $6)`,
+      [amount, transfer.account_id, await feeCategoryId(client), transfer.date, note, transfer.id],
+    );
+  }
+}
 
 // Transaksi yang terhubung ke invoice/utang, tagihan, rincian wishlist, atau pembelian wishlist
 // tidak boleh diganti jenisnya (misal pemasukan → pengeluaran), karena sisa utang, pajak,
@@ -104,6 +157,7 @@ const LINK_SQL = `CASE
   WHEN t.debt_id IS NOT NULL THEN 'debt'
   WHEN t.bill_id IS NOT NULL THEN 'bill'
   WHEN t.wish_part_id IS NOT NULL THEN 'wish_part'
+  WHEN t.fee_of IS NOT NULL THEN 'fee'
   WHEN EXISTS (SELECT 1 FROM wishlist_items w WHERE w.transaction_id = t.id) THEN 'wish'
 END`;
 
@@ -165,14 +219,19 @@ router.put('/:id', async (req, res) => {
   if (existing.linked_to && req.body.kind !== existing.kind) {
     throw new HttpError(400, 'Jenis transaksi ini tidak bisa diubah karena terhubung ke utang, tagihan, atau wishlist');
   }
-  const [transaction] = await query(
-    `UPDATE transactions
-     SET kind = $1, amount = $2, account_id = $3, to_account_id = $4, category_id = $5, date = $6, note = $7, client = $8
-     WHERE id = $9 AND kind = ANY($10)
-     RETURNING *`,
-    [...validTransactionValues(req.body), req.params.id, EDITABLE_KINDS],
-  );
-  if (!transaction) throw new HttpError(404, 'Transaksi tidak ditemukan atau tidak bisa diedit');
+  const values = validTransactionValues(req.body);
+  const transaction = await withTransaction(async (client) => {
+    const { rows: [transaction] } = await client.query(
+      `UPDATE transactions
+       SET kind = $1, amount = $2, account_id = $3, to_account_id = $4, category_id = $5, date = $6, note = $7, client = $8
+       WHERE id = $9 AND kind = ANY($10)
+       RETURNING *`,
+      [...values, req.params.id, EDITABLE_KINDS],
+    );
+    if (!transaction) throw new HttpError(404, 'Transaksi tidak ditemukan atau tidak bisa diedit');
+    if (!existing.linked_to) await syncTransferFee(client, transaction, req.body.fee);
+    return transaction;
+  });
   // Pembayaran invoice (pemasukan berutang id) mengubah sisa invoice.
   if (existing.debt_id) await withTransaction((client) => afterDebtPayment(client, existing.debt_id));
   res.json(transaction);

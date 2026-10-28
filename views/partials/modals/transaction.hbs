@@ -42,13 +42,13 @@
     <div class="grid-2 tight">
       <div class="field">
         <label x-text="form.kind === 'transfer' ? 'Dari akun' : 'Akun'"></label>
-        <select x-model="form.account_id">
+        <select x-model="form.account_id" @change="suggestTransferFee()">
           <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name" :selected="a.id == form.account_id"></option></template>
         </select>
       </div>
       <div class="field" x-show="form.kind === 'transfer'">
         <label>Ke akun</label>
-        <select x-model="form.to_account_id">
+        <select x-model="form.to_account_id" @change="suggestTransferFee()">
           <option value="">Pilih akun</option>
           <template x-for="a in accounts.filter(a => a.id != form.account_id)" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
         </select>
@@ -57,6 +57,21 @@
         <label>Tanggal</label>
         <input type="date" x-model="form.date">
       </div>
+    </div>
+
+    <!-- Biaya admin transfer: dipotong dari akun pengirim, dicatat sebagai pengeluaran "Biaya admin" -->
+    <div class="field" x-show="form.kind === 'transfer'">
+      <label>Biaya admin</label>
+      <div class="chips">
+        <template x-for="fee in TRANSFER_FEES" :key="fee">
+          <button type="button" class="chip" :class="{ active: parseAmount(form.feeText) === fee }"
+                  @click="form.feeText = fee ? formatAmountInput(fee) : ''" x-text="fee ? rupiah(fee) : 'Gratis'"></button>
+        </template>
+      </div>
+      <input inputmode="numeric" placeholder="atau ketik sendiri" x-model="form.feeText" x-rupiah>
+      <p class="hint" x-show="parseAmount(form.feeText) > 0"
+         x-text="'Dipotong dari akun pengirim. Total keluar: ' + rupiah(parsedAmount + parseAmount(form.feeText))"></p>
+      <p class="hint" x-show="!(parseAmount(form.feeText) > 0)">Sesama bank biasanya gratis · BI-FAST maks. Rp2.500 · top up e-wallet ± Rp1.000</p>
     </div>
     <!-- Klien: hanya untuk pemasukan (misal proyek freelance yang sudah dibayar) -->
     <div class="field" x-show="form.kind === 'income'">

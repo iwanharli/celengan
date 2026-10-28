@@ -3,7 +3,30 @@
   <div class="stack">
     <h2>Sesuaikan saldo <span x-text="form.account.name"></span></h2>
     <p class="muted">Saldo di aplikasi: <strong x-text="rupiah(form.account.balance)"></strong></p>
-    {{> components/amount-field label="Saldo sebenarnya sekarang" autofocus=true hint="'Selisih ' + rupiah(parsedAmount - form.account.balance) + ' akan dicatat sebagai penyesuaian'"}}
+    {{> components/amount-field label="Saldo sebenarnya sekarang" autofocus=true hint="'Selisih ' + rupiah(parsedAmount - form.account.balance)"}}
+    <div class="field" x-show="parsedAmount !== form.account.balance">
+      <label>Catat selisihnya sebagai</label>
+      <div class="segmented">
+        <button type="button" :class="{ active: form.record_as === 'adjustment' }" @click="form.record_as = 'adjustment'">
+          <i class="ph-duotone ph-scales"></i> Koreksi saja
+        </button>
+        <button type="button" :class="{ active: form.record_as === 'flow' }" @click="form.record_as = 'flow'; form.category_id = ''">
+          <i class="ph-duotone" :class="parsedAmount > form.account.balance ? 'ph-arrow-down-left' : 'ph-arrow-up-right'"></i>
+          <span x-text="parsedAmount > form.account.balance ? 'Pemasukan' : 'Pengeluaran'"></span>
+        </button>
+      </div>
+      <p class="hint" x-show="form.record_as === 'adjustment'">Tidak dihitung pemasukan/pengeluaran. Cocok kalau hanya salah catat saldo.</p>
+    </div>
+    <div class="field" x-show="form.record_as === 'flow' && parsedAmount !== form.account.balance">
+      <label>Kategori</label>
+      <select x-model="form.category_id">
+        <option value="">Pilih kategori</option>
+        <template x-for="c in categoriesOf(parsedAmount > form.account.balance ? 'income' : 'expense')" :key="c.id">
+          <option :value="c.id" x-text="c.name"></option>
+        </template>
+      </select>
+      <p class="hint">Contoh: uang dompet berkurang karena jajan yang lupa dicatat → Pengeluaran, kategori Makan & Minum.</p>
+    </div>
     {{> components/form-actions submit="saveAdjust()"}}
   </div>
 </template>

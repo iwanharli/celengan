@@ -1,4 +1,4 @@
-import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/module.esm.js';
+import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/module.esm.js';
 import { combine } from './combine.js';
 import { registerCountUp } from './effects.js';
 import { registerAmountInput } from './amount-input.js';
@@ -20,11 +20,13 @@ import categories from './features/categories.js';
 import period from './features/period.js';
 import exporter from './features/export.js';
 import recipients from './features/recipients.js';
+import notifications from './features/notifications.js';
+import importer from './features/import.js';
 
 // Satu komponen Alpine untuk seluruh aplikasi, disusun dari modul per fitur di features/.
 // Tampilannya ada di views/ (layout, pages, modals, components).
 Alpine.data('app', () => combine(
-  core, auth, home, transactions, budget, bills, debts, assets, accounts, categories, wishlist, reports, period, exporter, settings, recipients,
+  core, auth, home, transactions, budget, bills, debts, assets, accounts, categories, wishlist, reports, period, exporter, settings, recipients, notifications, importer,
 ));
 
 registerCountUp(Alpine);

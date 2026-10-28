@@ -178,21 +178,25 @@ export default {
   openPayDebt(debt) {
     const next = this.installmentInfo(debt).next;
     const suggestion = next ? next.outstanding : Math.min(debt.installment ?? debt.remaining, debt.remaining);
-    this.open('payDebt', { debt, amountText: formatAmountInput(suggestion) });
+    this.open('payDebt', { debt, amountText: formatAmountInput(suggestion), withheldText: '' });
   },
 
-  payDebt() {
+  async payDebt() {
+    if (this.form.debt.direction === 'payable' && !(await this.confirmEnoughBalance(this.form.account_id, this.parsedAmount))) return;
     const paysOff = this.parsedAmount >= this.form.debt.remaining;
-    const tax = this.form.debt.type === 'invoice' ? this.taxShare(this.parsedAmount) : 0;
+    const withheld = this.form.debt.type === 'invoice' ? parseAmount(this.form.withheldText) || 0 : 0;
+    const tax = this.form.debt.type === 'invoice' ? this.taxShare(this.parsedAmount, null, withheld) : 0;
+    const paysOffWithTax = this.parsedAmount + withheld >= this.form.debt.remaining;
     const message = tax
       ? `Diterima! Sisihkan ${this.money(tax)} untuk pajak 🧾`
-      : paysOff ? 'Lunas! Hebat 🎉' : 'Pembayaran tercatat';
+      : paysOff || paysOffWithTax ? 'Lunas! Hebat 🎉' : 'Pembayaran tercatat';
     return this.submit(async () => {
       await api.post(`/debts/${this.form.debt.id}/pay`, {
         amount: this.requireAmount(),
         account_id: Number(this.form.account_id),
         date: this.form.date,
+        tax_withheld: withheld,
       });
-    }, message, paysOff ? 'big' : 'small');
+    }, message, paysOff || paysOffWithTax ? 'big' : 'small');
   },
 };

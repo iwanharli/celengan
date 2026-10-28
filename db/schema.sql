@@ -147,14 +147,19 @@ ALTER TABLE debts ADD COLUMN IF NOT EXISTS count_as_expense boolean NOT NULL DEF
 -- Tenor cicilan (3, 6, 12 bulan, ...). Ditambahkan sebelum view di bawah dibuat.
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS tenor int CHECK (tenor > 0);
 
+-- PPh 21 yang dipotong klien dari sebuah pemasukan. amount = uang yang diterima (neto);
+-- penghasilan bruto untuk pajak = amount + tax_withheld. Ditambahkan sebelum view di bawah dibuat.
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tax_withheld bigint NOT NULL DEFAULT 0 CHECK (tax_withheld >= 0);
+
 -- "paid" = pembayaran ke arah pelunasan (bukan pencairan awal).
+-- Invoice yang dipotong PPh 21 klien: potongannya ikut melunasi invoice.
 -- View di-DROP dulu karena Postgres membekukan daftar kolom d.* saat view dibuat.
 DROP VIEW IF EXISTS debt_status;
 CREATE VIEW debt_status AS
 SELECT s.*, s.total_amount - s.paid AS remaining
 FROM (
   SELECT d.*,
-         COALESCE(SUM(t.amount) FILTER (
+         COALESCE(SUM(t.amount + t.tax_withheld) FILTER (
            WHERE (d.direction = 'payable'    AND t.kind IN ('debt_out', 'expense'))
               OR (d.direction = 'receivable' AND t.kind IN ('debt_in', 'income'))
          ), 0)::bigint AS paid
@@ -448,6 +453,41 @@ END $$;
 -- ---------- Migrasi: utang tanpa uang masuk → pembayarannya dihitung pengeluaran ----------
 -- Dijalankan sekali (ditandai di settings). Pembayaran yang sudah ada dikonversi ke 'expense'.
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS migrated_debt_expense boolean NOT NULL DEFAULT false;
+
+-- Salinan backup ke folder kedua (misal iCloud Drive / Google Drive), supaya backup tidak hanya
+-- ada di komputer yang sama dengan database. Status salinan terakhir ikut disimpan.
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS backup_mirror_dir text;
+
+-- Metode pajak freelancer (lihat public/js/tax-calc.js): flat (persentase tetap, cara lama),
+-- final (PPh Final 0,5% dengan Rp500 juta bebas), nppn (norma × bruto − PTKP, tarif progresif).
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS tax_method text NOT NULL DEFAULT 'flat'
+  CHECK (tax_method IN ('flat', 'final', 'nppn'));
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS tax_norma numeric(5, 2) CHECK (tax_norma > 0 AND tax_norma <= 100);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS tax_ptkp text NOT NULL DEFAULT 'TK/0';
+
+-- Pengingat tagihan lewat notifikasi browser (Web Push). Kunci VAPID dibuat otomatis sekali.
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS vapid_public text;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS vapid_private text;
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id         serial PRIMARY KEY,
+  endpoint   text NOT NULL UNIQUE,
+  keys       jsonb NOT NULL,
+  device     text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+-- Pengingat yang sudah dikirim, supaya satu tagihan tidak diingatkan dua kali untuk jatuh tempo yang sama.
+CREATE TABLE IF NOT EXISTS bill_reminders (
+  bill_id  int NOT NULL REFERENCES bills ON DELETE CASCADE,
+  due_date date NOT NULL,
+  kind     text NOT NULL CHECK (kind IN ('tomorrow', 'today')),
+  sent_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (bill_id, due_date, kind)
+);
+
+-- Target dana darurat: berapa bulan kebutuhan yang ingin selalu tersedia (ideal 6–12).
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS emergency_months int NOT NULL DEFAULT 6 CHECK (emergency_months BETWEEN 1 AND 24);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS backup_mirror_at timestamptz;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS backup_mirror_error text;
 DO $$
 DECLARE
   debt_category int;

@@ -14,6 +14,8 @@ import backup from './routes/backup.js';
 import tax from './routes/tax.js';
 import templates from './routes/templates.js';
 import recipients from './routes/recipients.js';
+import notifications from './routes/notifications.js';
+import importRoutes from './routes/import.js';
 import reports from './routes/reports.js';
 import attachments from './routes/attachments.js';
 import auth, { requireLogin } from './routes/auth.js';
@@ -48,6 +50,8 @@ export function createApp() {
   app.use('/api/tax', tax);
   app.use('/api/templates', templates);
   app.use('/api/recipients', recipients);
+  app.use('/api/notifications', notifications);
+  app.use('/api/import', importRoutes);
   app.use('/api/reports', reports);
 
   // Express 5 otomatis meneruskan error dari handler async ke sini.

@@ -2,6 +2,8 @@
 <template x-if="modal === 'recipient'">
   <div class="stack">
     <h2 x-text="form.id ? 'Edit penerima' : 'Tambah penerima'"></h2>
+    <div class="modal-columns">
+    <div class="stack">
     <div class="field"><label>Nama</label><input autofocus placeholder="contoh: Ibu, Bapak, Rina" x-model="form.name"></div>
 
     <div class="field">
@@ -26,6 +28,10 @@
       </div>
     </div>
 
+    <div class="field"><label>Catatan (opsional)</label><input placeholder="contoh: kiriman bulanan tiap tanggal 1" x-model="form.note"></div>
+    </div>
+
+    <div class="stack">
     <template x-if="form.method !== 'cash'">
       <div class="stack">
         <div class="field">
@@ -63,8 +69,9 @@
       </select>
       <p class="hint">Otomatis terpilih setiap kali mengirim ke penerima ini.</p>
     </div>
-    <div class="field"><label>Catatan (opsional)</label><input placeholder="contoh: kiriman bulanan tiap tanggal 1" x-model="form.note"></div>
     <label class="checkbox" x-show="!form.id"><input type="checkbox" x-model="form.is_favorite"> <span>Jadikan favorit ⭐</span></label>
+    </div>
+    </div>
     {{> components/form-actions submit="saveRecipient()"}}
   </div>
 </template>

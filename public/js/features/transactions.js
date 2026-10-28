@@ -16,17 +16,20 @@ const HISTORY_FIELDS = {
   category_id: 'Kategori', note: 'Catatan', client: 'Klien',
 };
 
+// Kategori pemasukan yang berasal dari pekerjaan (punya klien, bisa dipotong PPh 21).
+const WORK_INCOME_CATEGORIES = ['Freelance', 'Komisi', 'Usaha / Jualan'];
+
 // Halaman Transaksi: daftar, filter, tambah & edit.
 export default {
-  filters: { kind: '', account_id: '', q: '' },
+  filters: { kind: '', account_id: '', q: '', recipient_id: '', bill_id: '' },
   clientNames: [],
 
   get hasFilters() {
-    return Boolean(this.filters.kind || this.filters.account_id || this.filters.q);
+    return Boolean(this.filters.kind || this.filters.account_id || this.filters.q || this.filters.recipient_id || this.filters.bill_id);
   },
 
   resetFilters() {
-    this.filters = { kind: '', account_id: '', q: '' };
+    this.filters = { kind: '', account_id: '', q: '', recipient_id: '', bill_id: '' };
     this.reload();
   },
 
@@ -97,6 +100,7 @@ export default {
       account_id: t.account_id,
       date: t.date,
       note: t.note ?? '',
+      withheldText: t.tax_withheld ? formatAmountInput(t.tax_withheld) : '', // pembayaran invoice
     });
   },
 
@@ -115,6 +119,7 @@ export default {
       if (!amount) throw new Error('Nominal belum diisi atau tidak valid');
       await api.put(`/transactions/${this.form.id}`, {
         amount, account_id: Number(this.form.account_id), date: this.form.date, note: this.form.note,
+        tax_withheld: this.form.transaction.kind === 'income' ? parseAmount(this.form.withheldText) || 0 : undefined,
       });
     }, 'Transaksi diperbarui');
   },
@@ -219,7 +224,7 @@ export default {
 
   openTransaction(kind = 'expense', values = {}) {
     this.open('transaction', {
-      kind, category_id: '', to_account_id: '', note: '', client: '', feeText: '', recipient_id: '', attachments: [], photos: [], ...values,
+      kind, category_id: '', to_account_id: '', note: '', client: '', feeText: '', recipient_id: '', withheldText: '', attachments: [], photos: [], ...values,
     });
     this.loadClientNames();
   },
@@ -228,6 +233,24 @@ export default {
   openPaidProject() {
     const freelance = this.categoriesOf('income').find((category) => category.name === 'Freelance');
     this.openTransaction('income', { category_id: freelance?.id ?? '', paidProject: true });
+  },
+
+  // Klien & potongan PPh 21 hanya untuk pemasukan dari pekerjaan: kategori kena pajak (Pengaturan → Pajak)
+  // atau kategori kerja (Freelance, Komisi, Usaha). Tetap tampil kalau sudah terisi (saat edit).
+  get incomeFromWork() {
+    if (this.form.kind !== 'income' || !this.form.category_id) return false;
+    const id = Number(this.form.category_id);
+    if (this.summary?.tax?.categoryIds?.includes(id) || this.settingsForm.tax_category_ids?.includes(id)) return true;
+    const name = this.categoriesOf('income').find((c) => c.id === id)?.name;
+    return WORK_INCOME_CATEGORIES.includes(name);
+  },
+
+  get showClientField() {
+    return this.form.kind === 'income' && (this.incomeFromWork || Boolean(this.form.client));
+  },
+
+  get showWithheldField() {
+    return this.form.kind === 'income' && this.isFreelance && (this.incomeFromWork || parseAmount(this.form.withheldText) > 0);
   },
 
   // Transfer baru: isi biaya admin dengan biaya terakhir untuk pasangan akun yang sama.
@@ -257,6 +280,7 @@ export default {
       client: t.client ?? '',
       feeText: t.fee ? formatAmountInput(t.fee) : '',
       recipient_id: t.recipient_id ?? '',
+      withheldText: t.tax_withheld ? formatAmountInput(t.tax_withheld) : '',
       linked_to: t.linked_to, // jenisnya dikunci bila terhubung ke utang/tagihan/wishlist
       attachments: t.attachments.map((photo) => ({ ...photo, removed: false })), // foto yang sudah ada
       photos: [], // foto baru yang belum diunggah
@@ -264,8 +288,15 @@ export default {
     this.loadClientNames();
   },
 
-  saveTransaction() {
+  async saveTransaction() {
     const isNew = !this.form.id;
+    if (this.form.kind !== 'income' && this.parsedAmount > 0) {
+      const fee = parseAmount(this.form.feeText) || 0;
+      // Saat edit dari akun yang sama, nominal lama dikembalikan dulu.
+      const old = this.form.id ? this.transactions.find((t) => t.id === this.form.id) : null;
+      const refund = old && old.kind !== 'income' && old.account_id === Number(this.form.account_id) ? old.amount + (old.fee ?? 0) : 0;
+      if (!(await this.confirmEnoughBalance(this.form.account_id, this.parsedAmount + fee, refund))) return;
+    }
     return this.submit(async () => {
       const { attachments, photos, ...fields } = this.form;
       const body = {
@@ -275,6 +306,7 @@ export default {
         to_account_id: Number(this.form.to_account_id) || null,
         category_id: Number(this.form.category_id) || null,
         recipient_id: this.form.kind === 'expense' ? Number(this.form.recipient_id) || null : null,
+        tax_withheld: this.form.kind === 'income' ? parseAmount(this.form.withheldText) || 0 : 0,
         fee: this.form.kind === 'transfer' || (this.form.kind === 'expense' && this.form.recipient_id)
           ? parseAmount(this.form.feeText) || 0 : 0,
       };
@@ -344,7 +376,8 @@ export default {
 
   transactionSavedMessage(isNew) {
     if (!isNew) return 'Transaksi diperbarui';
-    const tax = this.form.kind === 'income' ? this.taxShare(this.parsedAmount, this.form.category_id) : 0;
+    const tax = this.form.kind === 'income'
+      ? this.taxShare(this.parsedAmount, this.form.category_id, parseAmount(this.form.withheldText) || 0) : 0;
     return tax ? `Tersimpan! Sisihkan ${this.money(tax)} untuk pajak 🧾` : 'Transaksi tersimpan';
   },
 };

@@ -63,7 +63,8 @@ export default {
     this.open('payBill', { bill, amountText: formatAmountInput(bill.amount), account_id: bill.account_id ?? this.defaultAccountId });
   },
 
-  payBill() {
+  async payBill() {
+    if (!(await this.confirmEnoughBalance(this.form.account_id, this.parsedAmount))) return;
     return this.submit(async () => {
       await api.post(`/bills/${this.form.bill.id}/pay`, {
         amount: this.requireAmount(),

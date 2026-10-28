@@ -128,12 +128,16 @@ export default {
   },
 
   openAdjust(account) {
-    this.open('adjust', { account, amountText: formatAmountInput(account.balance) });
+    this.open('adjust', { account, amountText: formatAmountInput(account.balance), record_as: 'adjustment', category_id: '' });
   },
 
   saveAdjust() {
     return this.submit(async () => {
-      await api.post(`/accounts/${this.form.account.id}/adjust`, { actual_balance: parseSignedAmount(this.form.amountText) });
+      await api.post(`/accounts/${this.form.account.id}/adjust`, {
+        actual_balance: parseSignedAmount(this.form.amountText),
+        record_as: this.form.record_as,
+        category_id: Number(this.form.category_id) || null,
+      });
     }, 'Saldo disesuaikan');
   },
 };

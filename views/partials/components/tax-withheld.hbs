@@ -1,0 +1,9 @@
+{{!-- Isian PPh 21 yang dipotong klien (pemasukan freelance / pembayaran invoice).
+     Nominal di atasnya = uang yang DITERIMA; bruto = diterima + potongan. --}}
+<div class="field withheld-field" x-show="{{show}}">
+  <label>Dipotong PPh 21 oleh klien <span class="muted">(opsional)</span></label>
+  <input inputmode="numeric" placeholder="contoh: 250rb" x-model="form.withheldText" x-rupiah>
+  <p class="hint" x-show="parseAmount(form.withheldText) > 0"
+     x-text="'Bruto ' + rupiah(parsedAmount + parseAmount(form.withheldText)) + ' · potongan ini mengurangi dana pajak yang perlu kamu sisihkan'"></p>
+  <p class="hint" x-show="!(parseAmount(form.withheldText) > 0)">Isi kalau klien (perusahaan) memotong PPh 21 dari pembayaranmu — lihat bukti potongnya.</p>
+</div>

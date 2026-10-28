@@ -54,43 +54,79 @@
     </div>
   </template>
 
-  <div class="grid-3">
-    <div class="card stat">
-      <i class="ph-fill ph-arrow-circle-down tone-positive"></i>
-      <div><p class="label">Pemasukan</p><p class="stat-value" x-countup="summary.income"></p></div>
-    </div>
-    <div class="card stat">
-      <i class="ph-fill ph-arrow-circle-up tone-negative"></i>
-      <div><p class="label">Pengeluaran</p><p class="stat-value" x-countup="summary.expense"></p></div>
-    </div>
-    <div class="card stat" x-show="!isFreelance">
-      <i class="ph-fill ph-shield-check tone-info"></i>
-      <div>
-        <p class="label">Aman dipakai sampai gajian</p>
-        <p class="stat-value" :class="summary.safeToSpend < 0 && 'tone-negative'" x-countup="summary.safeToSpend"></p>
-        <p class="hint" x-show="summary.billsDue > 0 || summary.goalBalance > 0"
-           x-text="'Sudah dikurangi ' + [summary.billsDue > 0 ? 'tagihan ' + money(summary.billsDue) : null, summary.goalBalance > 0 ? 'tabungan impian ' + money(summary.goalBalance) : null].filter(Boolean).join(' & ')"></p>
+  <!-- Kartu angka: nilai + perbandingan periode lalu + grafik mini 6 bulan -->
+  <div class="grid-3 kpi-row">
+    <template x-for="key in ['income', 'expense']" :key="key">
+      <div class="card kpi" :class="'kpi-' + key">
+        <div class="kpi-head">
+          <span class="kpi-icon"><i class="ph-bold" :class="key === 'income' ? 'ph-arrow-down-left' : 'ph-arrow-up-right'"></i></span>
+          <span class="label" x-text="key === 'income' ? 'Pemasukan' : 'Pengeluaran'"></span>
+          <span class="kpi-change" x-show="kpiChange(key)" :class="'tone-' + kpiChange(key)?.tone">
+            <i class="ph-bold" :class="kpiChange(key)?.up ? 'ph-trend-up' : 'ph-trend-down'"></i>
+            <span x-text="kpiChange(key)?.text"></span>
+          </span>
+        </div>
+        <p class="stat-value" x-countup="summary[key]"></p>
+        <div class="kpi-spark" :title="'6 bulan terakhir'">
+          <template x-for="bar in sparkBars(key)" :key="bar.month">
+            <div class="kpi-spark-col" :title="bar.label + ': ' + money(bar.value)">
+              <span :class="{ current: bar.current }" :style="{ height: bar.height + '%' }"></span>
+              <small x-text="bar.label"></small>
+            </div>
+          </template>
+        </div>
       </div>
-    </div>
-    <div class="card stat" x-show="isFreelance && !runway">
-      <img class="stat-emoji" :src="emojiUrl('1f6df')" alt="">
-      <div>
-        <p class="label">Dana cukup untuk</p>
-        <p class="stat-value tone-muted">Belum terhitung</p>
-        <p class="hint">Muncul setelah ada pengeluaran atau tagihan tercatat.</p>
+    </template>
+
+    <div class="card kpi" x-show="!isFreelance">
+      <div class="kpi-head">
+        <span class="kpi-icon kpi-icon-info"><i class="ph-bold ph-shield-check"></i></span>
+        <span class="label">Aman dipakai sampai gajian</span>
       </div>
+      <p class="stat-value" :class="summary.safeToSpend < 0 && 'tone-negative'" x-countup="summary.safeToSpend"></p>
+      <p class="hint" x-show="summary.billsDue > 0 || summary.goalBalance > 0"
+         x-text="'Sudah dikurangi ' + [summary.billsDue > 0 ? 'tagihan ' + money(summary.billsDue) : null, summary.goalBalance > 0 ? 'tabungan impian ' + money(summary.goalBalance) : null].filter(Boolean).join(' & ')"></p>
     </div>
-    <div class="card stat" x-show="isFreelance && runway">
-      <img class="stat-emoji" src="https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/1f6df.webp" alt="">
-      <div>
-        <p class="label">Dana cukup untuk</p>
-        <p class="stat-value" :class="runway?.tone === 'danger' && 'tone-negative'" x-text="'±' + runway?.text"></p>
-        <p class="hint">
-          <span class="badge" :class="'badge-' + runway?.tone" x-text="runway?.label"></span>
-          Kebutuhan <span x-text="money(summary.savings.monthlyNeed)"></span>/bulan · ideal 6–12 bulan
-        </p>
+
+    <div class="card kpi" x-show="isFreelance">
+      <div class="kpi-head">
+        <img class="kpi-emoji" :src="emojiUrl('1f6df')" alt="">
+        <span class="label">Dana cukup untuk</span>
+        <span class="badge" x-show="runway" :class="'badge-' + runway?.tone" x-text="runway?.label"></span>
       </div>
+      <p class="stat-value" :class="{ 'tone-negative': runway?.tone === 'danger', 'tone-muted': !runway }" x-text="runway ? '±' + runway.text : 'Belum terhitung'"></p>
+      <template x-if="runway">
+        <div class="runway-meter">
+          <div class="runway-track">
+            <span :class="'runway-' + runway.tone" :style="{ width: Math.min(100, runway.months / runwayScale * 100) + '%' }"></span>
+            <i class="runway-target" :style="{ left: (emergencyTarget / runwayScale * 100) + '%' }"></i>
+          </div>
+          <div class="runway-scale">
+            <small>0</small>
+            <small class="target" :style="{ left: (emergencyTarget / runwayScale * 100) + '%' }" x-text="'🎯 ' + emergencyTarget + ' bln'"></small>
+            <small class="end" x-text="runwayScale + ' bln'"></small>
+          </div>
+          <p class="hint" x-text="emergencyText"></p>
+        </div>
+      </template>
+      <p class="hint" x-show="!runway">Muncul setelah ada pengeluaran atau tagihan tercatat.</p>
     </div>
+  </div>
+
+  <!-- Wawasan otomatis: kalimat pendek dari data periode ini (server/insights.js) -->
+  <div class="card insights" x-show="summary.insights?.length">
+    <div class="card-header">
+      <h2><i class="ph-duotone ph-lightbulb-filament tone-info"></i> Wawasan</h2>
+    </div>
+    <ul class="insight-list">
+      <template x-for="(insight, index) in summary.insights" :key="index">
+        <li class="insight" :class="'insight-' + insight.tone" @click="insight.page && goTo(insight.page)" :role="insight.page ? 'button' : null">
+          <span class="insight-icon"><i class="ph-duotone" :class="'ph-' + insight.icon"></i></span>
+          <span class="grow" x-text="hideAmounts ? insight.text.replace(/Rp [\d.]+/g, 'Rp ●●●') : insight.text"></span>
+          <i class="ph ph-caret-right muted" x-show="insight.page"></i>
+        </li>
+      </template>
+    </ul>
   </div>
 
   <!-- Peringatan anggaran (periode berjalan) -->
@@ -159,20 +195,26 @@
           <img class="stat-emoji" :src="emojiUrl('1f9fe')" alt="">
           <div>
             <h2>Dana pajak <span x-text="summary.tax.year"></span></h2>
-            <p class="muted" x-text="summary.tax.rate.toString().replace('.', ',') + '% dari pemasukan kena pajak'"></p>
+            <p class="muted" x-text="taxMethodText"></p>
           </div>
         </div>
-        <button class="button small primary" @click="openTaxPay()"><i class="ph-duotone ph-bank"></i> Bayar pajak</button>
+        <div class="row-actions">
+          <a class="button small" :href="'/api/tax/report?format=pdf&year=' + summary.tax.year" download title="Bahan lapor SPT Tahunan">
+            <i class="ph-duotone ph-file-pdf"></i> Ringkasan SPT
+          </a>
+          <button class="button small primary" @click="openTaxPay()"><i class="ph-duotone ph-bank"></i> Bayar pajak</button>
+        </div>
       </div>
       <div class="grid-4 tax-numbers">
         <div><span class="muted">Sisihkan bulan ini</span><strong x-text="money(summary.tax.periodReserve)"></strong></div>
         <div><span class="muted">Total harus disisihkan</span><strong x-text="money(summary.tax.owed)"></strong></div>
-        <div><span class="muted">Sudah dibayar</span><strong class="tone-positive" x-text="money(summary.tax.paid)"></strong></div>
+        <div><span class="muted">Sudah dibayar</span><strong class="tone-positive" x-text="money(summary.tax.paid + summary.tax.withheld)"></strong>
+          <small class="muted" x-show="summary.tax.withheld" x-text="'termasuk dipotong klien ' + money(summary.tax.withheld)"></small></div>
         <div><span class="muted">Sisa dana pajak</span><strong :class="summary.tax.outstanding > 0 && 'tone-negative'" x-text="money(summary.tax.outstanding)"></strong></div>
       </div>
-      <div class="progress"><div class="bar-ok" :style="{ width: (summary.tax.owed ? Math.min(100, summary.tax.paid / summary.tax.owed * 100) : 0) + '%' }"></div></div>
+      <div class="progress"><div class="bar-ok" :style="{ width: (summary.tax.owed ? Math.min(100, (summary.tax.paid + summary.tax.withheld) / summary.tax.owed * 100) : 0) + '%' }"></div></div>
       <p class="hint">
-        Dari pemasukan kena pajak <span x-text="money(summary.tax.taxableIncome)"></span> tahun ini.
+        Dari penghasilan bruto kena pajak <span x-text="money(summary.tax.taxableIncome)"></span> tahun ini<span x-show="summary.tax.method === 'final'"> (Rp500 juta pertama bebas pajak)</span>.
         Sisa dana pajak <strong>tidak dihitung</strong> sebagai uang yang bisa dipakai.
       </p>
     </div>

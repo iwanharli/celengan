@@ -15,6 +15,15 @@
       <option value="">Semua akun</option>
       <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
     </select>
+    <select x-model="filters.recipient_id" @change="filters.bill_id = ''; reload()" x-show="recipients.length">
+      <option value="">Semua penerima</option>
+      <template x-for="r in recipients" :key="r.id"><option :value="r.id" x-text="r.name"></option></template>
+    </select>
+    <select x-model="filters.bill_id" @change="filters.recipient_id = ''; reload()" x-show="bills.length || endedBills.length">
+      <option value="">Semua tagihan</option>
+      <template x-for="b in [...bills.filter((b) => !b.debt_id), ...endedBills]" :key="b.id"><option :value="b.id" x-text="b.name + (b.active === false ? ' (berhenti)' : '')"></option></template>
+    </select>
+    <button class="button" @click="openImport()" title="Import mutasi rekening dari CSV / Excel"><i class="ph-duotone ph-file-arrow-up"></i> Import</button>
     <button class="button" @click="openDeletedTransactions()" title="Transaksi yang baru dihapus"><i class="ph-duotone ph-trash-simple"></i> Baru dihapus</button>
     <button class="button primary" @click="openTransaction()"><i class="ph-duotone ph-plus"></i> Tambah</button>
   </div>

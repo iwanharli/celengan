@@ -27,34 +27,58 @@
     <template x-if="bills.length === 0">
       {{> components/empty-state emoji="1f4c5" title="Belum ada tagihan rutin" text="Netflix, listrik, internet, kos, asuransi… catat sekali, nanti diingatkan setiap periode." action="openBill()" actionLabel="Tambah tagihan"}}
     </template>
-    <ul class="list">
-      <template x-for="bill in bills" :key="bill.id">
-        <li class="row bill-row">
-          <span class="avatar" :style="{ background: bill.category_color ?? '#8b5cf6' }">
-            <i class="ph-duotone" :class="bill.debt_id ? 'ph-hand-coins' : 'ph-' + (bill.category_icon ?? 'receipt')"></i>
-          </span>
-          <div class="row-main">
-            <strong x-text="bill.name"></strong>
-            <span class="muted">
-              <span x-text="FREQUENCIES[bill.frequency] + (bill.account_name ? ' · ' + bill.account_name : '')"></span>
-              <span class="badge badge-info auto-pay-badge" x-show="bill.auto_pay"><i class="ph-duotone ph-lightning"></i> Potong otomatis</span>
-            </span>
-          </div>
-          <span class="badge" :class="'badge-' + billStatus(bill).tone" x-text="billStatus(bill).text"></span>
-          <strong class="amount" x-text="money(bill.amount)"></strong>
-          <div class="row-actions">
-            <button class="button small positive" @click="openPayBill(bill)"><i class="ph-duotone ph-check"></i> Bayar</button>
-            <button class="button small" @click="skipBill(bill)">Lewati</button>
-            <button class="icon-button subtle" title="Riwayat" @click="openBillHistory(bill)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
-            <button class="icon-button subtle" title="Edit" @click="openBill(bill)"><i class="ph-duotone ph-pencil-simple"></i></button>
-            <button class="icon-button subtle" title="Berhenti langganan" :class="{ invisible: bill.debt_id }"
-              @click="stopBill(bill)">
-              <i class="ph-duotone ph-pause-circle"></i>
-            </button>
-          </div>
-        </li>
-      </template>
-    </ul>
+    <!-- Dikelompokkan: Telat · Bulan ini · bulan-bulan berikutnya -->
+    <template x-for="group in billGroups" :key="group.key">
+      <div class="bill-group">
+        <div class="bill-group-head" :class="'tone-' + group.tone">
+          <span x-text="group.label"></span>
+          <small class="muted" x-text="group.items.length + ' tagihan · ' + money(group.items.reduce((sum, bill) => sum + bill.amount, 0))"></small>
+        </div>
+        <ul class="list">
+          <template x-for="bill in group.items" :key="bill.id">
+            <li class="bill-item" :class="['due-' + billStatus(bill).tone, bill.debt_id && 'is-installment']">
+              <div class="due-tile" :title="formatDate(bill.next_due)">
+                <strong x-text="Number(bill.next_due.slice(8, 10))"></strong>
+                <small x-text="monthShort(bill.next_due)"></small>
+              </div>
+              <div class="row-main">
+                <strong class="bill-name" x-text="bill.name" :title="bill.name"></strong>
+                <span class="bill-meta">
+                  <span class="avatar tiny" :style="{ background: bill.category_color ?? '#8b5cf6' }">
+                    <i class="ph-duotone" :class="bill.debt_id ? 'ph-hand-coins' : 'ph-' + (bill.category_icon ?? 'receipt')"></i>
+                  </span>
+                  <span class="installment-chip" x-show="bill.debt_id"><i class="ph-fill ph-hand-coins"></i> Cicilan utang</span>
+                  <span x-show="!bill.debt_id" x-text="FREQUENCIES[bill.frequency]"></span>
+                  <span class="auto-pay-chip" x-show="bill.auto_pay && billNeedsPayment(bill)" :title="'Dipotong otomatis dari ' + (bill.account_name ?? 'akunnya') + ' saat jatuh tempo'">
+                    <i class="ph-fill ph-lightning"></i> Otomatis · <span x-text="bill.account_name"></span>
+                  </span>
+                  <span x-show="!bill.auto_pay && bill.account_name" x-text="'· dari ' + bill.account_name"></span>
+                </span>
+              </div>
+              <div class="bill-when">
+                <strong x-text="money(bill.amount)"></strong>
+                <span class="due-text" x-text="billStatus(bill).relative"></span>
+              </div>
+              <!-- Kolom status selebar tetap: tombol Bayar ATAU label otomatis -->
+              <div class="bill-status">
+                <button class="button small positive" x-show="billNeedsPayment(bill)" @click="openPayBill(bill)"><i class="ph-bold ph-check"></i> Bayar</button>
+                <span class="auto-pay-note" x-show="!billNeedsPayment(bill)" :title="'Dipotong otomatis dari ' + bill.account_name + ' saat jatuh tempo'">
+                  <i class="ph-fill ph-lightning"></i> Otomatis · <span x-text="bill.account_name"></span>
+                </span>
+              </div>
+              <!-- Ikon selalu 5 slot (yang tidak berlaku disembunyikan, tetap makan tempat) supaya kolomnya sejajar -->
+              <div class="bill-actions">
+                <button class="icon-button subtle" :class="{ invisible: billNeedsPayment(bill) }" title="Bayar sekarang (lebih awal / dari akun lain)" @click="openPayBill(bill)"><i class="ph-duotone ph-hand-coins"></i></button>
+                <button class="icon-button subtle" title="Lewati periode ini" @click="skipBill(bill)"><i class="ph-duotone ph-skip-forward"></i></button>
+                <button class="icon-button subtle" title="Riwayat" @click="openBillHistory(bill)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
+                <button class="icon-button subtle" title="Edit" @click="openBill(bill)"><i class="ph-duotone ph-pencil-simple"></i></button>
+                <button class="icon-button subtle" title="Berhenti langganan" :class="{ invisible: bill.debt_id }" @click="stopBill(bill)"><i class="ph-duotone ph-pause-circle"></i></button>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </template>
   </div>
 
   <!-- ========== Berhenti ========== -->

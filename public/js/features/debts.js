@@ -4,8 +4,52 @@ import { parseAmount, formatDate, formatMonthYear, daysUntil, addMonths, todayIS
 
 // Halaman Utang: utang, piutang, invoice klien, dan jadwal cicilan.
 export default {
+  debtTab: 'active', // 'active' | 'settled' (lunas)
+  debtDirection: 'payable', // sub-menu: 'payable' (utang saya) | 'receivable' (piutang)
+
+  goToDebtTab(direction) {
+    this.debtDirection = direction;
+    history.replaceState(null, '', direction === 'payable' ? '#debts' : '#debts/piutang');
+  },
+
   debtsBy(direction) {
-    return this.debts.filter((debt) => debt.direction === direction);
+    return this.debts.filter((debt) => debt.direction === direction && (this.debtTab === 'settled' ? debt.remaining <= 0 : debt.remaining > 0));
+  },
+
+  // Sub-kelompok di halaman Utang (hanya yang ada isinya).
+  debtSections(direction) {
+    const sections = direction === 'payable'
+      ? [
+        { key: 'personal', label: 'Pribadi', icon: 'user', types: ['personal'] },
+        { key: 'lender', label: 'Pinjol, paylater & kartu kredit', icon: 'bank', types: ['loan', 'paylater', 'credit_card'] },
+      ]
+      : [
+        { key: 'personal', label: 'Pribadi', icon: 'user', types: ['personal', 'loan', 'paylater', 'credit_card'] },
+        { key: 'invoice', label: 'Invoice klien', icon: 'receipt', types: ['invoice'] },
+      ];
+    const debts = this.debtsBy(direction);
+    return sections
+      .map((section) => ({ ...section, items: debts.filter((debt) => section.types.includes(debt.type)) }))
+      .filter((section) => section.items.length);
+  },
+
+  get settledDebtCount() {
+    return this.debts.filter((debt) => debt.remaining <= 0).length;
+  },
+
+  async openDebtHistory(debt) {
+    this.open('debtHistory', { debt, history: null });
+    this.form.history = await api.get(`/debts/${debt.id}/history`);
+  },
+
+  debtEventStyle(event, debt) {
+    const borrowing = debt.direction === 'payable';
+    switch (event.type) {
+      case 'disbursed': return { icon: 'arrow-down-left', tone: 'info', label: borrowing ? 'Uang pinjaman diterima' : 'Uang dipinjamkan' };
+      case 'created': return { icon: 'note-pencil', tone: 'neutral', label: debt.type === 'invoice' ? 'Invoice dicatat' : borrowing ? 'Utang dicatat' : 'Piutang dicatat' };
+      case 'settled': return { icon: 'seal-check', tone: 'positive', label: 'Lunas 🎉' };
+      default: return { icon: 'check', tone: 'positive', label: borrowing ? 'Dibayar' : 'Diterima' };
+    }
   },
 
   debtPercent(debt) {

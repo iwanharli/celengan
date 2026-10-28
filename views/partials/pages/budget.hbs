@@ -17,7 +17,7 @@
   </div>
   <p class="intro">Atur batas per kategori dalam rupiah atau persen pemasukan. Bar berubah kuning di 80% dan merah saat terlampaui.</p>
   <div class="grid-2">
-    <template x-for="category in summary.categories.filter((c) => !c.archived || c.spent > 0 || c.monthly_budget)" :key="category.id">
+    <template x-for="category in budgetCategories" :key="category.id">
       <div class="card budget">
         <div class="row">
           <span class="avatar" :style="{ background: category.color }"><i class="ph-duotone" :class="'ph-' + category.icon"></i></span>

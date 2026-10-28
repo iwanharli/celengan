@@ -5,6 +5,12 @@ const parsePercent = (text) => Number(String(text ?? '').replace(',', '.').repla
 
 // Halaman Anggaran: batas pengeluaran bulanan per kategori — nominal tetap atau % dari pemasukan.
 export default {
+  // Kartu anggaran: kategori aktif (atau yang masih dipakai), urutan dari ringkasan; "Lainnya" selalu paling bawah.
+  get budgetCategories() {
+    const shown = (this.summary?.categories ?? []).filter((c) => !c.archived || c.spent > 0 || c.monthly_budget);
+    return [...shown.filter((c) => c.name !== 'Lainnya'), ...shown.filter((c) => c.name === 'Lainnya')];
+  },
+
   budgetSuggestions: null,
 
   budgetPercent(category) {

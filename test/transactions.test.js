@@ -128,3 +128,20 @@ test('pengeluaran biasa (bayar ke rekening lain) bisa punya biaya admin', async 
   assert.equal(fee.note, 'Biaya admin: Bayar toko online');
   assert.equal((await app.api.get('/transactions?month=2026-10')).find((t) => t.id === expense.id).fee, 2500);
 });
+
+test('filter transaksi: kategori, rentang nominal, foto, dan urutan', async () => {
+  const acc = await app.api.post('/accounts', { name: 'Filter Acc', type: 'bank', initial_balance: 1000000 });
+  const cats = await app.api.get('/categories');
+  const food = cats.find((c) => c.name === 'Makan & Minum').id;
+  const shop = cats.find((c) => c.name === 'Belanja').id;
+  for (const [amount, category] of [[15000, food], [80000, food], [250000, shop]]) {
+    await app.api.post('/transactions', { kind: 'expense', amount, account_id: acc.id, category_id: category, date: '2026-07-05' });
+  }
+  const list = (query) => app.api.get(`/transactions?start=2026-07-01&end=2026-07-31&account_id=${acc.id}&${query}`);
+  assert.deepEqual((await list(`category_id=${food}`)).map((t) => t.amount).sort((a, b) => a - b), [15000, 80000]);
+  assert.deepEqual((await list('min=50000&max=100000')).map((t) => t.amount), [80000]);
+  assert.deepEqual((await list('sort=largest')).map((t) => t.amount), [250000, 80000, 15000]);
+  assert.deepEqual((await list('sort=smallest')).map((t) => t.amount), [15000, 80000, 250000]);
+  assert.equal((await list('photos=yes')).length, 0);
+  assert.equal((await list('photos=no')).length, 3);
+});

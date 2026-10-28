@@ -13,21 +13,26 @@
 
     <p class="muted" x-show="!form.history">Memuat riwayat…</p>
 
-    <template x-if="form.history">
-      <div class="stack">
-        <div class="grid-2 tight bill-stats">
-          <div class="bill-stat"><small>Dibayar tahun ini</small><strong x-text="money(form.history.stats.yearTotal)"></strong></div>
-          <div class="bill-stat"><small>Rata-rata per bayar</small><strong x-text="money(form.history.stats.average)"></strong></div>
-          <div class="bill-stat"><small>Total semua</small>
-            <strong x-text="money(form.history.stats.total)"></strong>
-            <span class="hint" x-text="form.history.stats.count + '× bayar' + (form.history.stats.skipped ? ' · ' + form.history.stats.skipped + '× dilewati' : '')"></span></div>
-          <div class="bill-stat" x-show="form.history.stats.count > 1"><small>Terendah – tertinggi</small>
-            <strong x-text="moneyShort(form.history.stats.min) + ' – ' + moneyShort(form.history.stats.max)"></strong></div>
+    <template x-if="form.history && form.history.events.length === 0">
+      <div class="bill-history-empty">
+        <img :src="emojiUrl('1f4dc')" alt="">
+        <div>
+          <strong>Belum ada riwayat</strong>
+          <p class="muted">Pembayaran (manual maupun potong otomatis) dan periode yang dilewati akan tercatat di sini.</p>
         </div>
+      </div>
+    </template>
 
-        <template x-if="form.history.events.length === 0">
-          {{> components/empty-state emoji="1f4dc" title="Belum ada riwayat" text="Pembayaran dan periode yang dilewati akan tercatat di sini."}}
-        </template>
+    <template x-if="form.history && form.history.events.length">
+      <div class="stack">
+        <div class="bill-stats">
+          <div class="bill-stat"><small>Dibayar tahun ini</small><strong x-text="money(form.history.stats.yearTotal)"></strong></div>
+          <div class="bill-stat"><small>Rata-rata per bayar</small><strong x-text="money(form.history.stats.average)"></strong>
+            <span class="hint" x-show="form.history.stats.count > 1 && form.history.stats.min !== form.history.stats.max"
+                  x-text="moneyShort(form.history.stats.min) + ' – ' + moneyShort(form.history.stats.max)"></span></div>
+          <div class="bill-stat"><small>Total semua</small><strong x-text="money(form.history.stats.total)"></strong>
+            <span class="hint" x-text="form.history.stats.count + '× bayar' + (form.history.stats.skipped ? ' · ' + form.history.stats.skipped + '× dilewati' : '')"></span></div>
+        </div>
 
         <ol class="timeline">
           <template x-for="event in form.history.events" :key="event.type + event.id">

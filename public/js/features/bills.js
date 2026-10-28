@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { formatDate, daysUntil, formatAmountInput } from '../format.js';
+import { formatDate, daysUntil, formatAmountInput, todayISO } from '../format.js';
 
 const addDays = (iso, days) => {
   const date = new Date(`${iso}T00:00:00`);
@@ -12,13 +12,47 @@ const PER_MONTH = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 };
 // Halaman Tagihan: tagihan rutin, bayar, lewati, tambah & edit.
 export default {
   billTab: 'active',
+  // Label tanggal tagihan: merah = sudah lewat jatuh tempo, oranye = jatuh tempo bulan ini
+  // (atau ≤ 7 hari lagi walau sudah masuk bulan depan), selain itu netral.
+  // text = label singkat (dipakai di Beranda), relative = selalu waktu relatif (halaman Tagihan).
   billStatus(bill) {
-    if (bill.auto_pay_blocked) return { text: 'Saldo kurang, belum terpotong', tone: 'danger' };
     const days = daysUntil(bill.next_due);
-    if (days < 0) return { text: `Telat ${-days} hari`, tone: 'danger' };
-    if (days === 0) return { text: 'Hari ini', tone: 'danger' };
-    if (days <= 3) return { text: `${days} hari lagi`, tone: 'warning' };
-    return { text: formatDate(bill.next_due), tone: 'neutral' };
+    const relative = days < 0 ? `Telat ${-days} hari` : days === 0 ? 'Hari ini' : days === 1 ? 'Besok' : `${days} hari lagi`;
+    if (bill.auto_pay_blocked) return { text: 'Saldo kurang, belum terpotong', relative: 'Saldo kurang, belum terpotong', tone: 'danger' };
+    if (days < 0) return { text: relative, relative, tone: 'danger' };
+    if (days <= 3) return { text: relative, relative, tone: 'warning' };
+    const thisMonth = bill.next_due.slice(0, 7) === todayISO().slice(0, 7);
+    return { text: formatDate(bill.next_due), relative, tone: thisMonth || days <= 7 ? 'warning' : 'neutral' };
+  },
+
+  // Tombol Bayar hanya untuk tagihan yang perlu dibayar sendiri: tanpa potong otomatis, atau potong otomatis
+  // yang tertahan (saldo kurang / sudah lewat jatuh tempo).
+  billNeedsPayment(bill) {
+    return !bill.auto_pay || !bill.account_id || bill.auto_pay_blocked || daysUntil(bill.next_due) < 0;
+  },
+
+  // "2026-11-09" → "Nov"
+  monthShort(iso) {
+    return new Date(`${iso}T00:00:00`).toLocaleDateString('id-ID', { month: 'short' }).replace('.', '');
+  },
+
+  // Halaman Tagihan: Telat · Bulan ini · lalu per bulan berikutnya (urut jatuh tempo).
+  get billGroups() {
+    const today = todayISO();
+    const groups = new Map();
+    for (const bill of [...this.bills].sort((a, b) => a.next_due.localeCompare(b.next_due))) {
+      const late = bill.next_due < today || bill.auto_pay_blocked;
+      const month = bill.next_due.slice(0, 7);
+      const key = late ? 'late' : month === today.slice(0, 7) ? 'now' : month;
+      if (!groups.has(key)) {
+        const label = key === 'late' ? 'Telat / belum terbayar' : key === 'now' ? 'Bulan ini'
+          : new Date(`${month}-01T00:00:00`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        groups.set(key, { key, label, tone: key === 'late' ? 'negative' : key === 'now' ? 'warning' : 'muted', items: [] });
+      }
+      groups.get(key).items.push(bill);
+    }
+    const order = (key) => (key === 'late' ? '0' : key === 'now' ? '1' : key);
+    return [...groups.values()].sort((a, b) => order(a.key).localeCompare(order(b.key)));
   },
 
   get monthlyBillsTotal() {

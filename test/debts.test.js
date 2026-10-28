@@ -113,3 +113,21 @@ test('utang dengan uang masuk (pinjol cair) bawaannya bukan pengeluaran', async 
   const kredivo = (await app.api.get('/debts')).find((d) => d.counterparty === 'Kredivo');
   assert.equal(kredivo.count_as_expense, false);
 });
+
+test('riwayat utang: dicatat/diterima, pembayaran dengan sisa, lalu lunas', async () => {
+  const account = await app.api.post('/accounts', { name: 'Riwayat Acc', type: 'bank', initial_balance: 2000000 });
+  const debt = await app.api.post('/debts', {
+    direction: 'payable', type: 'loan', counterparty: 'Indodana', principal: 1000000, total_amount: 1305000,
+    tenor: 3, first_due: '2026-09-25', account_id: account.id,
+  });
+  await app.api.post(`/debts/${debt.id}/pay`, { amount: 435000, account_id: account.id, date: '2026-09-05' });
+  let history = await app.api.get(`/debts/${debt.id}/history`);
+  assert.deepEqual(history.events.map((e) => e.type), ['payment', 'disbursed']);
+  assert.equal(history.events[0].remaining_after, 870000);
+  assert.equal(history.debt.remaining, 870000);
+
+  await app.api.post(`/debts/${debt.id}/pay`, { amount: 870000, account_id: account.id, date: '2026-10-28' });
+  history = await app.api.get(`/debts/${debt.id}/history`);
+  assert.deepEqual(history.events.map((e) => e.type), ['settled', 'payment', 'payment', 'disbursed']);
+  assert.equal(history.events[0].date, '2026-10-28');
+});

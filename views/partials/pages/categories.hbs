@@ -19,36 +19,40 @@
     <button class="button primary" @click="openCategory()"><i class="ph-duotone ph-plus"></i> Kategori baru</button>
   </div>
 
-  <p class="intro">
-    Urutan mengikuti yang paling sering dipakai 3 bulan terakhir — urutan yang sama dipakai di form transaksi.
-  </p>
+  <p class="intro">Urutan mengikuti yang paling sering dipakai 3 bulan terakhir — sama seperti di form transaksi.</p>
 
-  <div class="card">
-    <template x-if="categoryList.length === 0">
+  <template x-if="categoryList.length === 0">
+    <div class="card">
       {{> components/empty-state emoji="1f3f7-fe0f" title="Belum ada kategori" text="Tambahkan kategori supaya transaksi mudah dikelompokkan." action="openCategory()" actionLabel="Kategori baru"}}
-    </template>
-    <ul class="list category-list">
-      <template x-for="category in categoryList" :key="category.id">
-        <li class="row" :class="{ archived: category.archived }">
+    </div>
+  </template>
+
+  <div class="category-grid">
+    <template x-for="category in categoryList" :key="category.id">
+      <div class="category-card" :class="{ archived: category.archived }" :style="{ '--cat': category.color }">
+        <div class="category-card-head">
           <span class="avatar" :style="{ background: category.color }"><i class="ph-duotone" :class="'ph-' + category.icon"></i></span>
           <div class="row-main">
-            <div class="alert-title">
-              <strong x-text="category.name"></strong>
-              <span class="badge" x-show="category.archived"><i class="ph-duotone ph-archive"></i> Diarsipkan</span>
-              <span class="badge badge-info" x-show="category.monthly_budget" x-text="'Anggaran ' + money(category.monthly_budget)"></span>
-              <span class="badge" x-show="category.bill_count" x-text="category.bill_count + ' tagihan'"></span>
-            </div>
-            <span class="muted" x-text="categoryUsageText(category)"></span>
+            <strong x-text="category.name"></strong>
+            <small class="muted" x-text="category.usage_count ? category.usage_count + ' transaksi · ' + money(category.usage_total) : 'Belum pernah dipakai'"></small>
           </div>
-          <div class="row-actions">
+        </div>
+        <div class="category-foot">
+          <div class="category-tags">
+          <span class="category-tag" x-show="category.monthly_budget"><i class="ph-duotone ph-chart-pie-slice"></i> <span x-text="moneyShort(category.monthly_budget) + '/bln'"></span></span>
+          <span class="category-tag" x-show="category.bill_count"><i class="ph-duotone ph-calendar-dots"></i> <span x-text="category.bill_count + ' tagihan'"></span></span>
+          <span class="category-tag" x-show="category.archived"><i class="ph-duotone ph-archive"></i> Diarsipkan</span>
+          <span class="category-tag muted-tag" x-show="category.last_used && !category.archived" x-text="'Terakhir ' + formatDate(category.last_used)"></span>
+          </div>
+          <div class="category-card-actions">
             <button class="icon-button subtle" title="Edit" @click="openCategory(category)"><i class="ph-duotone ph-pencil-simple"></i></button>
             <button class="icon-button subtle" :title="category.archived ? 'Aktifkan lagi' : 'Arsipkan'" @click="toggleArchive(category)">
               <i class="ph-duotone" :class="category.archived ? 'ph-arrow-counter-clockwise' : 'ph-archive'"></i>
             </button>
             <button class="icon-button subtle" title="Hapus / gabungkan" @click="openCategoryDelete(category)"><i class="ph-duotone ph-trash"></i></button>
           </div>
-        </li>
-      </template>
-    </ul>
+        </div>
+      </div>
+    </template>
   </div>
 </section>

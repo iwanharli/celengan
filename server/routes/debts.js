@@ -144,6 +144,39 @@ router.get('/', async (req, res) => {
   res.json(debts.map((debt) => ({ ...debt, installments: schedules[debt.id] })));
 });
 
+// Riwayat satu utang/piutang: dicatat / uang diterima-diberikan, setiap pembayaran (tanggal, nominal, akun),
+// lalu "Lunas" kalau sisanya sudah 0. Terbaru di atas.
+router.get('/:id/history', async (req, res) => {
+  const [debt] = await query('SELECT * FROM debt_status WHERE id = $1', [req.params.id]);
+  if (!debt) throw new HttpError(404, 'Utang tidak ditemukan');
+  const rows = await query(
+    `SELECT t.id, t.kind, t.amount, t.tax_withheld, t.date, t.note, a.name AS account_name
+     FROM transactions t JOIN accounts a ON a.id = t.account_id
+     WHERE t.debt_id = $1 ORDER BY t.date, t.id`,
+    [debt.id],
+  );
+  const disbursementKind = debt.direction === 'payable' ? 'debt_in' : 'debt_out';
+  const events = [];
+  const disbursement = rows.find((row) => row.kind === disbursementKind);
+  events.push(disbursement
+    ? { id: `d${disbursement.id}`, type: 'disbursed', date: disbursement.date, amount: disbursement.amount, account_name: disbursement.account_name }
+    : { id: 'created', type: 'created', date: new Date(debt.created_at).toLocaleDateString('sv-SE'), amount: debt.principal });
+  let paid = 0;
+  for (const row of rows.filter((r) => r.kind !== disbursementKind)) {
+    paid += row.amount + row.tax_withheld;
+    events.push({
+      id: `p${row.id}`, type: 'payment', date: row.date, amount: row.amount, withheld: row.tax_withheld,
+      account_name: row.account_name, note: row.note, remaining_after: Math.max(0, debt.total_amount - paid),
+    });
+  }
+  const payments = events.filter((event) => event.type === 'payment');
+  if (debt.remaining <= 0 && payments.length) events.push({ id: 'settled', type: 'settled', date: payments.at(-1).date });
+  res.json({
+    debt: { id: debt.id, total: debt.total_amount, principal: debt.principal, paid: debt.paid, remaining: Math.max(0, debt.remaining) },
+    events: events.reverse(),
+  });
+});
+
 // Mencatat utang/piutang baru.
 // - account_id (opsional): uang benar-benar masuk/keluar dari akun -> transaksi debt_in/debt_out
 // - tenor + first_due (opsional): dibuatkan jadwal cicilan; untuk utang juga tagihan bulanan

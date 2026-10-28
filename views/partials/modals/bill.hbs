@@ -25,6 +25,13 @@
       </div>
       {{> components/account-select label="Dibayar dari"}}
     </div>
+    <div class="expense-toggle" x-show="form.account_id">
+      <label class="checkbox">
+        <input type="checkbox" x-model="form.auto_pay">
+        <span><strong>Potong otomatis saat jatuh tempo</strong>
+          <small class="muted">Saldo akun langsung dipotong di tanggal jatuh tempo, seperti autodebet. Kalau saldonya tidak cukup, tagihan ditandai "saldo kurang" dan dipotong begitu saldonya cukup.</small></span>
+      </label>
+    </div>
     {{> components/form-actions submit="saveBill()"}}
   </div>
 </template>

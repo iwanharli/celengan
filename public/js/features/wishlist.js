@@ -116,8 +116,39 @@ export default {
     this.form.amountText = formatAmountInput(this.wishPartsSummary.total);
   },
 
+  saveWish() {
+    const isNew = !this.form.id;
+    return this.submit(async () => {
+      if (!this.form.name?.trim()) throw new Error('Nama wajib diisi');
+      const parts = this.form.showParts
+        ? this.form.parts
+          .filter((part) => part.name.trim())
+          .map((part) => ({ id: part.id, name: part.name, amount: parseAmount(part.amountText), note: part.note }))
+        : [];
+      // Target boleh kosong kalau ada rincian: pakai total rincian.
+      const partsTotal = parts.reduce((sum, part) => sum + part.amount, 0);
+      if (!this.parsedAmount && partsTotal) this.form.amountText = formatAmountInput(partsTotal);
+      const body = {
+        name: this.form.name,
+        kind: this.form.kind,
+        parts,
+        price: this.requireAmount(),
+        priority: this.form.priority,
+        emoji: this.form.emoji,
+        link: this.form.link,
+        note: this.form.note,
+        target_date: this.form.target_date || null,
+      };
+      if (isNew) await api.post('/wishlist', body);
+      else await api.put(`/wishlist/${this.form.id}`, body);
+    }, isNew ? 'Masuk wishlist ✨' : 'Wishlist diperbarui');
+  },
+
   openWishSave(item) {
-    this.open('wishSave', { item, direction: 'add', amountText: '' });
+    // Bawaan: akun utama, kalau tidak ada pakai akun biasa dengan saldo terbesar.
+    const regular = this.regularAccounts;
+    const source = regular.find((a) => a.is_primary) ?? [...regular].sort((a, b) => b.balance - a.balance)[0];
+    this.open('wishSave', { item, direction: 'add', amountText: '', account_id: source?.id ?? '' });
   },
 
   saveWishSave() {
@@ -126,7 +157,7 @@ export default {
     const reachesGoal = isAdd && this.form.item.saved + amount >= this.form.item.price;
     return this.submit(async () => {
       this.requireAmount();
-      await api.post(`/wishlist/${this.form.item.id}/save`, { amount: isAdd ? amount : -amount });
+      await api.post(`/wishlist/${this.form.item.id}/save`, { amount: isAdd ? amount : -amount, account_id: Number(this.form.account_id) });
     }, reachesGoal ? 'Dana sudah cukup! 🎉' : isAdd ? 'Uang disisihkan' : 'Uang diambil kembali', reachesGoal ? 'small' : null);
   },
 

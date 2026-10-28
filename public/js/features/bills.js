@@ -12,6 +12,7 @@ const PER_MONTH = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 };
 // Halaman Tagihan: tagihan rutin, bayar, lewati, tambah & edit.
 export default {
   billStatus(bill) {
+    if (bill.auto_pay_blocked) return { text: 'Saldo kurang, belum terpotong', tone: 'danger' };
     const days = daysUntil(bill.next_due);
     if (days < 0) return { text: `Telat ${-days} hari`, tone: 'danger' };
     if (days === 0) return { text: 'Hari ini', tone: 'danger' };
@@ -35,8 +36,9 @@ export default {
         date: bill.next_due,
         category_id: bill.category_id ?? '',
         account_id: bill.account_id ?? '',
+        auto_pay: bill.auto_pay,
       }
-      : { frequency: 'monthly', category_id: this.categoriesOf('expense')[0]?.id });
+      : { frequency: 'monthly', category_id: this.categoriesOf('expense')[0]?.id, account_id: this.defaultAccountId, auto_pay: true });
   },
 
   saveBill() {
@@ -49,6 +51,7 @@ export default {
         next_due: this.form.date,
         category_id: Number(this.form.category_id) || null,
         account_id: Number(this.form.account_id) || null,
+        auto_pay: Boolean(this.form.auto_pay),
       };
       if (isNew) await api.post('/bills', body);
       else await api.put(`/bills/${this.form.id}`, body);
@@ -56,7 +59,7 @@ export default {
   },
 
   openPayBill(bill) {
-    this.open('payBill', { bill, amountText: formatAmountInput(bill.amount), account_id: bill.account_id ?? this.accounts[0]?.id });
+    this.open('payBill', { bill, amountText: formatAmountInput(bill.amount), account_id: bill.account_id ?? this.defaultAccountId });
   },
 
   payBill() {
@@ -79,12 +82,17 @@ export default {
     return target.toLocaleDateString('sv-SE');
   },
 
+  async openBillHistory(bill) {
+    this.open('billHistory', { bill, history: null });
+    this.form.history = await api.get(`/bills/${bill.id}/history`);
+  },
+
   skipBill(bill) {
     this.askConfirm({
       title: `Lewati ${bill.name} periode ini?`,
       emoji: '23ed-fe0f',
       tone: 'info',
-      message: 'Tagihan periode ini dianggap tidak perlu dibayar. Tidak ada transaksi yang dicatat.',
+      message: 'Tagihan periode ini dianggap tidak perlu dibayar. Tidak ada transaksi yang dicatat, tapi tetap tercatat di riwayat tagihan.',
       details: [
         { icon: 'calendar-x', text: `Jatuh tempo sekarang: ${formatDate(bill.next_due)}` },
         { icon: 'calendar-check', text: `Berikutnya: ${formatDate(this.nextDueAfter(bill))}` },

@@ -19,6 +19,7 @@ export const ACCOUNT_TYPES = {
   cash: { label: 'Tunai', icon: 'money' },
   bank: { label: 'Bank', icon: 'bank' },
   ewallet: { label: 'E-Wallet', icon: 'device-mobile' },
+  goal: { label: 'Tabungan impian', icon: 'gift' }, // dibuat otomatis untuk tiap wishlist
 };
 
 export const DEBT_TYPES = {

@@ -50,3 +50,35 @@ test('detail akun ikut masuk backup', async () => {
   assert.equal(backup.data.accounts[0].account_number, '9876543210');
   assert.equal(backup.data.accounts[0].provider, 'BCA');
 });
+
+test('akun utama: hanya satu, tampil paling atas, bisa dilepas', async () => {
+  const accounts = await app.api.get('/accounts');
+  const [first, second] = accounts;
+  await app.api.put(`/accounts/${second.id}/primary`, {});
+  await app.api.put(`/accounts/${first.id}/primary`, {});
+  let list = await app.api.get('/accounts');
+  assert.deepEqual(list.filter((a) => a.is_primary).map((a) => a.id), [first.id]);
+  assert.equal(list[0].id, first.id);
+  await app.api.put(`/accounts/${first.id}/primary`, { primary: false });
+  list = await app.api.get('/accounts');
+  assert.equal(list.filter((a) => a.is_primary).length, 0);
+});
+
+test('saldo awal bisa dicatat sebagai pemasukan', async () => {
+  const salary = (await app.api.get('/categories')).find((c) => c.name === 'Gaji');
+  const account = await app.api.post('/accounts', {
+    name: 'Jago', type: 'bank', initial_balance: 2500000, income: { category_id: salary.id, date: '2026-10-25' },
+  });
+  assert.equal(account.initial_balance, 0);
+  const listed = (await app.api.get('/accounts')).find((a) => a.id === account.id);
+  assert.equal(listed.balance, 2500000);
+  const summary = await app.api.get('/summary?month=2026-10');
+  assert.equal(summary.income, 2500000);
+  const [income] = await app.api.get('/transactions?month=2026-10&kind=income');
+  assert.equal(income.note, 'Saldo awal Jago');
+});
+
+test('tanpa pilihan itu, saldo awal tidak dihitung pemasukan', async () => {
+  await app.api.post('/accounts', { name: 'Seabank', type: 'bank', initial_balance: 1000000 });
+  assert.equal((await app.api.get('/summary?month=2026-10')).income, 2500000);
+});

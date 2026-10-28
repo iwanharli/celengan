@@ -1,10 +1,20 @@
 import { api } from '../api.js';
 import { TRANSACTION_STYLE, EDITABLE_KINDS } from '../constants.js';
-import { formatDate, formatAmountInput } from '../format.js';
+import { formatDate, formatAmountInput, parseAmount } from '../format.js';
 import { compressImage, formatFileSize } from '../photos.js';
 import { addToDropzone, removeFromDropzone } from '../photo-dropzone.js';
 
 const MAX_PHOTOS = 10;
+
+const KIND_LABELS = {
+  income: 'Pemasukan', expense: 'Pengeluaran', transfer: 'Transfer', adjustment: 'Penyesuaian',
+  debt_in: 'Utang masuk', debt_out: 'Utang keluar', asset_in: 'Jual aset', asset_out: 'Beli aset',
+};
+// Kolom yang ditampilkan di riwayat perubahan (kolom teknis seperti id tidak ditampilkan).
+const HISTORY_FIELDS = {
+  kind: 'Jenis', amount: 'Nominal', date: 'Tanggal', account_id: 'Akun', to_account_id: 'Ke akun',
+  category_id: 'Kategori', note: 'Catatan', client: 'Klien',
+};
 
 // Halaman Transaksi: daftar, filter, tambah & edit.
 export default {
@@ -67,6 +77,142 @@ export default {
       warning: effects.join(' ') || null,
       successMessage: 'Transaksi dihapus',
     }, () => api.delete(`/transactions/${t.id}`));
+  },
+
+  // ---------- Edit: pintu masuk untuk semua jenis transaksi ----------
+  // Pemasukan/pengeluaran/transfer → form lengkap. Utang/aset/penyesuaian → form terbatas
+  // (nominal, akun, tanggal, catatan) karena jenis & keterkaitannya tidak boleh berubah.
+  editTransaction(t) {
+    if (this.isEditable(t)) this.openEditTransaction(t);
+    else this.openLinkedEdit(t);
+  },
+
+  openLinkedEdit(t) {
+    this.open('transactionLinked', {
+      transaction: t,
+      id: t.id,
+      amountText: (t.amount < 0 ? '-' : '') + formatAmountInput(Math.abs(t.amount)),
+      account_id: t.account_id,
+      date: t.date,
+      note: t.note ?? '',
+    });
+  },
+
+  get linkedEditHint() {
+    const t = this.form.transaction;
+    if (!t) return '';
+    if (t.debt_id) return `Terhubung ke "${t.debt_name}": sisa utang & jadwal cicilan ikut menyesuaikan.`;
+    if (t.asset_id) return `Transaksi aset "${t.asset_name}": nilai aset ikut bergeser sebesar selisihnya.`;
+    return 'Penyesuaian saldo: boleh minus (contoh -50rb).';
+  },
+
+  saveLinkedEdit() {
+    return this.submit(async () => {
+      const raw = String(this.form.amountText).trim();
+      const amount = raw.startsWith('-') ? -parseAmount(raw.slice(1)) : parseAmount(raw);
+      if (!amount) throw new Error('Nominal belum diisi atau tidak valid');
+      await api.put(`/transactions/${this.form.id}`, {
+        amount, account_id: Number(this.form.account_id), date: this.form.date, note: this.form.note,
+      });
+    }, 'Transaksi diperbarui');
+  },
+
+  // ---------- Riwayat perubahan ----------
+  async openTransactionHistory(t) {
+    this.open('transactionHistory', { transaction: t, history: null });
+    this.form.history = await api.get(`/transactions/${t.id}/history`);
+  },
+
+  async openDeletedTransactions() {
+    this.open('deletedTransactions', { items: null });
+    this.form.items = await api.get('/transactions/history/deleted');
+  },
+
+  // "Nominal: Rp 25.000 → Rp 30.000" untuk satu perubahan.
+  historyChangeText(field, [before, after]) {
+    const label = HISTORY_FIELDS[field] ?? field;
+    const show = (value) => {
+      if (value === null || value === undefined || value === '') return '—';
+      if (field === 'amount') return this.money(value);
+      if (field === 'date') return formatDate(value);
+      if (field === 'kind') return KIND_LABELS[value] ?? value;
+      if (field === 'account_id' || field === 'to_account_id') return this.accounts.find((a) => a.id === value)?.name ?? `#${value}`;
+      if (field === 'category_id') return this.categories.find((c) => c.id === value)?.name ?? `#${value}`;
+      return String(value);
+    };
+    return { label, before: show(before), after: show(after) };
+  },
+
+  historyChanges(entry) {
+    return Object.entries(entry.changes ?? {})
+      .filter(([field]) => HISTORY_FIELDS[field])
+      .map(([field, values]) => this.historyChangeText(field, values));
+  },
+
+  // ---------- Favorit ----------
+  templateLabel(template) {
+    return `${template.name} · ${this.money(template.amount)}`;
+  },
+
+  // Sekali klik: langsung tercatat hari ini, dengan tombol Batalkan di toast.
+  async useTemplate(template) {
+    try {
+      const created = await api.post(`/templates/${template.id}/use`, {});
+      this.showToast(`${template.name} tercatat`, {
+        label: 'Batalkan',
+        run: async () => {
+          await api.delete(`/transactions/${created.id}`);
+          this.showToast('Dibatalkan');
+          await this.reload();
+        },
+      });
+      await this.reload();
+    } catch (error) {
+      this.showToast(error.message);
+    }
+  },
+
+  // Di form: isi form dari favorit (belum tersimpan).
+  applyTemplate(template) {
+    Object.assign(this.form, {
+      kind: template.kind,
+      amountText: formatAmountInput(template.amount),
+      account_id: template.account_id,
+      to_account_id: template.to_account_id ?? '',
+      category_id: template.category_id ?? '',
+      note: template.note ?? '',
+    });
+  },
+
+  async saveAsTemplate() {
+    try {
+      const category = this.categories.find((c) => c.id === Number(this.form.category_id));
+      const name = this.form.note?.trim() || category?.name || (this.form.kind === 'transfer' ? 'Transfer' : 'Favorit');
+      await api.post('/templates', {
+        name,
+        kind: this.form.kind,
+        amount: this.requireAmount(),
+        account_id: Number(this.form.account_id),
+        to_account_id: Number(this.form.to_account_id) || null,
+        category_id: Number(this.form.category_id) || null,
+        note: this.form.note,
+      });
+      this.templates = await api.get('/templates');
+      this.showToast(`⭐ "${name}" disimpan sebagai favorit`);
+    } catch (error) {
+      this.formError = error.message;
+    }
+  },
+
+  deleteTemplate(template) {
+    this.askConfirm({
+      title: `Hapus favorit ${template.name}?`,
+      emoji: '2b50',
+      tone: 'info',
+      message: 'Hanya pintasannya yang dihapus — transaksi yang sudah dicatat tetap ada.',
+      confirmLabel: 'Hapus favorit',
+      successMessage: 'Favorit dihapus',
+    }, () => api.delete(`/templates/${template.id}`));
   },
 
   openTransaction(kind = 'expense', values = {}) {

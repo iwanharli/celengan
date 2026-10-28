@@ -28,7 +28,7 @@
     </div>
     <label class="checkbox" x-show="form.item.saved > 0">
       <input type="checkbox" x-model="form.use_saved">
-      <span>Ambil dari dana yang sudah disisihkan (<span x-text="rupiah(form.item.saved)"></span>)</span>
+      <span>Bayar dari tabungan impian (<span x-text="rupiah(form.item.saved)"></span>) — kekurangannya dari akun di atas</span>
     </label>
     <p class="hint">Dicatat sebagai pengeluaran. Progres impian tetap dihitung: yang disisihkan + yang sudah dibayar.</p>
     {{> components/form-actions submit="payWishPart()" label="Simpan pembayaran" variant="positive"}}

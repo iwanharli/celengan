@@ -27,14 +27,17 @@ export function drawCategoryChart(canvas, categories) {
       datasets: [{
         data: used.map((category) => category.spent),
         backgroundColor: used.map((category) => category.color),
-        borderWidth: 4,
+        // Satu kategori saja → tanpa celah, supaya cincinnya utuh.
+        borderWidth: used.length > 1 ? 3 : 0,
         borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim(),
-        borderRadius: 10,
-        hoverOffset: 12,
+        borderRadius: used.length > 1 ? 8 : 0,
+        spacing: used.length > 1 ? 2 : 0,
+        hoverOffset: 8,
       }],
     },
     options: {
-      cutout: '68%',
+      cutout: '74%',
+      layout: { padding: 8 },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: (item) => ` ${item.label}: ${rupiah(item.raw)}` } },
@@ -43,25 +46,55 @@ export function drawCategoryChart(canvas, categories) {
   });
 }
 
+// Isi batang dengan gradasi lembut dari atas ke bawah.
+const gradient = (top, bottom) => (context) => {
+  const { ctx, chartArea } = context.chart;
+  if (!chartArea) return top;
+  const fill = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  fill.addColorStop(0, top);
+  fill.addColorStop(1, bottom);
+  return fill;
+};
+
 export function drawTrendChart(canvas, trend) {
   draw(canvas, 'trend', {
-    type: 'bar',
     data: {
       labels: trend.map((row) => shortMonthLabel(row.month)),
       datasets: [
-        { label: 'Pemasukan', data: trend.map((row) => row.income), backgroundColor: '#6ee7b7', borderRadius: 12, borderSkipped: false },
-        { label: 'Pengeluaran', data: trend.map((row) => row.expense), backgroundColor: '#fda4af', borderRadius: 12, borderSkipped: false },
+        {
+          type: 'line', label: 'Selisih', data: trend.map((row) => row.income - row.expense),
+          borderColor: '#a78bfa', borderWidth: 2.5, borderDash: [6, 5], tension: .35,
+          pointRadius: 4, pointBackgroundColor: '#fff', pointBorderColor: '#a78bfa', pointBorderWidth: 2.5, order: 0,
+        },
+        {
+          type: 'bar', label: 'Pemasukan', data: trend.map((row) => row.income),
+          backgroundColor: gradient('#34d399', 'rgba(110, 231, 183, .35)'),
+          borderRadius: 10, borderSkipped: false, maxBarThickness: 26, categoryPercentage: .6, barPercentage: .85, order: 1,
+        },
+        {
+          type: 'bar', label: 'Pengeluaran', data: trend.map((row) => row.expense),
+          backgroundColor: gradient('#fb7185', 'rgba(253, 164, 175, .35)'),
+          borderRadius: 10, borderSkipped: false, maxBarThickness: 26, categoryPercentage: .6, barPercentage: .85, order: 1,
+        },
       ],
     },
     options: {
       maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       scales: {
-        x: { grid: { display: false }, ticks: { color: textColor() } },
-        y: { ticks: { color: textColor(), callback: rupiahShort }, grid: { color: 'rgba(128,128,128,.15)' } },
+        x: { grid: { display: false }, border: { display: false }, ticks: { color: textColor() } },
+        y: {
+          border: { display: false },
+          ticks: { color: textColor(), callback: rupiahShort, maxTicksLimit: 5, padding: 8 },
+          grid: { color: 'rgba(128,128,128,.12)', drawTicks: false },
+        },
       },
       plugins: {
-        legend: { position: 'bottom', labels: { color: textColor(), usePointStyle: true, padding: 20 } },
-        tooltip: { callbacks: { label: (item) => ` ${item.dataset.label}: ${rupiah(item.raw)}` } },
+        legend: { display: false },
+        tooltip: {
+          padding: 12, boxPadding: 6, usePointStyle: true,
+          callbacks: { label: (item) => ` ${item.dataset.label}: ${rupiah(item.raw)}` },
+        },
       },
     },
   });

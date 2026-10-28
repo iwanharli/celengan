@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { runAutoPay } from './bills.js';
 import { query } from '../db.js';
 import { periodFromQuery, periodRange, shiftMonth, getStartDay } from '../period.js';
 import { savingsEstimate } from '../savings.js';
@@ -19,6 +20,7 @@ async function incomeAndExpense({ start, end }) {
 }
 
 router.get('/', async (req, res) => {
+  await runAutoPay();
   const period = await periodFromQuery(req.query);
   const startDay = await getStartDay();
 
@@ -52,8 +54,10 @@ router.get('/', async (req, res) => {
       }))),
 
       query(
-        `SELECT b.*, c.icon AS category_icon, c.color AS category_color
+        `SELECT b.*, c.icon AS category_icon, c.color AS category_color,
+                (b.auto_pay AND b.next_due <= current_date AND ab.balance < b.amount) AS auto_pay_blocked
          FROM bills b LEFT JOIN categories c ON c.id = b.category_id
+         LEFT JOIN account_balances ab ON ab.id = b.account_id
          WHERE b.active AND b.next_due < current_date + 14
          ORDER BY b.next_due`,
       ),
@@ -106,7 +110,9 @@ router.get('/', async (req, res) => {
     tax = { ...(await taxStatus(year)), periodReserve: taxFor(thisPeriod.taxable_income, taxSettings.rate) };
   }
   // Dana pajak yang belum dibayar bukan uang yang bisa dipakai.
-  const spendableBalance = totalBalance - (tax?.outstanding ?? 0);
+  // Uang di akun tabungan impian (wishlist) & dana pajak bukan uang yang bisa dipakai.
+  const goalBalance = accounts.filter((account) => account.type === 'goal').reduce((sum, account) => sum + account.balance, 0);
+  const spendableBalance = totalBalance - goalBalance - (tax?.outstanding ?? 0);
 
   res.json({
     period,
@@ -125,7 +131,8 @@ router.get('/', async (req, res) => {
     upcomingBills,
     debts: debtTotals[0],
     billsDue: billsBeforePeriodEnd[0].total,
-    safeToSpend: totalBalance - billsBeforePeriodEnd[0].total,
+    safeToSpend: totalBalance - goalBalance - billsBeforePeriodEnd[0].total,
+    goalBalance,
     recent,
     savings,
     // Freelance: berapa bulan saldo bisa menutup kebutuhan bulanan tanpa pemasukan baru.

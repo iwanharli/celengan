@@ -27,7 +27,6 @@
       <input type="password" x-model="authForm.confirm" :required="!auth.hasOwner" autocomplete="new-password">
     </div>
 
-    <p class="form-error" x-show="authError" x-text="authError"></p>
     <button class="button primary block">
       <i class="ph-duotone" :class="auth.hasOwner ? 'ph-sign-in' : 'ph-lock-key'"></i>
       <span x-text="auth.hasOwner ? 'Masuk' : 'Buat password & mulai'"></span>

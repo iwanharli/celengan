@@ -3,7 +3,14 @@ import { query, withTransaction, required, HttpError } from '../db.js';
 
 // Wishlist & impian: barang, pernikahan, lamaran, liburan, rumah, dll. (kolom kind)
 // Target bisa dirinci (wishlist_parts), dan tiap rincian bisa dibayar bertahap.
-// Progres = uang disisihkan (amplop virtual) + yang sudah dibayar lewat rincian.
+// Progres = uang disisihkan + yang sudah dibayar lewat rincian.
+//
+// Setiap impian punya AKUN TABUNGAN sendiri (accounts.type = 'goal'):
+//   sisihkan       → transfer dari akun biasa ke akun impian (saldo akun asal berkurang)
+//   ambil kembali  → transfer balik
+//   beli / bayar rincian → dibayar dari akun impian (kekurangan ditambal dari akun yang dipilih)
+//   selesai / batal / hapus → sisa saldo akun impian dikembalikan ke akun utama
+// "saved" yang dikirim ke aplikasi = saldo akun impian.
 //
 // Status:
 //   wanted    → masih diinginkan, bisa disisihkan uangnya
@@ -13,6 +20,8 @@ import { query, withTransaction, required, HttpError } from '../db.js';
 
 const router = Router();
 
+const rupiah = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount).replace(/\s/g, ' ');
+
 const PRIORITY_ORDER = `CASE w.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`;
 
 async function logEvent(db, itemId, type, amount = null, note = null) {
@@ -20,6 +29,57 @@ async function logEvent(db, itemId, type, amount = null, note = null) {
     'INSERT INTO wishlist_events (item_id, type, amount, note) VALUES ($1, $2, $3, $4)',
     [itemId, type, amount, note],
   );
+}
+
+// ---------- Akun tabungan impian ----------
+
+async function balanceOf(client, accountId) {
+  if (!accountId) return 0;
+  const { rows: [row] } = await client.query('SELECT balance FROM account_balances WHERE id = $1', [accountId]);
+  return row?.balance ?? 0;
+}
+
+// Akun utama (atau akun biasa pertama) — tujuan pengembalian sisa & sumber bawaan.
+async function mainAccountId(client) {
+  const { rows: [row] } = await client.query(
+    `SELECT id FROM accounts WHERE type <> 'goal' ORDER BY is_primary DESC, id LIMIT 1`,
+  );
+  if (!row) throw new HttpError(400, 'Buat akun dulu (bank, e-wallet, atau tunai) sebelum menyisihkan uang');
+  return row.id;
+}
+
+async function ensureGoalAccount(client, item) {
+  if (item.account_id) return item.account_id;
+  const { rows: [account] } = await client.query(
+    `INSERT INTO accounts (name, type, initial_balance) VALUES ($1, 'goal', 0) RETURNING id`, [`🎁 ${item.name}`],
+  );
+  await client.query('UPDATE wishlist_items SET account_id = $1 WHERE id = $2', [account.id, item.id]);
+  item.account_id = account.id;
+  return account.id;
+}
+
+async function transfer(client, from, to, amount, note, date = null) {
+  await client.query(
+    `INSERT INTO transactions (kind, amount, account_id, to_account_id, date, note)
+     VALUES ('transfer', $1, $2, $3, COALESCE($4::date, current_date), $5)`,
+    [amount, from, to, date, note],
+  );
+}
+
+// Pindahkan sisa saldo akun impian ke akun utama. Mengembalikan jumlah yang dipindah.
+async function returnLeftover(client, item, note) {
+  const leftover = await balanceOf(client, item.account_id);
+  if (leftover > 0) await transfer(client, item.account_id, await mainAccountId(client), leftover, note);
+  return Math.max(0, leftover);
+}
+
+// Bayar dari akun impian: kalau saldonya kurang, kekurangannya ditransfer dulu dari akun lain.
+async function topUpGoal(client, item, amount, fromAccountId, date) {
+  const shortfall = amount - (await balanceOf(client, item.account_id));
+  if (shortfall > 0) {
+    await transfer(client, fromAccountId || (await mainAccountId(client)), item.account_id, shortfall,
+      `Kekurangan untuk ${item.name}`, date);
+  }
 }
 
 async function findItem(client, id, status) {
@@ -44,6 +104,7 @@ export async function revertWishlistPurchase(client, transactionId, note) {
 router.get('/', async (req, res) => {
   res.json(await query(
     `SELECT w.*, t.amount AS paid_amount, c.name AS category_name, a.name AS account_name,
+            gb.balance AS goal_balance, gb.name AS goal_account_name,
             COALESCE((
               SELECT json_agg(p ORDER BY p.position, p.id) FROM (
                 SELECT wp.*, COALESCE((SELECT SUM(pt.amount) FROM transactions pt
@@ -59,9 +120,11 @@ router.get('/', async (req, res) => {
      LEFT JOIN transactions t ON t.id = w.transaction_id
      LEFT JOIN categories c   ON c.id = t.category_id
      LEFT JOIN accounts a     ON a.id = t.account_id
+     LEFT JOIN account_balances gb ON gb.id = w.account_id
      ORDER BY ${PRIORITY_ORDER}, w.created_at`,
   ).then((items) => items.map((item) => ({
     ...item,
+    saved: item.account_id ? Math.max(0, item.goal_balance ?? 0) : item.saved,
     paid_total: item.parts.reduce((sum, part) => sum + part.paid, 0),
   }))));
 });
@@ -119,6 +182,7 @@ router.post('/', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       itemValues(req.body),
     );
+    await ensureGoalAccount(client, item);
     await saveParts(client, item.id, req.body.parts);
     await logEvent(client, item.id, 'created', item.price);
     return item;
@@ -135,6 +199,9 @@ router.put('/:id', async (req, res) => {
        WHERE id = $9 RETURNING *`,
       [...itemValues(req.body), before.id],
     );
+    if (item.account_id && before.name !== item.name) {
+      await client.query('UPDATE accounts SET name = $1 WHERE id = $2', [`🎁 ${item.name}`, item.account_id]);
+    }
     await saveParts(client, item.id, req.body.parts);
     const priceNote = before.price !== item.price ? 'Harga diubah' : null;
     await logEvent(client, item.id, 'edited', priceNote ? item.price : null, priceNote);
@@ -142,14 +209,26 @@ router.put('/:id', async (req, res) => {
   res.status(204).end();
 });
 
-// Menyisihkan (amount positif) atau mengambil kembali (amount negatif) uang untuk barang ini.
+// Menyisihkan (amount positif) = transfer dari account_id ke akun impian.
+// Mengambil kembali (amount negatif) = transfer dari akun impian ke account_id.
 router.post('/:id/save', async (req, res) => {
   required(req.body, ['amount']);
   const amount = Number(req.body.amount);
   await withTransaction(async (client) => {
     const item = await findItem(client, req.params.id, 'wanted');
-    if (item.saved + amount < 0) throw new HttpError(400, 'Jumlah yang diambil melebihi yang sudah disisihkan');
-    await client.query('UPDATE wishlist_items SET saved = saved + $1 WHERE id = $2', [amount, item.id]);
+    const goal = await ensureGoalAccount(client, item);
+    const other = Number(req.body.account_id) || (await mainAccountId(client));
+    if (amount < 0 && (await balanceOf(client, goal)) + amount < 0) {
+      throw new HttpError(400, 'Jumlah yang diambil melebihi yang sudah disisihkan');
+    }
+    if (amount > 0) {
+      const { rows: [source] } = await client.query('SELECT name, balance FROM account_balances WHERE id = $1', [other]);
+      if (!source || source.balance < amount) {
+        throw new HttpError(400, `Saldo ${source?.name ?? 'akun'} tidak cukup (${rupiah(source?.balance ?? 0)})`);
+      }
+    }
+    if (amount >= 0) await transfer(client, other, goal, amount, `Sisihkan untuk ${item.name}`);
+    else await transfer(client, goal, other, -amount, `Ambil dari tabungan ${item.name}`);
     await logEvent(client, item.id, amount >= 0 ? 'saved' : 'withdrawn', Math.abs(amount));
   });
   res.status(204).end();
@@ -160,11 +239,15 @@ router.post('/:id/buy', async (req, res) => {
   required(req.body, ['amount', 'account_id', 'category_id', 'date']);
   await withTransaction(async (client) => {
     const item = await findItem(client, req.params.id, 'wanted');
+    // Dibayar dari akun impian; kekurangan ditambal dari akun yang dipilih (bawaan: akun utama).
+    const goal = await ensureGoalAccount(client, item);
+    await topUpGoal(client, item, Number(req.body.amount), Number(req.body.account_id), req.body.date);
     const { rows: [transaction] } = await client.query(
       `INSERT INTO transactions (kind, amount, account_id, category_id, date, note)
        VALUES ('expense', $1, $2, $3, $4, $5) RETURNING id`,
-      [req.body.amount, req.body.account_id, req.body.category_id, req.body.date, `Wishlist: ${item.name}`],
+      [req.body.amount, goal, req.body.category_id, req.body.date, `Wishlist: ${item.name}`],
     );
+    await returnLeftover(client, item, `Sisa tabungan ${item.name}`);
     await client.query(
       `UPDATE wishlist_items SET status = 'bought', bought_at = $1, transaction_id = $2 WHERE id = $3`,
       [req.body.date, transaction.id, item.id],
@@ -175,8 +258,7 @@ router.post('/:id/buy', async (req, res) => {
 });
 
 // Bayar satu rincian (misal DP gedung): dicatat sebagai pengeluaran yang menunjuk ke rincian itu.
-// use_saved = true → uang diambil dari dana yang sudah disisihkan (amplop berkurang, progres tetap).
-const rupiah = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+// use_saved = true → dibayar dari akun impian (kekurangan ditambal dari account_id); false → langsung dari account_id.
 
 router.post('/:id/parts/:partId/pay', async (req, res) => {
   required(req.body, ['amount', 'account_id', 'category_id', 'date']);
@@ -188,13 +270,19 @@ router.post('/:id/parts/:partId/pay', async (req, res) => {
     );
     if (!part) throw new HttpError(404, 'Rincian tidak ditemukan');
 
+    let payFrom = Number(req.body.account_id);
+    let fromSaved = 0;
+    if (req.body.use_saved) {
+      const goal = await ensureGoalAccount(client, item);
+      fromSaved = Math.min(Math.max(0, await balanceOf(client, goal)), amount);
+      await topUpGoal(client, item, amount, payFrom, req.body.date);
+      payFrom = goal;
+    }
     await client.query(
       `INSERT INTO transactions (kind, amount, account_id, category_id, date, note, wish_part_id)
        VALUES ('expense', $1, $2, $3, $4, $5, $6)`,
-      [amount, req.body.account_id, req.body.category_id, req.body.date, `${item.name}: ${part.name}`, part.id],
+      [amount, payFrom, req.body.category_id, req.body.date, `${item.name}: ${part.name}`, part.id],
     );
-    const fromSaved = req.body.use_saved ? Math.min(item.saved, amount) : 0;
-    if (fromSaved) await client.query('UPDATE wishlist_items SET saved = saved - $1 WHERE id = $2', [fromSaved, item.id]);
     await logEvent(client, item.id, 'part_paid', amount,
       part.name + (fromSaved ? ` · ${rupiah(fromSaved)} dari dana disisihkan` : ''));
   });
@@ -209,6 +297,7 @@ router.post('/:id/complete', async (req, res) => {
       `UPDATE wishlist_items SET status = 'bought', bought_at = COALESCE($1::date, current_date) WHERE id = $2`,
       [req.body.date || null, item.id],
     );
+    await returnLeftover(client, item, `Sisa tabungan ${item.name}`);
     await logEvent(client, item.id, 'completed', null, req.body.note || null);
   });
   res.status(204).end();
@@ -235,12 +324,13 @@ router.post('/:id/unbuy', async (req, res) => {
 router.post('/:id/cancel', async (req, res) => {
   await withTransaction(async (client) => {
     const item = await findItem(client, req.params.id, 'wanted');
+    const returned = await returnLeftover(client, item, `Tidak jadi: ${item.name}`);
     await client.query(
       `UPDATE wishlist_items SET status = 'cancelled', cancelled_at = current_date, cancel_reason = $1, saved = 0
        WHERE id = $2`,
       [req.body.reason || null, item.id],
     );
-    await logEvent(client, item.id, 'cancelled', item.saved || null, req.body.reason || null);
+    await logEvent(client, item.id, 'cancelled', returned || null, req.body.reason || null);
   });
   res.status(204).end();
 });
@@ -258,8 +348,24 @@ router.post('/:id/restore', async (req, res) => {
   res.status(204).end();
 });
 
+// Hapus impian. Sisa tabungan dikembalikan; akun impian ikut dihapus kalau isinya hanya transfer
+// (menghapus transfer = uang kembali ke akun asalnya), kalau pernah dipakai bayar akunnya disimpan.
 router.delete('/:id', async (req, res) => {
-  await query('DELETE FROM wishlist_items WHERE id = $1', [req.params.id]);
+  await withTransaction(async (client) => {
+    const item = await findItem(client, req.params.id);
+    if (item.account_id) {
+      const { rows: [usage] } = await client.query(
+        `SELECT count(*) FILTER (WHERE kind <> 'transfer')::int AS spending FROM transactions
+         WHERE account_id = $1 OR to_account_id = $1`, [item.account_id],
+      );
+      if (usage.spending === 0) {
+        await client.query('DELETE FROM accounts WHERE id = $1', [item.account_id]);
+      } else {
+        await returnLeftover(client, item, `Wishlist dihapus: ${item.name}`);
+      }
+    }
+    await client.query('DELETE FROM wishlist_items WHERE id = $1', [item.id]);
+  });
   res.status(204).end();
 });
 

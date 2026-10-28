@@ -147,7 +147,6 @@
       </template>
     </ul>
     <p class="hint" x-show="hasTransactionsSelected" x-text="'Periode transaksi: ' + exportPeriodLabel"></p>
-    <p class="form-error" x-show="exportError" x-text="exportError"></p>
     <button class="button primary block" :disabled="!exportSettings.datasets.length || exportLoading" @click="downloadExport()">
       <i class="ph-duotone" :class="exportLoading ? 'ph-spinner' : 'ph-download-simple'"></i>
       <span x-text="exportLoading ? 'Menyiapkan file…' : exportSettings.format === 'xlsx' ? 'Unduh Excel' : exportSettings.format === 'pdf' ? 'Unduh PDF' : 'Unduh ' + exportSettings.datasets.length + ' file CSV'"></span>

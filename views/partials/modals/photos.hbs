@@ -32,7 +32,7 @@
     </div>
 
     <div class="form-actions">
-      <button type="button" class="button" @click="openEditTransaction(form.transaction)" x-show="isEditable(form.transaction)">
+      <button type="button" class="button" @click="editTransaction(form.transaction)">
         <i class="ph-duotone ph-pencil-simple"></i> Edit transaksi
       </button>
       <button type="button" class="button primary" @click="close()">Tutup</button>

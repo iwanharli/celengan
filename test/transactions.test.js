@@ -57,10 +57,12 @@ test('validasi: transfer ke akun yang sama & transaksi tanpa kategori ditolak', 
   assert.equal(noCategory.status, 400);
 });
 
-test('transaksi penyesuaian tidak bisa diedit dari halaman transaksi', async () => {
+test('transaksi penyesuaian: nominal & tanggal bisa diedit, jenisnya tetap', async () => {
   const [adjustment] = (await app.api.get('/transactions?month=' + new Date().toISOString().slice(0, 7))).filter((t) => t.kind === 'adjustment');
-  const { status } = await app.call('PUT', `/transactions/${adjustment.id}`, { kind: 'expense', amount: 1, account_id: cash.id, category_id: 1, date: '2026-10-05' });
-  assert.equal(status, 404);
+  await app.api.put(`/transactions/${adjustment.id}`, { kind: 'expense', amount: -10000, account_id: cash.id, date: adjustment.date });
+  const [edited] = (await app.api.get('/transactions?month=' + new Date().toISOString().slice(0, 7))).filter((t) => t.id === adjustment.id);
+  assert.equal(edited.kind, 'adjustment');
+  assert.equal(edited.amount, -10000);
 });
 
 test('jenis transaksi yang terhubung (invoice, tagihan, wishlist) tidak bisa diganti', async () => {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { query, required, HttpError } from '../db.js';
+import { query, withTransaction, required, HttpError } from '../db.js';
 
 const router = Router();
 
@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   res.json(await query(
     `SELECT ab.*, (SELECT count(*)::int FROM transactions t
                    WHERE t.account_id = ab.id OR t.to_account_id = ab.id) AS transaction_count
-     FROM account_balances ab ORDER BY ab.id`,
+     FROM account_balances ab ORDER BY ab.is_primary DESC, ab.id`,
   ));
 });
 
@@ -33,12 +33,31 @@ function accountValues(body) {
   ];
 }
 
+// income (opsional): { category_id, date } → saldo awal dicatat sebagai PEMASUKAN, bukan saldo awal.
+// Akun dibuat dengan saldo awal 0, lalu dibuatkan transaksi pemasukan sebesar nominalnya.
 router.post('/', async (req, res) => {
-  const [account] = await query(
-    `INSERT INTO accounts (name, type, initial_balance, provider, account_number, holder_name, note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    accountValues(req.body),
-  );
+  const values = accountValues(req.body);
+  const income = req.body.income;
+  const amount = Number(values[2]);
+  if (income && !(amount > 0)) throw new HttpError(400, 'Isi nominal saldo awal untuk dicatat sebagai pemasukan');
+  if (income && !income.category_id) throw new HttpError(400, 'Pilih kategori pemasukan');
+
+  const account = await withTransaction(async (client) => {
+    if (income) values[2] = 0;
+    const { rows: [account] } = await client.query(
+      `INSERT INTO accounts (name, type, initial_balance, provider, account_number, holder_name, note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      values,
+    );
+    if (income) {
+      await client.query(
+        `INSERT INTO transactions (kind, amount, account_id, category_id, date, note)
+         VALUES ('income', $1, $2, $3, COALESCE($4::date, current_date), $5)`,
+        [amount, account.id, income.category_id, income.date || null, `Saldo awal ${account.name}`],
+      );
+    }
+    return account;
+  });
   res.status(201).json(account);
 });
 
@@ -53,6 +72,17 @@ router.put('/:id', async (req, res) => {
   );
   if (!account) throw new HttpError(404, 'Akun tidak ditemukan');
   res.json(account);
+});
+
+// Jadikan akun utama (sekaligus melepas tanda dari akun lain). primary: false = lepas tanda.
+router.put('/:id/primary', async (req, res) => {
+  const primary = req.body.primary !== false;
+  await withTransaction(async (client) => {
+    if (primary) await client.query('UPDATE accounts SET is_primary = false WHERE is_primary');
+    const { rowCount } = await client.query('UPDATE accounts SET is_primary = $1 WHERE id = $2', [primary, req.params.id]);
+    if (!rowCount) throw new HttpError(404, 'Akun tidak ditemukan');
+  });
+  res.status(204).end();
 });
 
 router.delete('/:id', async (req, res) => {

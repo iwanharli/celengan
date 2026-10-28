@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction, required, HttpError } from '../db.js';
 import { revertWishlistPurchase } from './wishlist.js';
+import { afterDebtPayment } from './debts.js';
 import { periodFromQuery } from '../period.js';
 
 const router = Router();
@@ -106,9 +107,61 @@ const LINK_SQL = `CASE
   WHEN EXISTS (SELECT 1 FROM wishlist_items w WHERE w.transaction_id = t.id) THEN 'wish'
 END`;
 
+// ---------- Riwayat perubahan (dicatat trigger di database) ----------
+
+// Transaksi yang baru dihapus (30 terakhir), untuk melihat apa yang hilang.
+router.get('/history/deleted', async (req, res) => {
+  res.json(await query(
+    `SELECT h.id, h.transaction_id, h.snapshot, h.created_at,
+            a.name AS account_name, c.name AS category_name, c.icon AS category_icon, c.color AS category_color
+     FROM transaction_history h
+     LEFT JOIN accounts a   ON a.id = (h.snapshot ->> 'account_id')::int
+     LEFT JOIN categories c ON c.id = (h.snapshot ->> 'category_id')::int
+     WHERE h.action = 'deleted'
+     ORDER BY h.id DESC LIMIT 30`,
+  ));
+});
+
+router.get('/:id/history', async (req, res) => {
+  res.json(await query(
+    'SELECT id, action, changes, snapshot, created_at FROM transaction_history WHERE transaction_id = $1 ORDER BY id DESC',
+    [req.params.id],
+  ));
+});
+
+// Edit transaksi utang/aset/penyesuaian: jenis & keterkaitannya tetap, yang bisa diubah hanya
+// nominal, akun, tanggal & catatan. Sisa utang & nilai aset ikut menyesuaikan.
+async function updateLinkedTransaction(id, body) {
+  required(body, ['amount', 'account_id', 'date']);
+  const amount = Number(body.amount);
+  await withTransaction(async (client) => {
+    const { rows: [old] } = await client.query('SELECT * FROM transactions WHERE id = $1 FOR UPDATE', [id]);
+    if (old.kind === 'adjustment' ? amount === 0 : !(amount > 0)) throw new HttpError(400, 'Nominal tidak valid');
+    await client.query(
+      'UPDATE transactions SET amount = $1, account_id = $2, date = $3, note = $4 WHERE id = $5',
+      [amount, body.account_id, body.date, body.note || null, id],
+    );
+    // Beli aset menambah nilai aset, jual mengurangi: geser sebesar selisih nominalnya.
+    if (old.asset_id && amount !== old.amount) {
+      const delta = (amount - old.amount) * (old.kind === 'asset_out' ? 1 : -1);
+      await client.query(
+        'UPDATE assets SET current_value = GREATEST(current_value + $1, 0), updated_at = now() WHERE id = $2',
+        [delta, old.asset_id],
+      );
+    }
+    if (old.debt_id) await afterDebtPayment(client, old.debt_id);
+  });
+}
+
 router.put('/:id', async (req, res) => {
-  const [existing] = await query(`SELECT t.kind, ${LINK_SQL} AS linked_to FROM transactions t WHERE t.id = $1`, [req.params.id]);
+  const [existing] = await query(`SELECT t.kind, t.debt_id, ${LINK_SQL} AS linked_to FROM transactions t WHERE t.id = $1`, [req.params.id]);
   if (!existing) throw new HttpError(404, 'Transaksi tidak ditemukan');
+  // Form ringkas (tanpa jenis/kategori) untuk transaksi utang/aset/penyesuaian.
+  if (!EDITABLE_KINDS.includes(existing.kind) || (existing.debt_id && !req.body.kind)) {
+    await updateLinkedTransaction(req.params.id, req.body);
+    res.json((await query('SELECT * FROM transactions WHERE id = $1', [req.params.id]))[0]);
+    return;
+  }
   if (existing.linked_to && req.body.kind !== existing.kind) {
     throw new HttpError(400, 'Jenis transaksi ini tidak bisa diubah karena terhubung ke utang, tagihan, atau wishlist');
   }
@@ -120,6 +173,8 @@ router.put('/:id', async (req, res) => {
     [...validTransactionValues(req.body), req.params.id, EDITABLE_KINDS],
   );
   if (!transaction) throw new HttpError(404, 'Transaksi tidak ditemukan atau tidak bisa diedit');
+  // Pembayaran invoice (pemasukan berutang id) mengubah sisa invoice.
+  if (existing.debt_id) await withTransaction((client) => afterDebtPayment(client, existing.debt_id));
   res.json(transaction);
 });
 

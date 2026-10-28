@@ -47,22 +47,39 @@
       <template x-if="debtsBy(group.direction).length === 0 && group.direction === 'receivable'">
         <div class="card">{{> components/empty-state emoji="1f91d" title="Tidak ada piutang" text="Belum ada yang berutang ke kamu. Pinjaman ke teman atau invoice klien akan muncul di sini."}}</div>
       </template>
-      <div class="grid-2">
+      <div class="debt-grid">
         <template x-for="debt in debtsBy(group.direction)" :key="debt.id">
-          <div class="card debt" :class="debt.remaining <= 0 && 'settled'">
-            <div class="card-header">
-              <div>
-                <h3 x-text="debt.counterparty"></h3>
-                <span class="muted" x-text="DEBT_TYPES[debt.type] + (debt.note ? ' · ' + debt.note : '')"></span>
+          <div class="debt-card" :class="[debt.type === 'invoice' ? 'kind-invoice' : 'kind-' + debt.direction, debt.remaining <= 0 && 'settled']">
+            <!-- Kepala: inisial, nama, jenis, edit & hapus -->
+            <div class="debt-head">
+              <span class="debt-initial" x-text="debt.counterparty.trim().charAt(0).toUpperCase()"></span>
+              <div class="grow">
+                <strong x-text="debt.counterparty"></strong>
+                <small x-text="DEBT_TYPES[debt.type] + (debt.note ? ' · ' + debt.note : '')"></small>
               </div>
-              <span class="badge badge-ok" x-show="debt.remaining <= 0"><i class="ph-duotone ph-check"></i> Lunas</span>
+              <button class="head-button" title="Edit" @click="openEditDebt(debt)"><i class="ph-duotone ph-pencil-simple"></i></button>
+              <button class="head-button" title="Hapus" @click="deleteDebt(debt)"><i class="ph-duotone ph-trash"></i></button>
             </div>
 
-            <div class="progress"><div class="bar-ok" :style="{ width: debtPercent(debt) + '%' }"></div></div>
-            <div class="debt-numbers">
-              <div><span class="muted">Sudah dibayar</span><strong x-text="money(debt.paid)"></strong></div>
-              <div><span class="muted">Sisa</span><strong x-text="money(Math.max(0, debt.remaining))"></strong></div>
-            </div>
+            <div class="debt-body">
+              <div class="debt-main">
+                <div>
+                  <span class="label" x-text="debt.remaining <= 0 ? 'Status' : 'Sisa'"></span>
+                  <p class="debt-remaining" x-show="debt.remaining > 0" x-text="money(debt.remaining)"></p>
+                  <p class="debt-remaining tone-positive" x-show="debt.remaining <= 0"><i class="ph-fill ph-check-circle"></i> Lunas</p>
+                </div>
+                <span class="badge" x-show="debt.due_date && debt.remaining > 0"
+                      :class="daysUntil(debt.due_date) < 0 ? 'badge-danger' : daysUntil(debt.due_date) <= 7 ? 'badge-warning' : ''"
+                      x-text="(daysUntil(debt.due_date) < 0 ? 'Telat · ' : 'Jatuh tempo ') + formatDate(debt.due_date)"></span>
+              </div>
+              <div class="debt-progress">
+                <div class="progress"><div class="bar-ok" :style="{ width: debtPercent(debt) + '%' }"></div></div>
+                <strong x-text="debtPercent(debt) + '%'"></strong>
+              </div>
+              <p class="muted debt-meta" x-text="'Dibayar ' + money(debt.paid) + ' dari ' + money(debt.total_amount)"></p>
+              <span class="badge badge-warning expense-badge" x-show="debt.count_as_expense" title="Pembayarannya masuk laporan pengeluaran">
+                <i class="ph-duotone ph-receipt"></i> Dihitung pengeluaran
+              </span>
 
             <p class="cost-warning" x-show="debt.total_amount > debt.principal">
               <i class="ph-duotone ph-warning"></i>
@@ -114,19 +131,15 @@
               </div>
             </template>
 
-            <div class="row-actions">
-              <button class="button small positive" x-show="debt.remaining > 0" @click="openPayDebt(debt)">
+            </div>
+
+            <div class="debt-actions" x-show="debt.remaining > 0">
+              <button class="button small positive" @click="openPayDebt(debt)">
                 <i class="ph-duotone ph-hand-coins"></i> <span x-text="group.action"></span>
               </button>
-              <button class="button small" x-show="debt.remaining > 0" @click="openSchedule(debt)">
+              <button class="button small" @click="openSchedule(debt)">
                 <i class="ph-duotone ph-calendar-dots"></i>
-                <span x-text="debt.installments.length ? 'Ubah jadwal' : 'Atur jadwal cicilan'"></span>
-              </button>
-              <span class="spacer"></span>
-              <button class="icon-button subtle" title="Edit" @click="openEditDebt(debt)"><i class="ph-duotone ph-pencil-simple"></i></button>
-              <button class="icon-button subtle" title="Hapus"
-                @click="deleteDebt(debt)">
-                <i class="ph-duotone ph-trash"></i>
+                <span x-text="debt.installments.length ? 'Ubah jadwal' : 'Jadwal cicilan'"></span>
               </button>
             </div>
           </div>

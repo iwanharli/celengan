@@ -35,3 +35,22 @@ test('tidak memakai dialog bawaan browser (confirm/alert/prompt)', async () => {
   }
   assert.doesNotMatch(html, /(?<![\w.])(confirm|alert|prompt)\(/);
 });
+
+test('setiap fungsi yang dipanggil tombol di halaman benar-benar ada', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const dir = new URL('../public/js/features/', import.meta.url);
+  let js = '';
+  for (const file of await readdir(dir)) js += await readFile(new URL(file, dir), 'utf8');
+  const defined = new Set([...js.matchAll(/^ {2}(?:async |get )?(\w+)\s*\(/gm)].map((m) => m[1]));
+  const called = new Set([...html.matchAll(/@click(?:\.[\w.]+)?="(\w+)\(/g)].map((m) => m[1]));
+  const builtin = new Set(['open', 'close']);
+  const missing = [...called].filter((name) => !defined.has(name) && !builtin.has(name));
+  assert.deepEqual(missing, []);
+});
+
+test(':disabled dengan && selalu menghasilkan true/false (undefined membuat tombol ikut nonaktif)', () => {
+  const risky = [...html.matchAll(/:disabled="([^"]*&&[^"]*)"/g)]
+    .map((match) => match[1])
+    .filter((expression) => !/^(Boolean\(|!)/.test(expression.trim()));
+  assert.deepEqual(risky, []);
+});

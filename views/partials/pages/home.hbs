@@ -37,6 +37,24 @@
     </div>
   </div>
 
+  <!-- Favorit: catat sekali klik -->
+  <template x-if="templates.length">
+    <div class="favorites">
+      <span class="favorites-label"><img :src="emojiUrl('2b50')" alt=""> Catat cepat</span>
+      <template x-for="template in templates" :key="template.id">
+        <span class="favorite">
+          <button type="button" class="favorite-use" @click="useTemplate(template)" :title="'Catat ' + template.name + ' hari ini'">
+            <span class="avatar small" :style="{ background: template.kind === 'transfer' ? '#64748b' : template.category_color }">
+              <i class="ph-duotone" :class="'ph-' + (template.kind === 'transfer' ? 'arrows-left-right' : template.category_icon)"></i>
+            </span>
+            <span><strong x-text="template.name"></strong><small x-text="money(template.amount)"></small></span>
+          </button>
+          <button type="button" class="favorite-remove" @click="deleteTemplate(template)" title="Hapus favorit"><i class="ph-bold ph-x"></i></button>
+        </span>
+      </template>
+    </div>
+  </template>
+
   <div class="grid-3">
     <div class="card stat">
       <i class="ph-fill ph-arrow-circle-down tone-positive"></i>
@@ -51,7 +69,8 @@
       <div>
         <p class="label">Aman dipakai sampai gajian</p>
         <p class="stat-value" :class="summary.safeToSpend < 0 && 'tone-negative'" x-countup="summary.safeToSpend"></p>
-        <p class="hint" x-show="summary.billsDue > 0">Sudah dikurangi tagihan <span x-text="money(summary.billsDue)"></span></p>
+        <p class="hint" x-show="summary.billsDue > 0 || summary.goalBalance > 0"
+           x-text="'Sudah dikurangi ' + [summary.billsDue > 0 ? 'tagihan ' + money(summary.billsDue) : null, summary.goalBalance > 0 ? 'tabungan impian ' + money(summary.goalBalance) : null].filter(Boolean).join(' & ')"></p>
       </div>
     </div>
     <div class="card stat" x-show="isFreelance && !runway">
@@ -252,19 +271,34 @@
     </div>
   </template>
 
-  <div class="grid-2">
-    <div class="card">
-      <h2>Pengeluaran per kategori</h2>
+  <div class="grid-2 chart-row">
+    <div class="card chart-card">
+      <div class="card-header">
+        <div>
+          <h2>Pengeluaran per kategori</h2>
+          <p class="muted" x-show="summary.expense > 0" x-text="summary.categories.filter(c => c.spent > 0).length + ' kategori periode ini'"></p>
+        </div>
+      </div>
       <template x-if="summary.expense === 0">
         {{> components/empty-state emoji="1f967" title="Belum ada pengeluaran" text="Pengeluaran bulan ini akan tampil di sini, dikelompokkan per kategori." action="openTransaction('expense')" actionLabel="Catat pengeluaran"}}
       </template>
       <div class="donut-wrap" x-show="summary.expense > 0">
-        <div class="donut"><canvas x-ref="categoryChart"></canvas></div>
+        <div class="donut">
+          <canvas x-ref="categoryChart"></canvas>
+          <div class="donut-center">
+            <small>Total</small>
+            <strong x-text="moneyShort(summary.expense)"></strong>
+          </div>
+        </div>
         <ul class="legend">
-          <template x-for="category in summary.categories.filter(c => c.spent > 0)" :key="category.id">
+          <template x-for="category in summary.categories.filter(c => c.spent > 0).sort((a, b) => b.spent - a.spent).slice(0, 6)" :key="category.id">
             <li>
-              <span class="dot" :style="{ background: category.color }"></span>
-              <span x-text="category.name"></span>
+              <div class="legend-top">
+                <span class="dot" :style="{ background: category.color }"></span>
+                <span class="legend-name" x-text="category.name"></span>
+                <span class="legend-pct" x-text="Math.round(category.spent / summary.expense * 100) + '%'"></span>
+              </div>
+              <div class="legend-bar"><div :style="{ width: (category.spent / summary.expense * 100) + '%', background: category.color }"></div></div>
               <strong x-text="money(category.spent)"></strong>
             </li>
           </template>
@@ -272,11 +306,55 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>Tren 6 bulan</h2>
+    <div class="card chart-card">
+      <div class="card-header">
+        <div>
+          <h2>Tren 6 bulan</h2>
+          <p class="muted">Pemasukan vs pengeluaran per bulan</p>
+        </div>
+      </div>
+      <div class="trend-stats" x-show="hasTrendData">
+        <div class="trend-stat income"><span><i class="dot"></i> Pemasukan</span><strong x-text="moneyShort(summary.income)"></strong></div>
+        <div class="trend-stat expense"><span><i class="dot"></i> Pengeluaran</span><strong x-text="moneyShort(summary.expense)"></strong></div>
+        <div class="trend-stat net" :class="{ minus: summary.income - summary.expense < 0 }">
+          <span><i class="dot"></i> Selisih</span><strong x-text="(summary.income - summary.expense < 0 ? '−' : '+') + moneyShort(Math.abs(summary.income - summary.expense))"></strong>
+        </div>
+      </div>
       <div class="trend" x-show="hasTrendData"><canvas x-ref="trendChart"></canvas></div>
       <template x-if="!hasTrendData">
         {{> components/empty-state emoji="1f4ca" title="Grafik masih kosong" text="Perbandingan pemasukan & pengeluaran 6 bulan terakhir akan muncul setelah kamu mulai mencatat."}}
+      </template>
+    </div>
+  </div>
+
+  <!-- Wishlist & impian: progres tiap impian yang masih dikejar -->
+  <div class="card home-wish" x-show="wishItems('wanted').length > 0">
+    <div class="card-header">
+      <div>
+        <h2>Wishlist & impian</h2>
+        <p class="muted" x-text="money(wishStats.collected) + ' terkumpul dari ' + money(wishStats.total)"></p>
+      </div>
+      <button class="link" @click="goTo('wishlist')">Lihat semua</button>
+    </div>
+    <div class="progress home-wish-total">
+      <div class="bar-ok" :style="{ width: Math.min(100, wishStats.collected / (wishStats.total || 1) * 100) + '%' }"></div>
+    </div>
+    <div class="home-wish-grid">
+      <template x-for="item in wishItems('wanted').slice(0, 6)" :key="item.id">
+        <button type="button" class="home-wish-item" x-data="{ get plan() { return wishPlan(item) } }" @click="goTo('wishlist')">
+          <img class="wish-emoji small" :src="emojiUrl(item.emoji)" alt="">
+          <div class="home-wish-main">
+            <div class="home-wish-top">
+              <strong x-text="item.name"></strong>
+              <span class="home-wish-percent" x-text="plan.percent + '%'"></span>
+            </div>
+            <div class="progress"><div class="bar-ok" :style="{ width: plan.percent + '%' }"></div></div>
+            <div class="home-wish-foot">
+              <small class="muted" x-text="money(plan.collected) + ' / ' + money(item.price)"></small>
+              <small class="muted" x-show="plan.remaining === 0">Dana cukup! 🎉</small>
+            </div>
+          </div>
+        </button>
       </template>
     </div>
   </div>
@@ -319,7 +397,7 @@
       </template>
       <ul class="list">
         <template x-for="t in summary.recent" :key="t.id">
-          <li class="row" x-data="{ s: style(t) }">
+          <li class="row clickable" x-data="{ s: style(t) }" @click="editTransaction(t)" title="Klik untuk edit">
             <span class="avatar" :style="{ background: t.category_color ?? '#64748b' }">
               <i class="ph-duotone" :class="'ph-' + (t.category_icon ?? s.icon)"></i>
             </span>

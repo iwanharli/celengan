@@ -79,7 +79,7 @@ export default {
   // ---------- Form ----------
 
   openDebt(direction) {
-    this.open('debt', { direction, type: direction === 'payable' ? 'loan' : 'personal', recordCash: true, tenor: '' });
+    this.open('debt', { direction, type: direction === 'payable' ? 'loan' : 'personal', recordCash: true, tenor: '', count_as_expense: false });
   },
 
   openInvoice() {
@@ -101,6 +101,7 @@ export default {
         due_date: this.form.due_date || null,
         first_due: this.form.first_due || null,
         account_id: this.form.recordCash ? Number(this.form.account_id) : null,
+        count_as_expense: this.form.direction === 'payable' && this.form.type !== 'invoice' ? Boolean(this.form.count_as_expense) : false,
         note: this.form.note,
       });
     }, this.form.type === 'invoice' ? 'Invoice tercatat' : this.form.direction === 'payable' ? 'Utang tercatat' : 'Piutang tercatat');
@@ -115,6 +116,7 @@ export default {
       totalText: formatAmountInput(debt.total_amount),
       due_date: debt.due_date ?? '',
       note: debt.note ?? '',
+      count_as_expense: debt.count_as_expense,
     });
   },
 
@@ -128,6 +130,7 @@ export default {
         total_amount: parseAmount(this.form.totalText) || principal,
         due_date: this.form.due_date || null,
         note: this.form.note,
+        count_as_expense: Boolean(this.form.count_as_expense),
       });
     }, 'Catatan diperbarui');
   },

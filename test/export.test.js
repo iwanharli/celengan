@@ -25,7 +25,7 @@ const csvRows = (file) => file.body.toString('utf8').replace(/^﻿/, '').trim().
 
 test('pratinjau: jumlah baris & contoh per data', async () => {
   const preview = await app.api.post('/export/preview', { ...base, datasets: ['transactions', 'accounts', 'bills', 'wishlist_parts'] });
-  assert.deepEqual(preview.map((item) => [item.key, item.count]), [['transactions', 3], ['accounts', 2], ['bills', 1], ['wishlist_parts', 1]]);
+  assert.deepEqual(preview.map((item) => [item.key, item.count]), [['transactions', 3], ['accounts', 3], ['bills', 1], ['wishlist_parts', 1]]);
   assert.equal(preview[0].sample[0][0], '2026-09-25');
 });
 

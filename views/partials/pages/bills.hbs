@@ -24,13 +24,17 @@
           </span>
           <div class="row-main">
             <strong x-text="bill.name"></strong>
-            <span class="muted" x-text="FREQUENCIES[bill.frequency] + (bill.account_name ? ' · ' + bill.account_name : '')"></span>
+            <span class="muted">
+              <span x-text="FREQUENCIES[bill.frequency] + (bill.account_name ? ' · ' + bill.account_name : '')"></span>
+              <span class="badge badge-info auto-pay-badge" x-show="bill.auto_pay"><i class="ph-duotone ph-lightning"></i> Potong otomatis</span>
+            </span>
           </div>
           <span class="badge" :class="'badge-' + billStatus(bill).tone" x-text="billStatus(bill).text"></span>
           <strong class="amount" x-text="money(bill.amount)"></strong>
           <div class="row-actions">
             <button class="button small positive" @click="openPayBill(bill)"><i class="ph-duotone ph-check"></i> Bayar</button>
             <button class="button small" @click="skipBill(bill)">Lewati</button>
+            <button class="icon-button subtle" title="Riwayat" @click="openBillHistory(bill)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
             <button class="icon-button subtle" title="Edit" @click="openBill(bill)"><i class="ph-duotone ph-pencil-simple"></i></button>
             <button class="icon-button subtle" title="Hapus" :class="{ invisible: bill.debt_id }"
               @click="deleteBill(bill)">

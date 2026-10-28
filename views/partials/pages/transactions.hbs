@@ -15,6 +15,7 @@
       <option value="">Semua akun</option>
       <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
     </select>
+    <button class="button" @click="openDeletedTransactions()" title="Transaksi yang baru dihapus"><i class="ph-duotone ph-trash-simple"></i> Baru dihapus</button>
     <button class="button primary" @click="openTransaction()"><i class="ph-duotone ph-plus"></i> Tambah</button>
   </div>
 
@@ -39,7 +40,7 @@
             <i class="ph-duotone ph-paperclip"></i> <span x-text="t.attachments.length"></span>
           </button>
           <strong :class="'tone-' + s.tone" x-text="transactionAmount(t)"></strong>
-          <button class="icon-button subtle" title="Edit" :class="{ invisible: !isEditable(t) }" @click="openEditTransaction(t)">
+          <button class="icon-button subtle" title="Edit" @click="editTransaction(t)">
             <i class="ph-duotone ph-pencil-simple"></i>
           </button>
           <button class="icon-button subtle" title="Hapus"

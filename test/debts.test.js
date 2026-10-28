@@ -89,3 +89,27 @@ test('invoice tidak boleh dibuat sebagai utang', async () => {
   assert.equal(status, 400);
   assert.match(data.error, /Invoice/);
 });
+
+test('utang tanpa uang masuk: pembayarannya dihitung pengeluaran "Bayar utang"', async () => {
+  await app.api.post('/debts', { direction: 'payable', type: 'personal', counterparty: 'Pak Aat', principal: 3800000 });
+  const debt = (await app.api.get('/debts')).find((d) => d.counterparty === 'Pak Aat');
+  assert.equal(debt.count_as_expense, true);
+  await app.api.post(`/debts/${debt.id}/pay`, { amount: 800000, account_id: account.id, date: '2026-12-05' });
+  const summary = await app.api.get('/summary?month=2026-12');
+  assert.equal(summary.expense, 800000);
+  assert.ok(summary.categories.some((c) => c.name === 'Bayar utang' && c.spent === 800000));
+  assert.equal((await app.api.get('/debts')).find((d) => d.id === debt.id).remaining, 3000000);
+});
+
+test('opsi bisa dimatikan: pembayaran lama dikonversi jadi bukan pengeluaran', async () => {
+  const debt = (await app.api.get('/debts')).find((d) => d.counterparty === 'Pak Aat');
+  await app.api.put(`/debts/${debt.id}`, { counterparty: 'Pak Aat', type: 'personal', principal: 3800000, count_as_expense: false });
+  const summary = await app.api.get('/summary?month=2026-12');
+  assert.equal(summary.expense, 0);
+  assert.equal((await app.api.get('/debts')).find((d) => d.id === debt.id).remaining, 3000000); // sisa tetap
+});
+
+test('utang dengan uang masuk (pinjol cair) bawaannya bukan pengeluaran', async () => {
+  const kredivo = (await app.api.get('/debts')).find((d) => d.counterparty === 'Kredivo');
+  assert.equal(kredivo.count_as_expense, false);
+});

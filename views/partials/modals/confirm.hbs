@@ -1,0 +1,37 @@
+{{!--
+  Modal konfirmasi umum (pengganti dialog konfirmasi bawaan browser). Dibuka lewat askConfirm({...}, aksi).
+  Menampilkan: judul, penjelasan, ringkasan data yang terkena, peringatan dampak,
+  dan (untuk aksi yang menghapus banyak data) centang "Saya mengerti".
+--}}
+<template x-if="modal === 'confirm'">
+  <div class="stack confirm" :class="'confirm-' + form.tone">
+    <div class="confirm-head">
+      <span class="confirm-emoji"><img :src="emojiUrl(form.emoji)" alt=""></span>
+      <h2 x-text="form.title"></h2>
+      <p class="muted" x-show="form.message" x-text="form.message"></p>
+    </div>
+
+    <ul class="confirm-details" x-show="form.details.length">
+      <template x-for="detail in form.details" :key="detail.text">
+        <li><i class="ph-duotone" :class="'ph-' + detail.icon"></i> <span x-text="detail.text"></span></li>
+      </template>
+    </ul>
+
+    <p class="cost-warning" x-show="form.warning">
+      <i class="ph-duotone ph-warning"></i> <span x-text="form.warning"></span>
+    </p>
+
+    <label class="checkbox confirm-check" x-show="form.requireCheck">
+      <input type="checkbox" x-model="form.checked">
+      <span>Saya mengerti, data ini tidak bisa dikembalikan (kecuali dari backup)</span>
+    </label>
+
+    <div class="form-actions confirm-actions">
+      <button type="button" class="button" @click="close()">Batal</button>
+      <button class="button" @click="runConfirm()"
+              :class="form.tone === 'info' ? 'primary' : 'danger'"
+              :disabled="Boolean(form.requireCheck) && !form.checked"
+              x-text="form.confirmLabel"></button>
+    </div>
+  </div>
+</template>

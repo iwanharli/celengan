@@ -1,0 +1,9 @@
+{{!-- Modal: Sesuaikan saldo --}}
+<template x-if="modal === 'adjust'">
+  <div class="stack">
+    <h2>Sesuaikan saldo <span x-text="form.account.name"></span></h2>
+    <p class="muted">Saldo di aplikasi: <strong x-text="rupiah(form.account.balance)"></strong></p>
+    {{> components/amount-field label="Saldo sebenarnya sekarang" autofocus=true hint="'Selisih ' + rupiah(parsedAmount - form.account.balance) + ' akan dicatat sebagai penyesuaian'"}}
+    {{> components/form-actions submit="saveAdjust()"}}
+  </div>
+</template>

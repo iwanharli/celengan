@@ -1,0 +1,37 @@
+{{!-- Layar login / buat password pertama kali --}}
+<div class="auth-screen" x-show="auth.ready && !auth.loggedIn">
+  <form class="auth-card" @submit.prevent="submitAuth()">
+    <img class="auth-logo" src="https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/1f437.webp" alt="">
+    <h1 x-text="auth.hasOwner ? 'Selamat datang kembali' : 'Selamat datang di Celengan'"></h1>
+    <p class="muted" x-text="auth.hasOwner
+      ? 'Masukkan password untuk membuka catatan keuanganmu.'
+      : 'Buat password untuk melindungi data keuanganmu. Kamu akan memakainya setiap login.'"></p>
+
+    <div class="field" x-show="!auth.hasOwner">
+      <label>Nama panggilan</label>
+      <input placeholder="contoh: Iwan" x-model="authForm.name" :required="!auth.hasOwner" autocomplete="nickname">
+    </div>
+    <div class="field" x-data="{ visible: false }">
+      <label>Password</label>
+      <div class="password-input">
+        <input :type="visible ? 'text' : 'password'" x-model="authForm.password" required autofocus
+               :autocomplete="auth.hasOwner ? 'current-password' : 'new-password'"
+               :placeholder="auth.hasOwner ? '' : 'Minimal 8 karakter'">
+        <button type="button" class="icon-button subtle" @click="visible = !visible" :aria-label="visible ? 'Sembunyikan' : 'Tampilkan'">
+          <i class="ph-duotone" :class="visible ? 'ph-eye-slash' : 'ph-eye'"></i>
+        </button>
+      </div>
+    </div>
+    <div class="field" x-show="!auth.hasOwner">
+      <label>Ulangi password</label>
+      <input type="password" x-model="authForm.confirm" :required="!auth.hasOwner" autocomplete="new-password">
+    </div>
+
+    <p class="form-error" x-show="authError" x-text="authError"></p>
+    <button class="button primary block">
+      <i class="ph-duotone" :class="auth.hasOwner ? 'ph-sign-in' : 'ph-lock-key'"></i>
+      <span x-text="auth.hasOwner ? 'Masuk' : 'Buat password & mulai'"></span>
+    </button>
+    <p class="hint center-text" x-show="auth.hasOwner">Lupa password? Jalankan <code>npm run reset-password</code> di server.</p>
+  </form>
+</div>

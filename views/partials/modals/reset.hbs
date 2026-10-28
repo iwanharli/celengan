@@ -1,0 +1,22 @@
+{{!-- Modal: Mulai dari nol — hapus semua data (mis. data contoh). Wajib ketik HAPUS. --}}
+<template x-if="modal === 'reset'">
+  <div class="stack">
+    <div class="category-preview">
+      <img class="wish-emoji" :src="emojiUrl('1f9f9')" alt="">
+      <div>
+        <h2>Mulai dari nol?</h2>
+        <p class="muted">Cocok untuk menghapus data contoh sebelum mulai mencatat sungguhan.</p>
+      </div>
+    </div>
+    <ul class="danger-list">
+      <li><i class="ph-duotone ph-trash"></i> Dihapus: semua akun, transaksi, tagihan, utang & piutang, aset, wishlist, dan riwayat kekayaan bersih.</li>
+      <li><i class="ph-duotone ph-check"></i> Tetap ada: login, pengaturan, dan kategori (anggarannya dikosongkan).</li>
+    </ul>
+    <p class="cost-warning"><i class="ph-duotone ph-warning"></i> Tidak bisa dibatalkan. Unduh backup dulu kalau mungkin masih butuh datanya.</p>
+    <div class="field">
+      <label>Ketik <code>HAPUS</code> untuk konfirmasi</label>
+      <input autofocus autocomplete="off" x-model="form.confirmText" placeholder="HAPUS">
+    </div>
+    {{> components/form-actions submit="resetAllData()" variant="danger" label="Hapus semua data"}}
+  </div>
+</template>

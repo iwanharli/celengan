@@ -1,0 +1,186 @@
+{{!-- Halaman: Laporan tahunan (Januari–Desember) --}}
+<section class="page stack report" x-show="page === 'reports'">
+  <div class="toolbar no-print">
+    <div class="segmented year-tabs">
+      <template x-for="year in (report?.years ?? [reportYear])" :key="year">
+        <button type="button" :class="{ active: reportYear === year }" @click="loadReport(year)" x-text="year"></button>
+      </template>
+    </div>
+    <span class="spacer"></span>
+    <button class="button" @click="printReport()"><i class="ph-duotone ph-printer"></i> Cetak / simpan PDF</button>
+  </div>
+
+  <template x-if="report && report.totals.transaction_count === 0">
+    <div class="card">
+      {{> components/empty-state emoji="1f4ca" title="Belum ada data di tahun ini" text="Laporan tahunan terbentuk otomatis dari pemasukan dan pengeluaran yang kamu catat."}}
+    </div>
+  </template>
+
+  <template x-if="report && report.totals.transaction_count > 0">
+    <div class="stack">
+      <h1 class="print-only">Laporan Keuangan <span x-text="report.year"></span></h1>
+
+      <!-- Ringkasan -->
+      <div class="hero card">
+        <div>
+          <p class="label">Berhasil ditabung di <span x-text="report.year"></span></p>
+          <p class="big-number" :class="report.totals.net < 0 && 'tone-negative'" x-countup="report.totals.net"></p>
+          <p class="hero-note">
+            <template x-if="report.totals.savingsRate !== null">
+              <span><strong x-text="String(report.totals.savingsRate).replace('.', ',') + '%'"></strong> dari pemasukan ·</span>
+            </template>
+            <span x-text="report.totals.transaction_count + ' transaksi dalam ' + report.totals.activeMonths + ' bulan'"></span>
+          </p>
+        </div>
+        <img class="hero-emoji" :src="emojiUrl(report.totals.net >= 0 ? '1f3c6' : '1f4c9')" alt="">
+      </div>
+
+      <div class="grid-4">
+        <div class="card mini">
+          <span class="label"><i class="ph-duotone ph-arrow-circle-down tone-positive"></i> Pemasukan</span>
+          <strong x-text="money(report.totals.income)"></strong>
+          <template x-if="changeBadge(report.changes.income)">
+            <span class="badge" :class="'badge-' + changeBadge(report.changes.income).tone" x-text="changeBadge(report.changes.income).text"></span>
+          </template>
+        </div>
+        <div class="card mini">
+          <span class="label"><i class="ph-duotone ph-arrow-circle-up tone-negative"></i> Pengeluaran</span>
+          <strong x-text="money(report.totals.expense)"></strong>
+          <template x-if="changeBadge(report.changes.expense, true)">
+            <span class="badge" :class="'badge-' + changeBadge(report.changes.expense, true).tone" x-text="changeBadge(report.changes.expense, true).text"></span>
+          </template>
+        </div>
+        <div class="card mini">
+          <span class="label"><i class="ph-duotone ph-calendar"></i> Rata-rata pengeluaran</span>
+          <strong x-text="money(report.totals.monthlyAverageExpense)"></strong>
+          <span class="muted">per bulan aktif</span>
+        </div>
+        <div class="card mini">
+          <span class="label"><i class="ph-duotone ph-hand-coins"></i> Lunasi utang & investasi</span>
+          <strong x-text="money(report.debtPaid + Math.max(0, report.invested))"></strong>
+          <span class="muted" x-text="'Utang ' + money(report.debtPaid) + ' · investasi ' + money(Math.max(0, report.invested))"></span>
+        </div>
+      </div>
+
+      <!-- Grafik 12 bulan -->
+      <div class="card">
+        <h2>Bulan demi bulan</h2>
+        <div class="trend tall"><canvas x-ref="yearChart"></canvas></div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Pengeluaran per kategori -->
+        <div class="card">
+          <h2>Pengeluaran per kategori</h2>
+          <ul class="share-list">
+            <template x-for="row in report.expenseByCategory" :key="row.name">
+              <li>
+                <span class="avatar" :style="{ background: row.color }"><i class="ph-duotone" :class="'ph-' + row.icon"></i></span>
+                <div class="row-main">
+                  <div class="share-title">
+                    <strong x-text="row.name"></strong>
+                    <strong x-text="money(row.total)"></strong>
+                  </div>
+                  <div class="progress"><div :style="{ width: row.percent + '%', background: row.color }"></div></div>
+                  <span class="hint" x-text="String(row.percent).replace('.', ',') + '% · rata-rata ' + money(row.monthlyAverage) + '/bulan'"></span>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- Sumber pemasukan -->
+        <div class="card">
+          <h2>Sumber pemasukan</h2>
+          <template x-if="report.incomeByCategory.length === 0"><p class="muted">Belum ada pemasukan.</p></template>
+          <ul class="share-list">
+            <template x-for="row in report.incomeByCategory" :key="row.name">
+              <li>
+                <span class="avatar" :style="{ background: row.color }"><i class="ph-duotone" :class="'ph-' + row.icon"></i></span>
+                <div class="row-main">
+                  <div class="share-title">
+                    <strong x-text="row.name"></strong>
+                    <strong x-text="money(row.total)"></strong>
+                  </div>
+                  <div class="progress"><div :style="{ width: row.percent + '%', background: row.color }"></div></div>
+                  <span class="hint" x-text="String(row.percent).replace('.', ',') + '% dari pemasukan'"></span>
+                </div>
+              </li>
+            </template>
+          </ul>
+          <template x-if="report.incomeByClient.length">
+            <div class="stack-sm">
+              <h3>Per klien</h3>
+              <ul class="savings-breakdown">
+                <template x-for="client in report.incomeByClient" :key="client.name">
+                  <li>
+                    <span><i class="ph-duotone ph-briefcase"></i> <span x-text="client.name + ' (' + client.count + '×)'"></span></span>
+                    <strong x-text="money(client.total)"></strong>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Transaksi terbesar -->
+        <div class="card">
+          <h2>5 pengeluaran terbesar</h2>
+          <ul class="list">
+            <template x-for="(t, index) in report.topExpenses" :key="t.id">
+              <li class="row">
+                <span class="rank" x-text="index + 1"></span>
+                <span class="avatar" :style="{ background: t.category_color ?? '#64748b' }">
+                  <i class="ph-duotone" :class="'ph-' + (t.category_icon ?? 'tag')"></i>
+                </span>
+                <div class="row-main">
+                  <strong x-text="t.note || t.category_name"></strong>
+                  <span class="muted" x-text="formatDate(t.date) + ' · ' + t.category_name"></span>
+                </div>
+                <strong class="tone-negative" x-text="money(t.amount)"></strong>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- Sorotan -->
+        <div class="card">
+          <h2>Sorotan</h2>
+          <div class="savings-notes">
+            <template x-if="report.extremes">
+              <div class="note">
+                <img :src="emojiUrl('1f4b8')" alt="">
+                <p>Paling boros: <strong x-text="monthLabel(report.extremes.mostExpensive.month)"></strong>
+                  (<span x-text="money(report.extremes.mostExpensive.expense)"></span>)</p>
+              </div>
+            </template>
+            <template x-if="report.extremes">
+              <div class="note">
+                <img :src="emojiUrl('1f331')" alt="">
+                <p>Paling hemat: <strong x-text="monthLabel(report.extremes.mostFrugal.month)"></strong>
+                  (<span x-text="money(report.extremes.mostFrugal.expense)"></span>)</p>
+              </div>
+            </template>
+            <template x-if="report.netWorth">
+              <div class="note">
+                <img :src="emojiUrl('1f48e')" alt="">
+                <p>Kekayaan bersih: <span x-text="money(report.netWorth.start.value)"></span> →
+                  <strong x-text="money(report.netWorth.end.value)"></strong></p>
+              </div>
+            </template>
+            <template x-if="report.tax">
+              <div class="note">
+                <img :src="emojiUrl('1f9fe')" alt="">
+                <p>Pajak: harus disisihkan <strong x-text="money(report.tax.owed)"></strong>,
+                  sudah dibayar <strong x-text="money(report.tax.paid)"></strong>
+                  <span x-show="report.tax.outstanding > 0" class="tone-negative" x-text="'(kurang ' + money(report.tax.outstanding) + ')'"></span></p>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</section>

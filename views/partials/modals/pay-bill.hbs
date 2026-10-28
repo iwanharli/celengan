@@ -1,0 +1,12 @@
+{{!-- Modal: Bayar tagihan --}}
+<template x-if="modal === 'payBill'">
+  <div class="stack">
+    <h2>Bayar <span x-text="form.bill.name"></span></h2>
+    {{> components/amount-field label="Nominal dibayar" autofocus=true}}
+    <div class="grid-2 tight">
+      {{> components/account-select label="Dari akun"}}
+      <div class="field"><label>Tanggal bayar</label><input type="date" x-model="form.date"></div>
+    </div>
+    {{> components/form-actions submit="payBill()" label="Bayar" variant="positive"}}
+  </div>
+</template>

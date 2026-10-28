@@ -1,0 +1,86 @@
+{{!-- Modal: Utang / piutang baru --}}
+<template x-if="modal === 'debt'">
+  <div class="stack">
+    <h2 x-text="form.type === 'invoice' ? 'Catat invoice klien' : form.direction === 'payable' ? 'Catat utang' : 'Catat piutang'"></h2>
+    <p class="hint" x-show="form.type === 'invoice'">Untuk proyek yang sudah dikerjakan tapi belum dibayar. Saat klien membayar, uangnya dicatat sebagai <strong>pemasukan</strong>.</p>
+    <div class="modal-columns">
+      <div class="stack">
+        <div class="grid-2 tight">
+          <div class="field">
+            <label x-text="form.type === 'invoice' ? 'Klien' : form.direction === 'payable' ? 'Pinjam dari' : 'Dipinjam oleh'"></label>
+            <input autofocus :placeholder="form.type === 'invoice' ? 'contoh: PT Maju Jaya' : 'contoh: Kredivo, Budi'" x-model="form.counterparty">
+          </div>
+          <div class="field">
+            <label>Jenis</label>
+            <select x-model="form.type">
+              <template x-for="[value, label] in debtTypesFor(form.direction)"><option :value="value" x-text="label" :selected="value === form.type"></option></template>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label x-text="form.type === 'invoice' ? 'Nilai invoice' : 'Jumlah pokok'"></label>
+          <input inputmode="decimal" x-rupiah placeholder="contoh: 2jt" x-model="form.amountText">
+          <p class="hint" x-text="'= ' + rupiah(parsedAmount)"></p>
+        </div>
+        <template x-if="form.direction === 'payable'">
+          <div class="field">
+            <label>Total harus dibayar (pokok + bunga)</label>
+            <input inputmode="decimal" x-rupiah placeholder="kosongkan jika tanpa bunga, atau isi cicilan × tenor" x-model="form.totalText">
+          </div>
+        </template>
+        <div class="field" x-show="!form.tenor">
+          <label x-text="form.type === 'invoice' ? 'Jatuh tempo pembayaran' : 'Jatuh tempo pelunasan (opsional)'"></label>
+          <input type="date" x-model="form.due_date">
+        </div>
+        <div class="field"><label>Catatan (opsional)</label><input x-model="form.note"></div>
+      </div>
+      <div class="stack">
+        <div class="field" x-show="form.type !== 'invoice'">
+          <label>Dicicil berapa bulan?</label>
+          <div class="chips">
+            <button type="button" class="chip" :class="{ active: !form.tenor }" @click="form.tenor = ''">Tidak dicicil</button>
+            <template x-for="months in TENOR_CHOICES" :key="months">
+              <button type="button" class="chip" :class="{ active: form.tenor == months }" @click="form.tenor = months" x-text="months + ' bulan'"></button>
+            </template>
+          </div>
+          <input type="number" min="1" max="360" class="tenor-input" placeholder="atau ketik jumlah bulan lain" x-model="form.tenor">
+        </div>
+
+        <template x-if="form.tenor">
+          <div class="stack-sm">
+            <div class="grid-2 tight">
+              <div class="field">
+                <label>Cicilan per bulan</label>
+                <input inputmode="decimal" x-rupiah x-model="form.installmentText"
+                       :placeholder="'otomatis ' + rupiah(Math.ceil((debtTerms.total || 0) / form.tenor))">
+              </div>
+              <div class="field">
+                <label>Cicilan pertama jatuh tempo</label>
+                <input type="date" x-model="form.first_due">
+              </div>
+            </div>
+            <div class="terms-preview" x-show="debtTerms.installment">
+              <i class="ph-duotone ph-calculator"></i>
+              <div>
+                <strong x-text="debtTerms.tenor + ' × ' + rupiah(debtTerms.installment) + ' = ' + rupiah(debtTerms.total)"></strong>
+                <p class="hint" x-text="(debtTerms.finish ? 'Lunas ' + debtTerms.finish + '. ' : '')
+                  + (form.direction === 'payable' ? 'Otomatis dibuatkan tagihan bulanan.' : 'Pembayaran dari peminjam dicatat per bulan.')"></p>
+              </div>
+            </div>
+          </div>
+        </template>
+        <label class="checkbox" x-show="form.type !== 'invoice'">
+          <input type="checkbox" x-model="form.recordCash">
+          <span x-text="form.direction === 'payable' ? 'Uangnya masuk ke akun saya' : 'Uangnya keluar dari akun saya'"></span>
+        </label>
+        <div class="field" x-show="form.recordCash && form.type !== 'invoice'">
+          <label>Akun</label>
+          <select x-model="form.account_id">
+            <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name" :selected="a.id == form.account_id"></option></template>
+          </select>
+        </div>
+      </div>
+    </div>
+    {{> components/form-actions submit="saveDebt()"}}
+  </div>
+</template>

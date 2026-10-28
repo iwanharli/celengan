@@ -1,0 +1,54 @@
+{{!-- Halaman: Kategori — kelola kategori pengeluaran & pemasukan --}}
+<section class="page stack" x-show="page === 'categories'">
+  <div class="toolbar">
+    <div class="segmented">
+      <button type="button" :class="{ active: categoryTab === 'expense' }" @click="categoryTab = 'expense'">
+        <i class="ph-duotone ph-arrow-circle-up"></i> Pengeluaran
+        <span class="count" x-text="categories.filter((c) => c.kind === 'expense' && !c.archived).length"></span>
+      </button>
+      <button type="button" :class="{ active: categoryTab === 'income' }" @click="categoryTab = 'income'">
+        <i class="ph-duotone ph-arrow-circle-down"></i> Pemasukan
+        <span class="count" x-text="categories.filter((c) => c.kind === 'income' && !c.archived).length"></span>
+      </button>
+    </div>
+    <span class="spacer"></span>
+    <label class="checkbox" x-show="archivedCount > 0">
+      <input type="checkbox" x-model="showArchived">
+      <span x-text="'Tampilkan arsip (' + archivedCount + ')'"></span>
+    </label>
+    <button class="button primary" @click="openCategory()"><i class="ph-duotone ph-plus"></i> Kategori baru</button>
+  </div>
+
+  <p class="intro">
+    Urutan mengikuti yang paling sering dipakai 3 bulan terakhir — urutan yang sama dipakai di form transaksi.
+  </p>
+
+  <div class="card">
+    <template x-if="categoryList.length === 0">
+      {{> components/empty-state emoji="1f3f7-fe0f" title="Belum ada kategori" text="Tambahkan kategori supaya transaksi mudah dikelompokkan." action="openCategory()" actionLabel="Kategori baru"}}
+    </template>
+    <ul class="list category-list">
+      <template x-for="category in categoryList" :key="category.id">
+        <li class="row" :class="{ archived: category.archived }">
+          <span class="avatar" :style="{ background: category.color }"><i class="ph-duotone" :class="'ph-' + category.icon"></i></span>
+          <div class="row-main">
+            <div class="alert-title">
+              <strong x-text="category.name"></strong>
+              <span class="badge" x-show="category.archived"><i class="ph-duotone ph-archive"></i> Diarsipkan</span>
+              <span class="badge badge-info" x-show="category.monthly_budget" x-text="'Anggaran ' + money(category.monthly_budget)"></span>
+              <span class="badge" x-show="category.bill_count" x-text="category.bill_count + ' tagihan'"></span>
+            </div>
+            <span class="muted" x-text="categoryUsageText(category)"></span>
+          </div>
+          <div class="row-actions">
+            <button class="icon-button subtle" title="Edit" @click="openCategory(category)"><i class="ph-duotone ph-pencil-simple"></i></button>
+            <button class="icon-button subtle" :title="category.archived ? 'Aktifkan lagi' : 'Arsipkan'" @click="toggleArchive(category)">
+              <i class="ph-duotone" :class="category.archived ? 'ph-arrow-counter-clockwise' : 'ph-archive'"></i>
+            </button>
+            <button class="icon-button subtle" title="Hapus / gabungkan" @click="openCategoryDelete(category)"><i class="ph-duotone ph-trash"></i></button>
+          </div>
+        </li>
+      </template>
+    </ul>
+  </div>
+</section>

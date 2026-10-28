@@ -1,0 +1,199 @@
+{{!-- Halaman: Wishlist & impian — barang, pernikahan, liburan, rumah, ... dengan rincian biaya opsional.
+     Tab Diinginkan / Terbeli-tercapai / Dibatalkan, setiap impian punya riwayat. --}}
+<section class="page stack" x-show="page === 'wishlist'">
+  <div class="hero card">
+    <div>
+      <p class="label">Total wishlist & impian</p>
+      <p class="big-number" x-countup="wishStats.total"></p>
+      <p class="hero-note">
+        <span x-text="wishStats.counts.wanted"></span> impian ·
+        terkumpul <strong x-text="money(wishStats.collected)"></strong>
+      </p>
+    </div>
+    <img class="hero-emoji" :src="emojiUrl('1f381')" alt="">
+    <div class="hero-actions">
+      <button class="button" @click="openWish()"><i class="ph-duotone ph-plus"></i> Tambah impian</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="segmented wish-tabs">
+      <template x-for="tab in WISH_TABS" :key="tab.id">
+        <button type="button" :class="{ active: wishTab === tab.id }" @click="wishTab = tab.id">
+          <i class="ph-duotone" :class="'ph-' + tab.icon"></i> <span x-text="tab.label"></span>
+          <span class="count" x-text="wishStats.counts[tab.id]"></span>
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <!-- ========== Diinginkan ========== -->
+  <template x-if="wishTab === 'wanted' && wishItems('wanted').length === 0">
+    <div class="card">
+      {{> components/empty-state emoji="1f381" title="Wishlist masih kosong" text="Catat impianmu: HP baru, liburan, lamaran, pernikahan, rumah… Bisa dirinci biayanya, dan kelihatan kapan bisa tercapai." action="openWish()" actionLabel="Tambah impian"}}
+    </div>
+  </template>
+  <div class="grid-3" x-show="wishTab === 'wanted'">
+    <template x-for="item in wishItems('wanted')" :key="item.id">
+      <div class="card wish" x-data="{ plan: null }" x-effect="plan = wishPlan(item)">
+        <div class="wish-top">
+          <img class="wish-emoji" :src="emojiUrl(item.emoji)" alt="">
+          <div class="wish-corner">
+            <span class="badge" :class="'badge-' + PRIORITIES[item.priority].tone">
+              <i class="ph-fill" :class="'ph-' + PRIORITIES[item.priority].icon"></i>
+              <span x-text="PRIORITIES[item.priority].label"></span>
+            </span>
+            <div class="wish-tools">
+              <a class="icon-button subtle" x-show="item.link" :href="item.link" target="_blank" rel="noopener" title="Buka link produk">
+                <i class="ph-duotone ph-link"></i>
+              </a>
+              <button class="icon-button subtle" title="Riwayat" @click="openWishHistory(item)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
+              <button class="icon-button subtle" title="Edit" @click="openWish(item)"><i class="ph-duotone ph-pencil-simple"></i></button>
+              <button class="icon-button subtle" title="Tidak jadi" @click="openWishStatus(item, 'cancel')"><i class="ph-duotone ph-x-circle"></i></button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="kind-label" x-show="item.kind !== 'item'" x-text="WISH_KINDS[item.kind].label"></span>
+          <h3 x-text="item.name"></h3>
+          <p class="wish-price" x-text="money(item.price)"></p>
+          <p class="muted" x-show="item.note" x-text="item.note"></p>
+        </div>
+
+        <div class="stack-sm">
+          <!-- Bar: isi = terkumpul (disisihkan + sudah dibayar); garis = seharusnya terkumpul hari ini -->
+          <div class="progress" :class="{ 'with-marker': plan?.target }">
+            <div :class="plan?.percent >= 100 ? 'bar-ok' : 'bar-wish'" :style="{ width: plan?.percent + '%' }"></div>
+            <span class="time-marker" x-show="plan?.target" :style="{ left: Math.min(100, plan?.target?.percentExpected ?? 0) + '%' }"
+                  :title="'Seharusnya hari ini: ' + money(plan?.target?.expected)"></span>
+          </div>
+          <div class="debt-numbers">
+            <div><span class="muted">Terkumpul</span><strong x-text="money(plan?.collected)"></strong></div>
+            <div><span class="muted">Kurang</span><strong x-text="money(plan?.remaining)"></strong></div>
+          </div>
+          <p class="hint" x-show="item.paid_total > 0"
+             x-text="'Disisihkan ' + money(item.saved) + ' + sudah dibayar ' + money(item.paid_total)"></p>
+        </div>
+
+        <!-- Rincian biaya -->
+        <template x-if="item.parts.length">
+          <div class="wish-parts" x-data="{ expanded: item.parts.length <= 4 }">
+            <button class="link" @click="expanded = !expanded">
+              <i class="ph-duotone" :class="expanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+              <span x-text="'Rincian biaya (' + item.parts.length + ')'"></span>
+              <span class="muted" x-text="'· lunas ' + item.parts.filter((p) => p.paid >= p.amount && p.amount > 0).length"></span>
+            </button>
+            <ul x-show="expanded" x-transition>
+              <template x-for="part in item.parts" :key="part.id">
+                <li :class="{ done: part.amount > 0 && part.paid >= part.amount }">
+                  <div class="part-head">
+                    <span class="part-name">
+                      <i class="ph-fill ph-check-circle tone-positive" x-show="part.amount > 0 && part.paid >= part.amount"></i>
+                      <span x-text="part.name"></span>
+                    </span>
+                    <strong x-text="money(part.amount)"></strong>
+                  </div>
+                  <div class="part-progress" x-show="part.paid > 0 && part.paid < part.amount">
+                    <div class="progress"><div class="bar-ok" :style="{ width: Math.min(100, part.paid / part.amount * 100) + '%' }"></div></div>
+                    <small class="muted" x-text="'dibayar ' + money(part.paid)"></small>
+                  </div>
+                  <button class="button small" x-show="part.paid < part.amount" @click="openWishPartPay(item, part)">
+                    <i class="ph-duotone ph-receipt"></i> Bayar
+                  </button>
+                </li>
+              </template>
+              <li class="unallocated" x-show="plan?.unallocated > 0">
+                <span class="muted">Belum dirinci</span><strong class="muted" x-text="money(plan?.unallocated)"></strong>
+              </li>
+            </ul>
+          </div>
+        </template>
+
+        <ul class="wish-facts">
+          <li x-show="plan?.eta"><i class="ph-duotone ph-rocket-launch"></i> <span x-text="plan?.eta"></span></li>
+          <template x-if="plan?.target">
+            <li class="target-status" :class="'target-' + plan.target.level">
+              <span class="badge" :class="'badge-' + WISH_TARGET_STYLE[plan.target.level].tone">
+                <i class="ph-fill" :class="'ph-' + WISH_TARGET_STYLE[plan.target.level].icon"></i>
+                <span x-text="WISH_TARGET_STYLE[plan.target.level].label"></span>
+              </span>
+              <span x-text="wishTargetText(item, plan.target)"></span>
+            </li>
+          </template>
+          <li x-show="plan?.cooldownLeft > 0" class="cooldown">
+            <img :src="emojiUrl('1f9ca')" alt="">
+            <span>Tahan dulu <strong x-text="plan?.cooldownLeft"></strong> hari lagi. Kalau masih ingin, berarti memang butuh!</span>
+          </li>
+        </ul>
+
+        <div class="wish-actions">
+          <button class="button small primary" @click="openWishSave(item)"><i class="ph-duotone ph-piggy-bank"></i> Sisihkan</button>
+          <button class="button small positive" x-show="item.kind === 'item'" @click="openWishBuy(item)"><i class="ph-duotone ph-shopping-bag"></i> Beli</button>
+          <button class="button small positive" x-show="item.kind !== 'item'" @click="completeWish(item)"><i class="ph-duotone ph-trophy"></i> Tercapai</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ========== Terbeli ========== -->
+  <template x-if="wishTab === 'bought' && wishItems('bought').length === 0">
+    <div class="card">
+      {{> components/empty-state emoji="1f6d2" title="Belum ada yang terbeli" text="Barang wishlist yang sudah kamu beli akan muncul di sini sebagai kenang-kenangan pencapaianmu."}}
+    </div>
+  </template>
+  <div class="card" x-show="wishTab === 'bought' && wishItems('bought').length > 0">
+    <ul class="list">
+      <template x-for="item in wishItems('bought')" :key="item.id">
+        <li class="row wish-row">
+          <img class="wish-emoji small" :src="emojiUrl(item.emoji)" alt="">
+          <div class="row-main">
+            <strong x-text="item.name"></strong>
+            <span class="muted" x-text="(item.transaction_id ? 'Dibeli ' : 'Tercapai ') + formatDate(item.bought_at)
+              + (item.account_name ? ' · ' + item.account_name : '')
+              + (item.paid_total ? ' · rincian dibayar ' + money(item.paid_total) : '')"></span>
+          </div>
+          <span class="badge badge-ok" x-show="item.paid_amount && item.paid_amount < item.price" x-text="'Hemat ' + money(item.price - item.paid_amount)"></span>
+          <span class="badge badge-ok" x-show="!(item.paid_amount && item.paid_amount < item.price)">
+            <i class="ph-fill" :class="item.kind === 'item' ? 'ph-check-circle' : 'ph-trophy'"></i> <span x-text="wishDoneLabel(item)"></span>
+          </span>
+          <strong x-text="money(item.paid_amount ?? item.price)"></strong>
+          <div class="row-actions">
+            <button class="icon-button subtle" title="Riwayat" @click="openWishHistory(item)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
+            <button class="icon-button subtle" :title="item.transaction_id ? 'Batalkan pembelian (misal barang dikembalikan)' : 'Batalkan status tercapai'" @click="openWishStatus(item, 'unbuy')">
+              <i class="ph-duotone ph-arrow-counter-clockwise"></i>
+            </button>
+          </div>
+        </li>
+      </template>
+    </ul>
+  </div>
+
+  <!-- ========== Dibatalkan ========== -->
+  <template x-if="wishTab === 'cancelled' && wishItems('cancelled').length === 0">
+    <div class="card">
+      {{> components/empty-state emoji="1f9ca" title="Tidak ada yang dibatalkan" text="Barang yang tidak jadi dibeli akan tersimpan di sini. Kadang menahan diri juga sebuah pencapaian!"}}
+    </div>
+  </template>
+  <div class="card" x-show="wishTab === 'cancelled' && wishItems('cancelled').length > 0">
+    <ul class="list">
+      <template x-for="item in wishItems('cancelled')" :key="item.id">
+        <li class="row wish-row cancelled">
+          <img class="wish-emoji small" :src="emojiUrl(item.emoji)" alt="">
+          <div class="row-main">
+            <strong x-text="item.name"></strong>
+            <span class="muted" x-text="'Dibatalkan ' + formatDate(item.cancelled_at) + (item.cancel_reason ? ' · ' + item.cancel_reason : '')"></span>
+          </div>
+          <span class="badge badge-ok" x-text="'Hemat ' + money(item.price)"></span>
+          <div class="row-actions">
+            <button class="icon-button subtle" title="Riwayat" @click="openWishHistory(item)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
+            <button class="button small" @click="restoreWish(item)"><i class="ph-duotone ph-arrow-counter-clockwise"></i> Ingin lagi</button>
+            <button class="icon-button subtle" title="Hapus permanen"
+              @click="deleteWish(item)">
+              <i class="ph-duotone ph-trash"></i>
+            </button>
+          </div>
+        </li>
+      </template>
+    </ul>
+  </div>
+</section>

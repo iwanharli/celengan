@@ -1,0 +1,9 @@
+{{!--
+  Input nominal rupiah. Bisa diketik "25rb" / "1,5jt"; di bawahnya tampil hasilnya.
+  Parameter: label, placeholder, autofocus, model (default form.amountText), hint (ekspresi Alpine, opsional)
+--}}
+<div class="field">
+  <label>{{label}}</label>
+  <input {{#if autofocus}}autofocus {{/if}}inputmode="decimal" x-rupiah{{#if placeholder}} placeholder="{{placeholder}}"{{/if}} x-model="{{#if model}}{{model}}{{else}}form.amountText{{/if}}">
+  <p class="hint" x-text="{{#if hint}}{{hint}}{{else}}'= ' + rupiah(parsedAmount){{/if}}"></p>
+</div>

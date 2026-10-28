@@ -1,0 +1,41 @@
+{{!-- Modal: Penampil foto/bukti sebuah transaksi (geser kiri/kanan) --}}
+<template x-if="modal === 'photos'">
+  <div class="stack photo-viewer" @keydown.arrow-right.window="shiftPhoto(1)" @keydown.arrow-left.window="shiftPhoto(-1)">
+    <div class="card-header">
+      <div>
+        <h2 x-text="transactionTitle(form.transaction)"></h2>
+        <p class="muted" x-text="transactionAmount(form.transaction) + ' · ' + formatDate(form.transaction.date)"></p>
+      </div>
+      <span class="badge" x-text="(form.index + 1) + ' / ' + form.transaction.attachments.length"></span>
+    </div>
+
+    <div class="viewer-stage">
+      <button type="button" class="viewer-nav prev" x-show="form.transaction.attachments.length > 1" @click="shiftPhoto(-1)" aria-label="Sebelumnya">
+        <i class="ph-bold ph-caret-left"></i>
+      </button>
+      <template x-for="photo in [form.transaction.attachments[form.index]]" :key="photo.id">
+        <a :href="attachmentUrl(photo.id)" target="_blank" rel="noopener" title="Buka ukuran penuh">
+          <img class="viewer-image" :src="attachmentUrl(photo.id)" :alt="photo.name || 'Foto'">
+        </a>
+      </template>
+      <button type="button" class="viewer-nav next" x-show="form.transaction.attachments.length > 1" @click="shiftPhoto(1)" aria-label="Berikutnya">
+        <i class="ph-bold ph-caret-right"></i>
+      </button>
+    </div>
+
+    <div class="viewer-thumbs" x-show="form.transaction.attachments.length > 1">
+      <template x-for="(photo, index) in form.transaction.attachments" :key="photo.id">
+        <button type="button" :class="{ active: index === form.index }" @click="form.index = index">
+          <img :src="attachmentUrl(photo.id)" alt="" loading="lazy">
+        </button>
+      </template>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="button" @click="openEditTransaction(form.transaction)" x-show="isEditable(form.transaction)">
+        <i class="ph-duotone ph-pencil-simple"></i> Edit transaksi
+      </button>
+      <button type="button" class="button primary" @click="close()">Tutup</button>
+    </div>
+  </div>
+</template>

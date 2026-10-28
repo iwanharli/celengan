@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Celengan</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/filepond@4.32.7/dist/filepond.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/filepond-plugin-image-preview@4.6.12/dist/filepond-plugin-image-preview.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+
+{{!--
+  Kerangka aplikasi. Isi tiap bagian ada di views/partials/:
+    layout/     login, menu samping, header
+    pages/      satu file per halaman
+    modals/     satu file per form
+    components/ potongan yang dipakai ulang
+  Semua interaksi diatur oleh Alpine.js (public/js/app.js).
+--}}
+<body x-data="app" x-cloak>
+  {{> layout/auth}}
+
+  <div class="layout" :class="{ collapsed: sidebarCollapsed }" x-show="auth.loggedIn">
+    {{> layout/sidebar}}
+
+    <main class="content">
+      {{> layout/topbar}}
+
+      <template x-if="summary">
+        <div>
+          {{> pages/home}}
+          {{> pages/transactions}}
+          {{> pages/budget}}
+          {{> pages/bills}}
+          {{> pages/categories}}
+          {{> pages/debts}}
+          {{> pages/assets}}
+          {{> pages/wishlist}}
+          {{> pages/reports}}
+          {{> pages/export}}
+          {{> pages/accounts}}
+          {{> pages/settings}}
+        </div>
+      </template>
+    </main>
+  </div>
+
+  <!-- Tombol tambah cepat (HP) -->
+  <button class="fab" x-show="auth.loggedIn" @click="openTransaction()" aria-label="Tambah transaksi"><i class="ph-duotone ph-plus"></i></button>
+
+  <!-- Semua form tampil di modal yang sama; isinya dipilih lewat "modal" -->
+  <div class="backdrop" x-show="modal" x-transition.opacity @click.self="close()" @keydown.escape.window="close()">
+    <form class="modal" :class="{ wide: WIDE_MODALS.includes(modal) }" @submit.prevent>
+      {{> modals/transaction}}
+      {{> modals/account}}
+      {{> modals/adjust}}
+      {{> modals/budget}}
+      {{> modals/bill}}
+      {{> modals/pay-bill}}
+      {{> modals/debt}}
+      {{> modals/debt-edit}}
+      {{> modals/pay-debt}}
+      {{> modals/schedule}}
+      {{> modals/wish}}
+      {{> modals/wish-save}}
+      {{> modals/wish-buy}}
+      {{> modals/wish-part-pay}}
+      {{> modals/wish-status}}
+      {{> modals/wish-history}}
+      {{> modals/category}}
+      {{> modals/category-delete}}
+      {{> modals/confirm}}
+      {{> modals/photos}}
+      {{> modals/period}}
+      {{> modals/asset}}
+      {{> modals/asset-value}}
+      {{> modals/asset-trade}}
+      {{> modals/tax-pay}}
+      {{> modals/reset}}
+
+      <p class="form-error" x-show="formError" x-text="formError"></p>
+    </form>
+  </div>
+
+  <div class="toast" x-show="toast" x-transition x-text="toast"></div>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{{!-- Tombol Batal + Simpan di bawah form. Parameter: submit (fungsi), label (default "Simpan"), variant (default primary) --}}
+<div class="form-actions">
+  <button type="button" class="button" @click="close()">Batal</button>
+  <button class="button {{#if variant}}{{variant}}{{else}}primary{{/if}}" @click="{{submit}}">{{#if label}}{{label}}{{else}}Simpan{{/if}}</button>
+</div>

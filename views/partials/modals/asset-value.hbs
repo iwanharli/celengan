@@ -1,0 +1,8 @@
+{{!-- Modal: Perbarui nilai aset --}}
+<template x-if="modal === 'assetValue'">
+  <div class="stack">
+    <h2>Nilai <span x-text="form.asset.name"></span> sekarang</h2>
+    {{> components/amount-field label="Nilai pasar terbaru" autofocus=true hint="'= ' + rupiah(parsedAmount) + ' · modal ' + rupiah(form.asset.invested)"}}
+    {{> components/form-actions submit="saveAssetValue()"}}
+  </div>
+</template>

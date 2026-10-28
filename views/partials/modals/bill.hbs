@@ -1,0 +1,30 @@
+{{!-- Modal: Tambah / edit tagihan rutin. Tagihan cicilan utang: frekuensi & kategori mengikuti utangnya. --}}
+<template x-if="modal === 'bill'">
+  <div class="stack">
+    <h2 x-text="form.id ? 'Edit tagihan' : 'Tambah tagihan rutin'"></h2>
+    <div class="field"><label>Nama tagihan</label><input autofocus placeholder="contoh: Spotify, Listrik, Kos" x-model="form.name"></div>
+    {{> components/amount-field label="Nominal" placeholder="contoh: 55rb"
+        hint="parsedAmount ? '= ' + rupiah(parsedAmount) : 'Untuk tagihan yang berubah (listrik), isi perkiraan saja'"}}
+    <div class="grid-2 tight">
+      <div class="field" x-show="!form.debt_id">
+        <label>Frekuensi</label>
+        <select x-model="form.frequency">
+          <template x-for="[value, label] in Object.entries(FREQUENCIES)"><option :value="value" x-text="label" :selected="value === form.frequency"></option></template>
+        </select>
+      </div>
+      <div class="field">
+        <label>Jatuh tempo berikutnya</label>
+        <input type="date" x-model="form.date">
+        <p class="hint" x-show="form.frequency !== 'weekly'">Tanggalnya dipakai tiap periode. Tanggal 31 di bulan pendek jadi hari terakhir bulan itu.</p>
+      </div>
+      <div class="field" x-show="!form.debt_id">
+        <label>Kategori</label>
+        <select x-model="form.category_id">
+          <template x-for="c in categoriesOf('expense')" :key="c.id"><option :value="c.id" x-text="c.name" :selected="c.id == form.category_id"></option></template>
+        </select>
+      </div>
+      {{> components/account-select label="Dibayar dari"}}
+    </div>
+    {{> components/form-actions submit="saveBill()"}}
+  </div>
+</template>

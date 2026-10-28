@@ -1,0 +1,48 @@
+{{!-- Halaman: Anggaran --}}
+<section class="page stack" x-show="page === 'budget'">
+  <!-- Ringkasan: total anggaran dibanding pemasukan -->
+  <div class="card stat summary-bar">
+    <i class="ph-fill ph-chart-pie-slice tone-info"></i>
+    <div class="grow">
+      <p class="label">Total anggaran per bulan</p>
+      <p class="stat-value" x-text="money(budgetTotals.total)"></p>
+      <p class="hint" x-show="budgetTotals.percent !== null"
+         :class="budgetTotals.percent > 100 && 'tone-negative'"
+         x-text="budgetTotals.percent + '% dari rata-rata pemasukan ' + money(budgetTotals.income) + (budgetTotals.percent > 100 ? ' — melebihi pemasukan!' : '')"></p>
+    </div>
+    <div class="budget-meter" x-show="budgetTotals.percent !== null">
+      <div class="progress"><div :class="budgetTotals.percent > 100 ? 'bar-danger' : budgetTotals.percent > 80 ? 'bar-warning' : 'bar-ok'" :style="{ width: Math.min(100, budgetTotals.percent) + '%' }"></div></div>
+      <small class="muted">Sisakan ruang untuk tabungan</small>
+    </div>
+  </div>
+  <p class="intro">Atur batas per kategori dalam rupiah atau persen pemasukan. Bar berubah kuning di 80% dan merah saat terlampaui.</p>
+  <div class="grid-2">
+    <template x-for="category in summary.categories.filter((c) => !c.archived || c.spent > 0 || c.monthly_budget)" :key="category.id">
+      <div class="card budget">
+        <div class="row">
+          <span class="avatar" :style="{ background: category.color }"><i class="ph-duotone" :class="'ph-' + category.icon"></i></span>
+          <div class="row-main">
+            <strong x-text="category.name"></strong>
+            <span class="muted" x-text="category.monthly_budget
+              ? money(category.spent) + ' dari ' + budgetLabel(category)
+              : category.budget_percent
+                ? money(category.spent) + ' · ' + budgetLabel(category) + ' (belum ada data pemasukan)'
+                : money(category.spent) + ' · belum ada anggaran'"></span>
+          </div>
+          <button class="button small" @click="openBudget(category)">
+            <i class="ph-duotone ph-pencil-simple"></i> <span x-text="category.monthly_budget || category.budget_percent ? 'Ubah' : 'Atur'"></span>
+          </button>
+        </div>
+        <template x-if="category.monthly_budget">
+          <div>
+            <div class="progress"><div :class="'bar-' + budgetTone(category)" :style="{ width: Math.min(100, budgetPercent(category)) + '%' }"></div></div>
+            <p class="hint" :class="'tone-' + (budgetTone(category) === 'danger' ? 'negative' : 'muted')"
+               x-text="budgetPercent(category) >= 100
+                 ? 'Melebihi anggaran ' + money(category.spent - category.monthly_budget)
+                 : 'Sisa ' + money(category.monthly_budget - category.spent) + ' (' + budgetPercent(category) + '% terpakai)'"></p>
+          </div>
+        </template>
+      </div>
+    </template>
+  </div>
+</section>

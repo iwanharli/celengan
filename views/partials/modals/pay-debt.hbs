@@ -1,0 +1,28 @@
+{{!-- Modal: Bayar / terima utang --}}
+<template x-if="modal === 'payDebt'">
+  <div class="stack">
+    <h2 x-text="(form.debt.direction === 'payable' ? 'Bayar ke ' : 'Terima dari ') + form.debt.counterparty"></h2>
+    <p class="hint" x-show="form.debt.type === 'invoice'">Dicatat sebagai pemasukan kategori <strong>Freelance</strong>. Bisa dibayar bertahap (DP/termin).</p>
+    <p class="muted">
+      Sisa: <strong x-text="rupiah(form.debt.remaining)"></strong>
+      <template x-if="installmentInfo(form.debt).next">
+        <span> · berikutnya cicilan ke-<span x-text="installmentInfo(form.debt).next.number"></span>
+          (<span x-text="formatMonthYear(installmentInfo(form.debt).next.due_date)"></span>)</span>
+      </template>
+    </p>
+    <div class="chips" x-show="form.debt.installments.length">
+      <template x-for="option in payOptions(form.debt)" :key="option.label">
+        <button type="button" class="chip" :class="{ active: parsedAmount === option.amount }"
+                @click="form.amountText = formatAmountInput(option.amount)">
+          <span x-text="option.label + ' · ' + rupiah(option.amount)"></span>
+        </button>
+      </template>
+    </div>
+    {{> components/amount-field label="Nominal" autofocus=true}}
+    <div class="grid-2 tight">
+      {{> components/account-select label="Akun"}}
+      <div class="field"><label>Tanggal</label><input type="date" x-model="form.date"></div>
+    </div>
+    {{> components/form-actions submit="payDebt()" variant="positive"}}
+  </div>
+</template>

@@ -1,0 +1,201 @@
+{{!--
+  Halaman: Pengaturan — sub-menu (kiri / tab atas di HP) + satu bagian tampil dalam satu waktu.
+  Bagian: Penghasilan · Pajak · Data & backup · Keamanan · Zona berbahaya (lihat SETTINGS_SECTIONS).
+  Bagian aktif disimpan di URL: #settings/backup
+--}}
+<section class="page settings-page" x-show="page === 'settings'">
+  <nav class="settings-nav">
+    <template x-for="section in settingsSections" :key="section.id">
+      <button type="button" class="settings-nav-item" :class="{ active: settingsSection === section.id, danger: section.id === 'danger' }"
+              @click="goToSettings(section.id)">
+        <span class="settings-nav-icon"><i class="ph-duotone" :class="'ph-' + section.icon"></i></span>
+        <span class="settings-nav-text">
+          <strong x-text="section.label"></strong>
+          <small x-text="section.hint"></small>
+        </span>
+      </button>
+    </template>
+  </nav>
+
+  <div class="settings-body">
+    <!-- ========== Penghasilan ========== -->
+    <div class="card settings-panel" x-show="settingsSection === 'income'">
+      <div class="panel-head">
+        <span class="panel-icon"><i class="ph-duotone ph-briefcase"></i></span>
+        <div>
+          <h2>Penghasilan</h2>
+          <p class="muted">Menentukan cara bulan keuangan & perkiraan tabungan dihitung.</p>
+        </div>
+      </div>
+      <div class="field">
+        <label>Jenis penghasilan</label>
+        <div class="segmented">
+          <button type="button" :class="{ active: settingsForm.income_mode === 'fixed' }" @click="settingsForm.income_mode = 'fixed'">
+            <i class="ph-duotone ph-buildings"></i> Gaji tetap
+          </button>
+          <button type="button" :class="{ active: settingsForm.income_mode === 'freelance' }" @click="settingsForm.income_mode = 'freelance'">
+            <i class="ph-duotone ph-laptop"></i> Freelance / tidak tentu
+          </button>
+        </div>
+        <p class="hint" x-show="settingsForm.income_mode === 'freelance'">
+          Laporan memakai bulan kalender (tanggal 1). Beranda menampilkan berapa bulan dana kamu cukup,
+          perkiraan tabungan memakai rata-rata 6 bulan + skenario bulan sepi, dan kamu bisa mencatat invoice klien.
+        </p>
+      </div>
+      <div class="field" x-show="settingsForm.income_mode === 'fixed'">
+        <label>Tanggal gajian (awal bulan keuangan)</label>
+        <select x-model="settingsForm.month_start_day">
+          <template x-for="day in 28"><option :value="day" x-text="'Tanggal ' + day" :selected="day == settingsForm.month_start_day"></option></template>
+        </select>
+        <p class="hint">Laporan dan anggaran dihitung dari tanggal ini sampai sehari sebelum gajian berikutnya.</p>
+      </div>
+      <div class="panel-actions">
+        <button type="button" class="link" x-show="settingsForm.income_mode === 'freelance'" @click="goToSettings('tax')">Atur pajak freelance →</button>
+        <span class="spacer"></span>
+        <button class="button primary" @click="saveSettings()"><i class="ph-duotone ph-check"></i> Simpan</button>
+      </div>
+    </div>
+
+    <!-- ========== Pajak ========== -->
+    <div class="card settings-panel" x-show="settingsSection === 'tax'">
+      <div class="panel-head">
+        <span class="panel-icon"><i class="ph-duotone ph-receipt"></i></span>
+        <div>
+          <h2>Pajak freelance</h2>
+          <p class="muted">Sisihkan sebagian pemasukan untuk pajak, supaya tidak kaget saat lapor tahunan.</p>
+        </div>
+      </div>
+      <template x-if="settingsForm.income_mode !== 'freelance'">
+        <div class="empty-hint">
+          <img :src="emojiUrl('1f9fe')" alt="">
+          <p>Fitur ini untuk penghasilan <strong>freelance</strong>. Ubah jenis penghasilan dulu di
+            <button type="button" class="link" @click="goToSettings('income')">Penghasilan</button>.</p>
+        </div>
+      </template>
+      <template x-if="settingsForm.income_mode === 'freelance'">
+        <div class="stack">
+          <div class="field">
+            <label>Persentase yang disisihkan</label>
+            <div class="chips">
+              <button type="button" class="chip" :class="{ active: !Number(settingsForm.tax_rate) }" @click="settingsForm.tax_rate = 0">Tidak</button>
+              <template x-for="rate in TAX_RATE_CHOICES" :key="rate">
+                <button type="button" class="chip" :class="{ active: Number(settingsForm.tax_rate) === rate }"
+                        @click="settingsForm.tax_rate = rate" x-text="String(rate).replace('.', ',') + '%'"></button>
+              </template>
+            </div>
+            <div class="percent-input">
+              <input inputmode="decimal" placeholder="atau ketik sendiri" x-model="settingsForm.tax_rate">
+              <span>%</span>
+            </div>
+            <p class="hint">
+              Contoh: 0,5% PPh final UMKM, 2,5% perkiraan PPh freelancer dengan NPPN.
+              Sesuaikan dengan kondisimu atau tanyakan konsultan pajak.
+            </p>
+          </div>
+          <div class="field" x-show="Number(String(settingsForm.tax_rate).replace(',', '.')) > 0">
+            <label>Pemasukan yang kena pajak</label>
+            <div class="chips">
+              <template x-for="category in categoriesOf('income')" :key="category.id">
+                <button type="button" class="chip" :class="{ active: settingsForm.tax_category_ids.includes(category.id) }"
+                        :style="settingsForm.tax_category_ids.includes(category.id) && { background: category.color, borderColor: category.color }"
+                        @click="toggleTaxCategory(category.id)">
+                  <i class="ph-duotone" :class="'ph-' + category.icon"></i> <span x-text="category.name"></span>
+                </button>
+              </template>
+            </div>
+            <p class="hint">Kosongkan untuk memakai kategori <strong>Freelance</strong> (dibuat otomatis). Pembayaran invoice klien masuk ke kategori Freelance.</p>
+          </div>
+          <div class="panel-actions">
+            <span class="spacer"></span>
+            <button class="button primary" @click="saveSettings()"><i class="ph-duotone ph-check"></i> Simpan</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ========== Data ========== -->
+    <div class="stack" x-show="settingsSection === 'data'">
+      <div class="card settings-panel">
+        <div class="panel-head">
+          <span class="panel-icon"><i class="ph-duotone ph-shield-check"></i></span>
+          <div>
+            <h2>Backup otomatis</h2>
+            <p class="muted">Tidak perlu diatur — data dicadangkan sendiri setiap hari & sebelum aksi besar (gabung kategori, mulai dari nol).</p>
+          </div>
+        </div>
+        <div class="backup-status" :class="{ off: !lastAutoBackup }">
+          <i class="ph-fill" :class="lastAutoBackup ? 'ph-check-circle' : 'ph-clock'"></i>
+          <div>
+            <strong x-text="lastAutoBackup ? 'Backup otomatis aktif' : 'Menunggu backup pertama'"></strong>
+            <p class="muted" x-show="lastAutoBackup"
+               x-text="'Terakhir: ' + (lastAutoBackup && backupLabel(lastAutoBackup)) + ' · ' + autoBackups.length + ' cadangan tersimpan'"></p>
+            <p class="muted" x-show="!lastAutoBackup">Dibuat otomatis saat server berjalan, sekali sehari.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card settings-panel">
+        <div class="panel-head">
+          <span class="panel-icon"><i class="ph-duotone ph-export"></i></span>
+          <div class="grow">
+            <h2>Export data</h2>
+            <p class="muted">Unduh transaksi, akun, utang, wishlist, dll. ke Excel atau CSV — atur di halaman Export.</p>
+          </div>
+          <button class="button" @click="goTo('export')"><i class="ph-duotone ph-arrow-right"></i> Buka Export</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Keamanan ========== -->
+    <div class="card settings-panel" x-show="settingsSection === 'security'">
+      <div class="panel-head">
+        <span class="panel-icon"><i class="ph-duotone ph-lock-key"></i></span>
+        <div class="grow">
+          <h2>Keamanan</h2>
+          <p class="muted">Login sebagai <strong x-text="auth.name"></strong>. Sesi berlaku 30 hari.</p>
+        </div>
+        <button class="button" @click="logout()"><i class="ph-duotone ph-sign-out"></i> Keluar</button>
+      </div>
+      <form class="stack" @submit.prevent="changePassword()">
+        <h3>Ganti password</h3>
+        <div class="field">
+          <label>Password lama</label>
+          <input type="password" x-model="passwordForm.current_password" required autocomplete="current-password">
+        </div>
+        <div class="grid-2 tight">
+          <div class="field">
+            <label>Password baru</label>
+            <input type="password" x-model="passwordForm.new_password" required minlength="8" autocomplete="new-password" placeholder="Minimal 8 karakter">
+          </div>
+          <div class="field">
+            <label>Ulangi password baru</label>
+            <input type="password" x-model="passwordForm.confirm" required autocomplete="new-password">
+          </div>
+        </div>
+        <p class="hint">Setelah diganti, perangkat lain otomatis keluar.</p>
+        <div class="panel-actions">
+          <span class="spacer"></span>
+          <button class="button primary"><i class="ph-duotone ph-key"></i> Ganti password</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ========== Zona berbahaya ========== -->
+    <div class="card settings-panel danger-zone" x-show="settingsSection === 'danger'">
+      <div class="panel-head">
+        <span class="panel-icon danger"><i class="ph-duotone ph-warning-octagon"></i></span>
+        <div>
+          <h2>Zona berbahaya</h2>
+          <p class="muted">Aksi di sini tidak bisa dibatalkan. Backup pengaman dibuat otomatis sebelum dijalankan.</p>
+        </div>
+      </div>
+      <div class="danger-row">
+        <div class="grow">
+          <strong>Mulai dari nol</strong>
+          <p class="muted">Hapus semua akun, transaksi, tagihan, utang, aset & wishlist (misalnya data contoh). Login, pengaturan & kategori tetap ada.</p>
+        </div>
+        <button class="button danger" @click="openReset()"><i class="ph-duotone ph-broom"></i> Hapus semua data…</button>
+      </div>
+    </div>
+  </div>
+</section>

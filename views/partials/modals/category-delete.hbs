@@ -1,0 +1,81 @@
+{{!--
+  Modal: Hapus kategori.
+  - Belum pernah dipakai → konfirmasi hapus biasa.
+  - Sudah dipakai → peringatan + 3 pilihan: gabungkan ke kategori lain, arsipkan, atau pindahkan ke kategori baru.
+--}}
+<template x-if="modal === 'categoryDelete'">
+  <div class="stack">
+    <div class="category-preview" :class="{ warning: form.inUse }">
+      <span class="avatar large" :style="{ background: form.category.color }"><i class="ph-duotone" :class="'ph-' + form.category.icon"></i></span>
+      <div>
+        <h2 x-text="form.inUse ? form.category.name + ' sudah dipakai' : 'Hapus ' + form.category.name + '?'"></h2>
+        <p class="muted" x-text="categoryUsageText(form.category) + (form.category.bill_count ? ' · ' + form.category.bill_count + ' tagihan' : '')"></p>
+      </div>
+    </div>
+
+    <!-- Belum dipakai: aman -->
+    <template x-if="!form.inUse">
+      <p class="hint">Kategori ini belum pernah dipakai, jadi aman untuk dihapus.</p>
+    </template>
+
+    <!-- Sudah dipakai: pilih salah satu -->
+    <template x-if="form.inUse">
+      <div class="stack-sm">
+        <p class="cost-warning">
+          <i class="ph-duotone ph-warning"></i>
+          Supaya riwayat, anggaran & laporan tidak berantakan, isinya perlu dipindah dulu. Pilih salah satu:
+        </p>
+
+        <label class="choice" :class="{ active: form.mode === 'merge' }">
+          <input type="radio" value="merge" x-model="form.mode">
+          <div>
+            <strong><i class="ph-duotone ph-git-merge"></i> Gabungkan ke kategori lain</strong>
+            <p class="hint">Semua isi pindah ke kategori yang sudah ada, lalu kategori ini dihapus.</p>
+            <select x-model="form.into" x-show="form.mode === 'merge'">
+              <option value="">Pilih kategori tujuan…</option>
+              <template x-for="item in categories.filter((c) => c.kind === form.category.kind && c.id !== form.category.id && !c.archived)" :key="item.id">
+                <option :value="item.id" x-text="item.name" :selected="item.id == form.into"></option>
+              </template>
+            </select>
+          </div>
+        </label>
+
+        <label class="choice" :class="{ active: form.mode === 'archive' }">
+          <input type="radio" value="archive" x-model="form.mode">
+          <div>
+            <strong><i class="ph-duotone ph-archive"></i> Arsipkan saja</strong> <span class="badge badge-ok">paling aman</span>
+            <p class="hint">Tidak ada data yang berubah. Kategori disembunyikan dari form dan bisa diaktifkan lagi kapan saja.</p>
+          </div>
+        </label>
+
+        <label class="choice" :class="{ active: form.mode === 'new' }">
+          <input type="radio" value="new" x-model="form.mode">
+          <div>
+            <strong><i class="ph-duotone ph-sparkle"></i> Pindahkan ke kategori baru</strong>
+            <p class="hint">Buat kategori baru, pindahkan semua isinya ke sana, lalu kategori ini dihapus.</p>
+            <div class="new-category" x-show="form.mode === 'new'">
+              <span class="avatar" :style="{ background: form.newColor }"><i class="ph-duotone" :class="'ph-' + form.newIcon"></i></span>
+              <input placeholder="Nama kategori baru" x-model="form.newName">
+            </div>
+            <div class="color-grid small" x-show="form.mode === 'new'">
+              <template x-for="color in COLOR_CHOICES" :key="color">
+                <button type="button" :class="{ active: form.newColor === color }" :style="{ background: color }" @click="form.newColor = color" :aria-label="color"></button>
+              </template>
+            </div>
+          </div>
+        </label>
+
+        <p class="move-preview" x-show="form.mode !== 'archive'">
+          <i class="ph-duotone ph-arrow-right"></i> <span x-text="categoryMovePreview"></span>
+          <br><small><i class="ph-duotone ph-shield-check"></i> Backup otomatis dibuat sebelum dipindah.</small>
+        </p>
+      </div>
+    </template>
+
+    <div class="form-actions">
+      <button type="button" class="button" @click="close()">Batal</button>
+      <button class="button" :class="form.inUse && form.mode === 'archive' ? 'primary' : 'danger'" @click="deleteCategory()"
+              x-text="!form.inUse ? 'Hapus kategori' : form.mode === 'archive' ? 'Arsipkan' : form.mode === 'new' ? 'Buat & pindahkan' : 'Gabungkan'"></button>
+    </div>
+  </div>
+</template>

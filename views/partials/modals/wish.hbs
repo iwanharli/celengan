@@ -1,0 +1,130 @@
+{{!--
+  Modal: Tambah / edit wishlist & impian.
+  Atas (selebar modal): pratinjau, jenis, nama + target dana + target tanggal.
+  Bawah dua kolom: kiri = rincian biaya (opsional), kanan = prioritas, gambar, link, catatan.
+--}}
+<template x-if="modal === 'wish'">
+  <div class="stack wish-form">
+    <div class="category-preview">
+      <img class="wish-emoji" :src="emojiUrl(form.emoji)" alt="">
+      <div>
+        <h2 x-text="form.name || (form.id ? 'Edit impian' : 'Impian baru')"></h2>
+        <p class="muted" x-text="WISH_KINDS[form.kind].label + (parsedAmount ? ' · ' + rupiah(parsedAmount) : '')"></p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Jenis</label>
+      <div class="chips kind-chips">
+        <template x-for="[kind, info] in Object.entries(WISH_KINDS)" :key="kind">
+          <button type="button" class="chip" :class="{ active: form.kind === kind }" @click="setWishKind(kind)">
+            <img :src="emojiUrl(info.emoji)" alt=""> <span x-text="info.label"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <div class="wish-basics">
+      <div class="field">
+        <label>Nama</label>
+        <input autofocus x-model="form.name"
+               :placeholder="form.kind === 'item' ? 'contoh: iPhone 16' : form.kind === 'wedding' ? 'contoh: Pernikahan kami' : form.kind === 'travel' ? 'contoh: Liburan ke Jepang' : 'contoh: ' + WISH_KINDS[form.kind].label">
+      </div>
+      {{> components/amount-field label="Target dana" placeholder="contoh: 50jt"
+          hint="parsedAmount ? '= ' + rupiah(parsedAmount) : (form.showParts ? 'Boleh kosong: dihitung dari total rincian' : '')"}}
+      <div class="field">
+        <label>Target tanggal <span class="muted">(opsional)</span></label>
+        <input type="date" x-model="form.target_date">
+      </div>
+    </div>
+
+    <div class="wish-columns">
+      <!-- Kiri: rincian biaya (opsional), link & catatan -->
+      <div class="stack">
+      <div class="parts-box" :class="{ open: form.showParts }">
+        <label class="checkbox">
+          <input type="checkbox" x-model="form.showParts">
+          <span><strong>Rincian biaya</strong> <span class="muted">(opsional)</span></span>
+        </label>
+        <p class="hint" x-show="!form.showParts">Pecah target jadi pos-pos biaya, misal Gedung, Katering, Dekorasi. Tiap pos bisa dibayar bertahap.</p>
+
+        <template x-if="form.showParts">
+          <div class="stack-sm">
+            <template x-if="form.parts.length === 0 && WISH_KINDS[form.kind].template.length">
+              <button type="button" class="button small" @click="useWishTemplate()">
+                <i class="ph-duotone ph-magic-wand"></i> Pakai contoh rincian <span x-text="WISH_KINDS[form.kind].label"></span>
+              </button>
+            </template>
+
+            <template x-for="(part, index) in form.parts" :key="index">
+              <div class="part-row">
+                <input placeholder="Nama pos, misal Gedung" x-model="part.name">
+                <input inputmode="decimal" x-rupiah placeholder="Rp" x-model="part.amountText">
+                <button type="button" class="icon-button subtle" :title="part.paid ? 'Sudah ada pembayaran' : 'Hapus rincian'"
+                        :disabled="part.paid > 0" @click="removeWishPart(index)">
+                  <i class="ph-duotone" :class="part.paid ? 'ph-lock-simple' : 'ph-x'"></i>
+                </button>
+              </div>
+            </template>
+            <button type="button" class="link add-part" @click="addWishPart()"><i class="ph-duotone ph-plus"></i> Tambah rincian</button>
+
+            <div class="parts-summary" x-show="form.parts.length"
+                 :class="{ over: wishPartsSummary.target && wishPartsSummary.unallocated < 0 }">
+              <span>Total rincian <strong x-text="rupiah(wishPartsSummary.total)"></strong></span>
+              <template x-if="wishPartsSummary.target && wishPartsSummary.unallocated > 0">
+                <span>· belum dirinci <strong x-text="rupiah(wishPartsSummary.unallocated)"></strong></span>
+              </template>
+              <template x-if="wishPartsSummary.target && wishPartsSummary.unallocated < 0">
+                <span>
+                  · melebihi target <strong x-text="rupiah(-wishPartsSummary.unallocated)"></strong>
+                  <button type="button" class="link" @click="fitWishTargetToParts()">Jadikan target = total rincian</button>
+                </span>
+              </template>
+              <template x-if="wishPartsSummary.target && wishPartsSummary.unallocated === 0">
+                <span class="tone-positive">· pas dengan target ✓</span>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+
+        <div class="grid-2 tight">
+          <div class="field">
+            <label>Link <span class="muted">(opsional)</span></label>
+            <input type="url" placeholder="https://…" x-model="form.link">
+          </div>
+          <div class="field">
+            <label>Catatan <span class="muted">(opsional)</span></label>
+            <input placeholder="contoh: tamu ±300 orang" x-model="form.note">
+          </div>
+        </div>
+      </div>
+
+      <!-- Kanan: prioritas & gambar -->
+      <div class="stack">
+        <div class="field">
+          <label>Prioritas</label>
+          <div class="segmented">
+            <template x-for="[value, info] in Object.entries(PRIORITIES)" :key="value">
+              <button type="button" :class="{ active: form.priority === value }" @click="form.priority = value">
+                <i class="ph-duotone" :class="'ph-' + info.icon"></i> <span x-text="info.label"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+        <div class="field">
+          <label>Gambar</label>
+          <div class="emoji-grid compact">
+            <template x-for="code in WISH_EMOJIS" :key="code">
+              <button type="button" :class="{ active: form.emoji === code }" @click="form.emoji = code">
+                <img :src="emojiUrl(code)" alt="">
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{> components/form-actions submit="saveWish()"}}
+  </div>
+</template>

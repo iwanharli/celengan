@@ -6,6 +6,7 @@ export const PAGES = [
   { id: 'budget', label: 'Anggaran', emoji: '1f967' },
   { id: 'bills', label: 'Tagihan', emoji: '1f4c5' },
   { id: 'categories', label: 'Kategori', emoji: '1f3f7-fe0f' },
+  { id: 'recipients', label: 'Penerima', emoji: '1f4ec' },
   { id: 'debts', label: 'Utang', emoji: '1f91d' },
   { id: 'assets', label: 'Aset', emoji: '1f48e' },
   { id: 'wishlist', label: 'Wishlist', emoji: '1f381' },
@@ -127,7 +128,7 @@ export const BUDGET_ALERT_STYLE = {
 // "bottom: true" = ditempel di bagian bawah menu.
 export const NAV_GROUPS = [
   { label: null, pages: ['home'] },
-  { label: 'Harian', pages: ['transactions', 'budget', 'bills', 'categories'] },
+  { label: 'Harian', pages: ['transactions', 'budget', 'bills', 'recipients', 'categories'] },
   { label: 'Kekayaan', pages: ['accounts', 'assets', 'debts'] },
   { label: 'Rencana', pages: ['wishlist', 'reports', 'export'] },
   { label: null, pages: ['settings'], bottom: true },
@@ -206,3 +207,17 @@ export const EXPORT_DATASETS = [
 
 // Pilihan cepat biaya admin transfer (0 = gratis). Rp6.500 = transfer antarbank online non BI-FAST.
 export const TRANSFER_FEES = [0, 1000, 2500, 6500];
+
+// Penerima kiriman uang: hubungan & cara kirim.
+export const RECIPIENT_RELATIONS = {
+  parent: { label: 'Orang tua', icon: 'heart', color: '#f43f5e' },
+  family: { label: 'Keluarga', icon: 'users-three', color: '#f97316' },
+  partner: { label: 'Pasangan', icon: 'heart-half', color: '#ec4899' },
+  friend: { label: 'Teman', icon: 'handshake', color: '#3b82f6' },
+  other: { label: 'Lainnya', icon: 'user', color: '#64748b' },
+};
+export const RECIPIENT_METHODS = {
+  bank: { label: 'Rekening bank', icon: 'bank', number: 'No. rekening' },
+  ewallet: { label: 'E-Wallet', icon: 'device-mobile', number: 'No. HP' },
+  cash: { label: 'Tunai', icon: 'hand-coins', number: '' },
+};

@@ -1,0 +1,74 @@
+{{!-- Halaman: Penerima — buku rekening tujuan kiriman uang (orang tua, keluarga, teman, ...) --}}
+<section class="page stack" x-show="page === 'recipients'">
+  <div class="card stat summary-bar">
+    <i class="ph-fill ph-paper-plane-tilt tone-info"></i>
+    <div class="grow">
+      <p class="label">Dikirim bulan ini</p>
+      <p class="stat-value" x-text="money(recipientsMonthTotal)"></p>
+      <p class="hint" x-text="recipients.length + ' penerima tersimpan · tandai ⭐ yang sering dikirimi'"></p>
+    </div>
+    <button class="button primary" @click="openRecipient()"><i class="ph-duotone ph-user-plus"></i> Tambah penerima</button>
+  </div>
+
+  <template x-if="recipients.length === 0">
+    <div class="card">
+      {{> components/empty-state emoji="1f4ec" title="Belum ada penerima" text="Simpan rekening orang tua, keluarga, atau teman yang sering kamu kirimi uang. Nomornya tinggal disalin, kirimannya tercatat rapi." action="openRecipient()" actionLabel="Tambah penerima"}}
+    </div>
+  </template>
+
+  <div class="toolbar" x-show="recipients.length > 0">
+    <div class="chips">
+      <button type="button" class="chip" :class="{ active: recipientFilter === 'all' }" @click="recipientFilter = 'all'">Semua</button>
+      <button type="button" class="chip" :class="{ active: recipientFilter === 'favorite' }" @click="recipientFilter = 'favorite'"><i class="ph-fill ph-star"></i> Favorit</button>
+      <template x-for="[key, relation] in Object.entries(RECIPIENT_RELATIONS)" :key="key">
+        <button type="button" class="chip" x-show="recipients.some((r) => r.relation === key)"
+                :class="{ active: recipientFilter === key }" @click="recipientFilter = key" x-text="relation.label"></button>
+      </template>
+    </div>
+  </div>
+
+  <div class="recipient-grid">
+    <template x-for="r in filteredRecipients" :key="r.id">
+      <div class="card recipient-card">
+        <div class="recipient-head">
+          <span class="recipient-avatar" :style="{ background: RECIPIENT_RELATIONS[r.relation].color }" x-text="recipientInitials(r)"></span>
+          <div class="grow">
+            <strong x-text="r.name"></strong>
+            <span class="badge" :style="{ color: RECIPIENT_RELATIONS[r.relation].color }">
+              <i class="ph-duotone" :class="'ph-' + RECIPIENT_RELATIONS[r.relation].icon"></i>
+              <span x-text="RECIPIENT_RELATIONS[r.relation].label"></span>
+            </span>
+          </div>
+          <button class="account-edit" :class="{ starred: r.is_favorite }" @click="toggleRecipientFavorite(r)"
+                  :title="r.is_favorite ? 'Hapus dari favorit' : 'Jadikan favorit'">
+            <i :class="r.is_favorite ? 'ph-fill ph-star' : 'ph-duotone ph-star'"></i>
+          </button>
+          <button class="account-edit" title="Edit" @click="openRecipient(r)"><i class="ph-duotone ph-pencil-simple"></i></button>
+        </div>
+
+        <div class="recipient-dest">
+          <i class="ph-duotone" :class="'ph-' + RECIPIENT_METHODS[r.method].icon"></i>
+          <div class="grow">
+            <span class="label" x-text="r.provider || RECIPIENT_METHODS[r.method].label"></span>
+            <strong class="mono" x-show="r.account_number" x-text="recipientDestination({ ...r, provider: null })"></strong>
+            <strong x-show="!r.account_number" class="muted" x-text="r.method === 'cash' ? 'Diberikan tunai' : 'Nomor belum diisi'"></strong>
+          </div>
+          <button class="icon-button subtle small" x-show="r.account_number" title="Salin nomor" @click="copyRecipientNumber(r)"><i class="ph-duotone ph-copy"></i></button>
+        </div>
+
+        <div class="recipient-stats">
+          <div><small>Bulan ini</small><strong x-text="money(r.month_sent)"></strong></div>
+          <div><small>Total</small><strong x-text="money(r.total_sent)"></strong></div>
+        </div>
+        <small class="muted" x-text="recipientLastText(r)"></small>
+
+        <div class="account-actions">
+          <button class="button small primary" @click="sendToRecipient(r)"><i class="ph-duotone ph-paper-plane-tilt"></i> Kirim</button>
+          <button class="button small" @click="openRecipientHistory(r)"><i class="ph-duotone ph-clock-counter-clockwise"></i> Riwayat</button>
+          <span class="spacer"></span>
+          <button class="icon-button subtle" title="Hapus" @click="deleteRecipient(r)"><i class="ph-duotone ph-trash"></i></button>
+        </div>
+      </div>
+    </template>
+  </div>
+</section>

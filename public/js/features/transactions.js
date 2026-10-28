@@ -219,7 +219,7 @@ export default {
 
   openTransaction(kind = 'expense', values = {}) {
     this.open('transaction', {
-      kind, category_id: '', to_account_id: '', note: '', client: '', feeText: '', attachments: [], photos: [], ...values,
+      kind, category_id: '', to_account_id: '', note: '', client: '', feeText: '', recipient_id: '', attachments: [], photos: [], ...values,
     });
     this.loadClientNames();
   },
@@ -256,6 +256,7 @@ export default {
       note: t.note ?? '',
       client: t.client ?? '',
       feeText: t.fee ? formatAmountInput(t.fee) : '',
+      recipient_id: t.recipient_id ?? '',
       linked_to: t.linked_to, // jenisnya dikunci bila terhubung ke utang/tagihan/wishlist
       attachments: t.attachments.map((photo) => ({ ...photo, removed: false })), // foto yang sudah ada
       photos: [], // foto baru yang belum diunggah
@@ -273,7 +274,9 @@ export default {
         account_id: Number(this.form.account_id),
         to_account_id: Number(this.form.to_account_id) || null,
         category_id: Number(this.form.category_id) || null,
-        fee: this.form.kind === 'transfer' ? parseAmount(this.form.feeText) || 0 : 0,
+        recipient_id: this.form.kind === 'expense' ? Number(this.form.recipient_id) || null : null,
+        fee: this.form.kind === 'transfer' || (this.form.kind === 'expense' && this.form.recipient_id)
+          ? parseAmount(this.form.feeText) || 0 : 0,
       };
       if (this.form.id) await api.put(`/transactions/${this.form.id}`, body);
       // Simpan id-nya: kalau unggah foto gagal lalu dicoba lagi, transaksi tidak tercatat dua kali.

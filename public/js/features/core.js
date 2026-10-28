@@ -15,6 +15,7 @@ const DATA_SOURCES = {
   accounts: () => '/accounts',
   categories: () => '/categories',
   templates: () => '/templates',
+  recipients: () => '/recipients',
   transactions() { return `/transactions?${new URLSearchParams({ ...this.periodParams, ...this.filters })}`; },
   bills: () => '/bills',
   endedBills: () => '/bills/ended',
@@ -47,6 +48,7 @@ export default {
   categories: [],
   transactions: [],
   bills: [],
+  recipients: [],
   endedBills: [],
   debts: [],
   wishlist: [],
@@ -101,7 +103,7 @@ export default {
   async reload() {
     this.staleData = new Set(Object.keys(DATA_SOURCES));
     await Promise.all([
-      this.loadData(['summary', 'accounts', 'categories', 'templates']),
+      this.loadData(['summary', 'accounts', 'categories', 'templates', 'recipients']),
       this.loadPageData(),
     ]);
     if (this.page === 'settings') this.loadAutoBackups();

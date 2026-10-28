@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
             a.name  AS account_name,
             ta.name AS to_account_name,
             c.name  AS category_name, c.icon AS category_icon, c.color AS category_color,
-            d.counterparty AS debt_name, s.name AS asset_name,
+            d.counterparty AS debt_name, s.name AS asset_name, r.name AS recipient_name,
             COALESCE((SELECT json_agg(json_build_object('id', ta.id, 'name', ta.original_name) ORDER BY ta.id)
                       FROM transaction_attachments ta WHERE ta.transaction_id = t.id), '[]') AS attachments
      FROM transactions t
@@ -39,6 +39,7 @@ router.get('/', async (req, res) => {
      LEFT JOIN categories c ON c.id = t.category_id
      LEFT JOIN debts d      ON d.id = t.debt_id
      LEFT JOIN assets s     ON s.id = t.asset_id
+     LEFT JOIN recipients r ON r.id = t.recipient_id
      WHERE ${where.join(' AND ')}
      ORDER BY t.date DESC, t.id DESC`,
     params,
@@ -73,6 +74,7 @@ function validTransactionValues(body) {
     date,
     note || null,
     kind === 'income' ? client?.trim() || null : null, // nama klien, hanya untuk pemasukan
+    kind === 'expense' ? Number(body.recipient_id) || null : null, // kiriman ke penerima, hanya pengeluaran
   ];
 }
 
@@ -93,8 +95,8 @@ router.post('/', async (req, res) => {
   const values = validTransactionValues(req.body);
   const transaction = await withTransaction(async (client) => {
     const { rows: [transaction] } = await client.query(
-      `INSERT INTO transactions (kind, amount, account_id, to_account_id, category_id, date, note, client)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      `INSERT INTO transactions (kind, amount, account_id, to_account_id, category_id, date, note, client, recipient_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       values,
     );
     await syncTransferFee(client, transaction, req.body.fee);
@@ -126,17 +128,20 @@ async function feeCategoryId(client) {
   return created.id;
 }
 
-// Biaya admin transfer dipotong dari akun pengirim, dicatat sebagai pengeluaran yang menempel ke transfernya.
-// fee kosong/0 → biaya (kalau ada) dihapus. Bukan transfer → tidak ada biaya.
+// Biaya admin dipotong dari akun pengirim, dicatat sebagai pengeluaran yang menempel ke transaksinya.
+// Berlaku untuk transfer antar akun sendiri & kiriman ke penerima. fee kosong/0 → biaya (kalau ada) dihapus.
 async function syncTransferFee(client, transfer, fee) {
-  const amount = transfer.kind === 'transfer' ? Number(fee) || 0 : 0;
+  const hasFee = transfer.kind === 'transfer' || transfer.recipient_id;
+  const amount = hasFee ? Number(fee) || 0 : 0;
   if (amount < 0) throw new HttpError(400, 'Biaya admin tidak valid');
   if (amount === 0) {
     await client.query('DELETE FROM transactions WHERE fee_of = $1', [transfer.id]);
     return;
   }
-  const { rows: [toAccount] } = await client.query('SELECT name FROM accounts WHERE id = $1', [transfer.to_account_id]);
-  const note = `Biaya transfer ke ${toAccount?.name ?? 'akun lain'}`;
+  const { rows: [target] } = transfer.recipient_id
+    ? await client.query('SELECT name FROM recipients WHERE id = $1', [transfer.recipient_id])
+    : await client.query('SELECT name FROM accounts WHERE id = $1', [transfer.to_account_id]);
+  const note = `Biaya transfer ke ${target?.name ?? 'akun lain'}`;
   const { rowCount } = await client.query(
     'UPDATE transactions SET amount = $1, account_id = $2, date = $3, note = $4 WHERE fee_of = $5',
     [amount, transfer.account_id, transfer.date, note, transfer.id],
@@ -223,8 +228,9 @@ router.put('/:id', async (req, res) => {
   const transaction = await withTransaction(async (client) => {
     const { rows: [transaction] } = await client.query(
       `UPDATE transactions
-       SET kind = $1, amount = $2, account_id = $3, to_account_id = $4, category_id = $5, date = $6, note = $7, client = $8
-       WHERE id = $9 AND kind = ANY($10)
+       SET kind = $1, amount = $2, account_id = $3, to_account_id = $4, category_id = $5, date = $6, note = $7, client = $8,
+           recipient_id = $9
+       WHERE id = $10 AND kind = ANY($11)
        RETURNING *`,
       [...values, req.params.id, EDITABLE_KINDS],
     );

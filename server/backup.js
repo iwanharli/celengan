@@ -5,7 +5,7 @@ import { query, withTransaction, HttpError } from './db.js';
 // Backup berisi SEMUA data keuangan (bukan akun login/password).
 // Urutan tabel penting: tabel induk dulu, supaya relasi (foreign key) terpenuhi saat restore.
 const DATA_TABLES = [
-  'categories', 'accounts', 'assets', 'debts', 'debt_installments', 'bills',
+  'categories', 'accounts', 'recipients', 'assets', 'debts', 'debt_installments', 'bills',
   'wishlist_items', 'wishlist_parts', 'transactions', 'transaction_attachments', 'wishlist_events', 'net_worth_snapshots',
   'transaction_templates', 'transaction_history', 'bill_skips',
 ];

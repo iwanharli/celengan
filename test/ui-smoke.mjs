@@ -102,6 +102,7 @@ const modals = {
   'invoice': 'd.openInvoice()',
   'edit utang': `d.openEditDebt(${find('debts', debt.id)})`,
   'jadwal cicilan': `d.openSchedule(${find('debts', debt.id)})`,
+  'riwayat utang': `d.openDebtHistory(${find('debts', debt.id)})`,
   'bayar utang': `d.openPayDebt(${find('debts', debt.id)})`,
   'terima invoice': `d.openPayDebt(${find('debts', invoice.id)})`,
   'aset': 'd.openAsset()',

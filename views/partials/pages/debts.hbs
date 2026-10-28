@@ -20,131 +20,166 @@
     </div>
   </div>
 
-  <div class="toolbar">
-    <button class="button primary" @click="openDebt('payable')">
-      <i class="ph-duotone ph-plus"></i> Catat utang
-    </button>
-    <button class="button" @click="openDebt('receivable')">
-      <i class="ph-duotone ph-plus"></i> Catat piutang
-    </button>
-    <button class="button" x-show="isFreelance" @click="openInvoice()">
-      <i class="ph-duotone ph-receipt"></i> Catat invoice klien
-    </button>
-    <button class="button" x-show="isFreelance" @click="openPaidProject()" title="Proyek yang dibayar langsung, tanpa invoice">
-      <i class="ph-duotone ph-check-circle"></i> Proyek sudah dibayar
-    </button>
+  <!-- Sub-menu: Utang saya / Piutang · Aktif / Lunas · tombol catat sesuai tab -->
+  <div class="debt-tabs-bar">
+    <nav class="account-tabs debt-tabs">
+      <template x-for="tab in [
+        { direction: 'payable', label: 'Utang saya', icon: 'arrow-up-right', tone: 'negative' },
+        { direction: 'receivable', label: 'Piutang', icon: 'arrow-down-left', tone: 'positive' },
+      ]" :key="tab.direction">
+        <button type="button" class="account-tab" :class="{ active: debtDirection === tab.direction }" @click="goToDebtTab(tab.direction)">
+          <span class="account-tab-icon" :class="'debt-tab-' + tab.tone"><i class="ph-bold" :class="'ph-' + tab.icon"></i></span>
+          <strong x-text="tab.label"></strong>
+          <span class="account-tab-count" x-text="debts.filter((d) => d.direction === tab.direction && d.remaining > 0).length"></span>
+        </button>
+      </template>
+    </nav>
+    <div class="segmented compact" x-show="settledDebtCount > 0">
+      <button type="button" :class="{ active: debtTab === 'active' }" @click="debtTab = 'active'">Aktif</button>
+      <button type="button" :class="{ active: debtTab === 'settled' }" @click="debtTab = 'settled'">Lunas <span class="count" x-text="settledDebtCount"></span></button>
+    </div>
+    <div class="debt-tabs-actions">
+      <button class="button primary" x-show="debtDirection === 'payable'" @click="openDebt('payable')">
+        <i class="ph-duotone ph-plus"></i> Catat utang
+      </button>
+      <button class="button primary" x-show="debtDirection === 'receivable'" @click="openDebt('receivable')">
+        <i class="ph-duotone ph-plus"></i> Catat piutang
+      </button>
+      <button class="button" x-show="debtDirection === 'receivable' && isFreelance" @click="openInvoice()">
+        <i class="ph-duotone ph-receipt"></i> Catat invoice klien
+      </button>
+      <button class="button" x-show="debtDirection === 'receivable' && isFreelance" @click="openPaidProject()" title="Proyek yang dibayar langsung, tanpa invoice">
+        <i class="ph-duotone ph-check-circle"></i> Proyek sudah dibayar
+      </button>
+    </div>
   </div>
+
 
   <template x-for="group in [
     { direction: 'payable', title: 'Utang saya', action: 'Bayar' },
     { direction: 'receivable', title: 'Piutang', action: 'Terima' },
-  ]" :key="group.direction">
+  ].filter((g) => g.direction === debtDirection)" :key="group.direction">
     <div class="stack">
-      <h2 x-text="group.title"></h2>
-      <template x-if="debtsBy(group.direction).length === 0 && group.direction === 'payable'">
+      <template x-if="debtTab === 'settled' && debtsBy(group.direction).length === 0">
+        <div class="card"><p class="muted center-text" x-text="group.direction === 'payable' ? 'Belum ada utang yang lunas.' : 'Belum ada piutang yang lunas.'"></p></div>
+      </template>
+      <template x-if="debtTab === 'active' && debtsBy(group.direction).length === 0 && group.direction === 'payable'">
         <div class="card">{{> components/empty-state emoji="1f973" title="Bebas utang!" text="Kamu tidak punya utang yang tercatat. Pertahankan ya!"}}</div>
       </template>
-      <template x-if="debtsBy(group.direction).length === 0 && group.direction === 'receivable'">
+      <template x-if="debtTab === 'active' && debtsBy(group.direction).length === 0 && group.direction === 'receivable'">
         <div class="card">{{> components/empty-state emoji="1f91d" title="Tidak ada piutang" text="Belum ada yang berutang ke kamu. Pinjaman ke teman atau invoice klien akan muncul di sini."}}</div>
       </template>
-      <div class="debt-grid">
-        <template x-for="debt in debtsBy(group.direction)" :key="debt.id">
-          <div class="debt-card" :class="[debt.type === 'invoice' ? 'kind-invoice' : 'kind-' + debt.direction, debt.remaining <= 0 && 'settled']">
-            <!-- Kepala: inisial, nama, jenis, edit & hapus -->
-            <div class="debt-head">
-              <span class="debt-initial" x-text="debt.counterparty.trim().charAt(0).toUpperCase()"></span>
-              <div class="grow">
-                <strong x-text="debt.counterparty"></strong>
-                <small x-text="DEBT_TYPES[debt.type] + (debt.note ? ' · ' + debt.note : '')"></small>
-              </div>
-              <button class="head-button" title="Edit" @click="openEditDebt(debt)"><i class="ph-duotone ph-pencil-simple"></i></button>
-              <button class="head-button" title="Hapus" @click="deleteDebt(debt)"><i class="ph-duotone ph-trash"></i></button>
-            </div>
-
-            <div class="debt-body">
-              <div class="debt-main">
-                <div>
-                  <span class="label" x-text="debt.remaining <= 0 ? 'Status' : 'Sisa'"></span>
-                  <p class="debt-remaining" x-show="debt.remaining > 0" x-text="money(debt.remaining)"></p>
-                  <p class="debt-remaining tone-positive" x-show="debt.remaining <= 0"><i class="ph-fill ph-check-circle"></i> Lunas</p>
+      <!-- Sub-kelompok per jenis: pribadi vs pinjol/paylater/kartu kredit (utang), pribadi vs invoice (piutang) -->
+      <template x-for="section in debtSections(group.direction)" :key="section.key">
+        <div class="debt-section-group">
+          <div class="debt-subhead">
+            <span class="debt-subhead-icon"><i class="ph-duotone" :class="'ph-' + section.icon"></i></span>
+            <strong x-text="section.label"></strong>
+            <small class="muted" x-text="section.items.length + (debtTab === 'settled' ? ' lunas' : ' · sisa ' + money(section.items.reduce((sum, debt) => sum + Math.max(0, debt.remaining), 0)))"></small>
+          </div>
+          <div class="debt-grid">
+            <template x-for="debt in section.items" :key="debt.id">
+              <div class="debt-card" :class="[debt.type === 'invoice' ? 'kind-invoice' : 'kind-' + debt.direction, debt.remaining <= 0 && 'settled']">
+                <!-- Kepala: inisial, nama, jenis, edit & hapus -->
+                <div class="debt-head">
+                  <span class="debt-initial" x-text="debt.counterparty.trim().charAt(0).toUpperCase()"></span>
+                  <div class="grow">
+                    <strong x-text="debt.counterparty"></strong>
+                    <small x-text="DEBT_TYPES[debt.type] + (debt.note ? ' · ' + debt.note : '')"></small>
+                  </div>
+                  <button class="head-button" title="Edit" @click="openEditDebt(debt)"><i class="ph-duotone ph-pencil-simple"></i></button>
+                  <button class="head-button" title="Hapus" @click="deleteDebt(debt)"><i class="ph-duotone ph-trash"></i></button>
                 </div>
-                <span class="badge" x-show="debt.due_date && debt.remaining > 0"
-                      :class="daysUntil(debt.due_date) < 0 ? 'badge-danger' : daysUntil(debt.due_date) <= 7 ? 'badge-warning' : ''"
-                      x-text="(daysUntil(debt.due_date) < 0 ? 'Telat · ' : 'Jatuh tempo ') + formatDate(debt.due_date)"></span>
-              </div>
-              <div class="debt-progress">
-                <div class="progress"><div class="bar-ok" :style="{ width: debtPercent(debt) + '%' }"></div></div>
-                <strong x-text="debtPercent(debt) + '%'"></strong>
-              </div>
-              <p class="muted debt-meta" x-text="'Dibayar ' + money(debt.paid) + ' dari ' + money(debt.total_amount)"></p>
-              <span class="badge badge-warning expense-badge" x-show="debt.count_as_expense" title="Pembayarannya masuk laporan pengeluaran">
-                <i class="ph-duotone ph-receipt"></i> Dihitung pengeluaran
-              </span>
 
-            <p class="cost-warning" x-show="debt.total_amount > debt.principal">
-              <i class="ph-duotone ph-warning"></i>
-              Pinjam <strong x-text="money(debt.principal)"></strong>, total bayar
-              <strong x-text="money(debt.total_amount)"></strong>
-              (biaya <span x-text="debtCostPercent(debt)"></span>%)
-            </p>
-            <p class="muted" x-show="debt.installment && !debt.installments.length" x-text="'Cicilan ' + money(debt.installment) + ' / bulan'"></p>
-
-            <!-- Jadwal cicilan per bulan -->
-            <template x-if="debt.installments.length">
-              <div class="schedule" x-data="{ expanded: false, info: installmentInfo(debt) }" x-effect="info = installmentInfo(debt)">
-                <div class="schedule-summary">
-                  <span class="badge badge-info">
-                    <i class="ph-duotone ph-calendar-check"></i>
-                    Cicilan <span x-text="info.paidCount"></span> dari <span x-text="info.total"></span> lunas
+                <div class="debt-body">
+                  <div class="debt-main">
+                    <div>
+                      <span class="label" x-text="debt.remaining <= 0 ? 'Status' : 'Sisa'"></span>
+                      <p class="debt-remaining" x-show="debt.remaining > 0" x-text="money(debt.remaining)"></p>
+                      <p class="debt-remaining tone-positive" x-show="debt.remaining <= 0"><i class="ph-fill ph-check-circle"></i> Lunas</p>
+                    </div>
+                    <span class="badge" x-show="debt.due_date && debt.remaining > 0"
+                          :class="daysUntil(debt.due_date) < 0 ? 'badge-danger' : daysUntil(debt.due_date) <= 7 ? 'badge-warning' : ''"
+                          x-text="(daysUntil(debt.due_date) < 0 ? 'Telat · ' : 'Jatuh tempo ') + formatDate(debt.due_date)"></span>
+                  </div>
+                  <div class="debt-progress">
+                    <div class="progress"><div class="bar-ok" :style="{ width: debtPercent(debt) + '%' }"></div></div>
+                    <strong x-text="debtPercent(debt) + '%'"></strong>
+                  </div>
+                  <p class="muted debt-meta" x-text="'Dibayar ' + money(debt.paid) + ' dari ' + money(debt.total_amount)"></p>
+                  <span class="badge badge-warning expense-badge" x-show="debt.count_as_expense" title="Pembayarannya masuk laporan pengeluaran">
+                    <i class="ph-duotone ph-receipt"></i> Dihitung pengeluaran
                   </span>
-                  <span class="badge badge-danger" x-show="info.overdueCount" x-text="info.overdueCount + ' telat'"></span>
-                  <span class="muted" x-show="info.next" x-text="money(debt.installment) + ' / bulan · selesai ' + info.finishMonth"></span>
+
+                <p class="cost-warning" x-show="debt.total_amount > debt.principal">
+                  <i class="ph-duotone ph-warning"></i>
+                  Pinjam <strong x-text="money(debt.principal)"></strong>, total bayar
+                  <strong x-text="money(debt.total_amount)"></strong>
+                  (biaya <span x-text="debtCostPercent(debt)"></span>%)
+                </p>
+                <p class="muted" x-show="debt.installment && !debt.installments.length" x-text="'Cicilan ' + money(debt.installment) + ' / bulan'"></p>
+
+                <!-- Jadwal cicilan per bulan -->
+                <template x-if="debt.installments.length">
+                  <div class="schedule" x-data="{ expanded: false, info: installmentInfo(debt) }" x-effect="info = installmentInfo(debt)">
+                    <div class="schedule-summary">
+                      <span class="badge badge-info">
+                        <i class="ph-duotone ph-calendar-check"></i>
+                        Cicilan <span x-text="info.paidCount"></span> dari <span x-text="info.total"></span> lunas
+                      </span>
+                      <span class="badge badge-danger" x-show="info.overdueCount" x-text="info.overdueCount + ' telat'"></span>
+                      <span class="muted" x-show="info.next" x-text="money(debt.installment) + ' / bulan · selesai ' + info.finishMonth"></span>
+                    </div>
+
+                    <!-- Satu titik per bulan: hijau = lunas, merah = telat, abu = belum -->
+                    <div class="month-dots">
+                      <template x-for="item in debt.installments" :key="item.id">
+                        <span class="month-dot" :class="'dot-' + item.status"
+                              :title="'Cicilan ke-' + item.number + ' · ' + installmentStatusText(item)">
+                          <i class="ph-fill" :class="'ph-' + INSTALLMENT_STATUS[item.status].icon"></i>
+                          <small x-text="formatMonthYear(item.due_date).split(' ')[0]"></small>
+                        </span>
+                      </template>
+                    </div>
+
+                    <button class="link" @click="expanded = !expanded">
+                      <i class="ph-duotone" :class="expanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                      <span x-text="expanded ? 'Sembunyikan jadwal' : 'Lihat jadwal lengkap'"></span>
+                    </button>
+                    <ol class="schedule-list" x-show="expanded" x-transition>
+                      <template x-for="item in debt.installments" :key="item.id">
+                        <li :class="{ 'is-next': info.next?.id === item.id }">
+                          <i class="ph-fill" :class="'ph-' + INSTALLMENT_STATUS[item.status].icon + ' tone-' + INSTALLMENT_STATUS[item.status].tone"></i>
+                          <div class="row-main">
+                            <strong x-text="'Ke-' + item.number + ' · ' + formatMonthYear(item.due_date)"></strong>
+                            <span class="hint" :class="'tone-' + INSTALLMENT_STATUS[item.status].tone" x-text="installmentStatusText(item)"></span>
+                          </div>
+                          <strong x-text="money(item.amount)"></strong>
+                        </li>
+                      </template>
+                    </ol>
+                  </div>
+                </template>
+
                 </div>
 
-                <!-- Satu titik per bulan: hijau = lunas, merah = telat, abu = belum -->
-                <div class="month-dots">
-                  <template x-for="item in debt.installments" :key="item.id">
-                    <span class="month-dot" :class="'dot-' + item.status"
-                          :title="'Cicilan ke-' + item.number + ' · ' + installmentStatusText(item)">
-                      <i class="ph-fill" :class="'ph-' + INSTALLMENT_STATUS[item.status].icon"></i>
-                      <small x-text="formatMonthYear(item.due_date).split(' ')[0]"></small>
-                    </span>
-                  </template>
+                <div class="debt-actions">
+                  <button class="button small positive" x-show="debt.remaining > 0" @click="openPayDebt(debt)">
+                    <i class="ph-duotone ph-hand-coins"></i> <span x-text="group.action"></span>
+                  </button>
+                  <button class="button small" x-show="debt.remaining > 0" @click="openSchedule(debt)">
+                    <i class="ph-duotone ph-calendar-dots"></i>
+                    <span x-text="debt.installments.length ? 'Ubah jadwal' : 'Jadwal cicilan'"></span>
+                  </button>
+                  <button class="button small" :class="{ grow: debt.remaining <= 0 }" @click="openDebtHistory(debt)" title="Riwayat pembayaran">
+                    <i class="ph-duotone ph-clock-counter-clockwise"></i> <span x-show="debt.remaining <= 0">Riwayat</span>
+                  </button>
                 </div>
-
-                <button class="link" @click="expanded = !expanded">
-                  <i class="ph-duotone" :class="expanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
-                  <span x-text="expanded ? 'Sembunyikan jadwal' : 'Lihat jadwal lengkap'"></span>
-                </button>
-                <ol class="schedule-list" x-show="expanded" x-transition>
-                  <template x-for="item in debt.installments" :key="item.id">
-                    <li :class="{ 'is-next': info.next?.id === item.id }">
-                      <i class="ph-fill" :class="'ph-' + INSTALLMENT_STATUS[item.status].icon + ' tone-' + INSTALLMENT_STATUS[item.status].tone"></i>
-                      <div class="row-main">
-                        <strong x-text="'Ke-' + item.number + ' · ' + formatMonthYear(item.due_date)"></strong>
-                        <span class="hint" :class="'tone-' + INSTALLMENT_STATUS[item.status].tone" x-text="installmentStatusText(item)"></span>
-                      </div>
-                      <strong x-text="money(item.amount)"></strong>
-                    </li>
-                  </template>
-                </ol>
               </div>
             </template>
-
-            </div>
-
-            <div class="debt-actions" x-show="debt.remaining > 0">
-              <button class="button small positive" @click="openPayDebt(debt)">
-                <i class="ph-duotone ph-hand-coins"></i> <span x-text="group.action"></span>
-              </button>
-              <button class="button small" @click="openSchedule(debt)">
-                <i class="ph-duotone ph-calendar-dots"></i>
-                <span x-text="debt.installments.length ? 'Ubah jadwal' : 'Jadwal cicilan'"></span>
-              </button>
-            </div>
           </div>
-        </template>
-      </div>
+        </div>
+      </template>
     </div>
   </template>
 </section>

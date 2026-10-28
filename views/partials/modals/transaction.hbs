@@ -41,7 +41,8 @@
             <template x-for="a in accounts.filter(a => a.id != form.account_id)" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
           </select>
         </div>
-        <div class="field">
+        <!-- Transfer: tanggal pindah ke baris bawah (sebelah catatan) supaya baris ini setinggi kolom nominal -->
+        <div class="field" x-show="form.kind !== 'transfer'">
           <label>Tanggal</label>
           <input type="date" x-model="form.date">
         </div>
@@ -65,9 +66,15 @@
     <!-- Baris 3: catatan & isian tambahan | foto -->
     <div class="modal-columns tx-bottom">
       <div class="stack">
-        <div class="field">
-          <label>Catatan (opsional)</label>
-          <input placeholder="contoh: Makan siang" x-model="form.note">
+        <div class="tx-note-row" :class="{ 'with-date': form.kind === 'transfer' }">
+          <div class="field" x-show="form.kind === 'transfer'">
+            <label>Tanggal</label>
+            <input type="date" x-model="form.date">
+          </div>
+          <div class="field">
+            <label>Catatan (opsional)</label>
+            <input :placeholder="form.kind === 'transfer' ? 'contoh: Pegangan' : 'contoh: Makan siang'" x-model="form.note">
+          </div>
         </div>
 
         <!-- Kirim ke penerima (orang tua, teman, ...): pengeluaran yang tercatat di riwayat penerima -->

@@ -7,9 +7,14 @@ export default {
   categoryTab: 'expense',
   showArchived: false,
 
+  // Urutan dari server (paling sering dipakai); arsip & "Lainnya" / "Pemasukan Lain" di akhir.
   get categoryList() {
-    return this.categories.filter((category) =>
+    const list = this.categories.filter((category) =>
       category.kind === this.categoryTab && (this.showArchived || !category.archived));
+    const last = (category) => (category.archived ? 2 : ['Lainnya', 'Pemasukan Lain'].includes(category.name) ? 1 : 0);
+    return list.map((category, index) => ({ category, index }))
+      .sort((a, b) => last(a.category) - last(b.category) || a.index - b.index)
+      .map(({ category }) => category);
   },
 
   get archivedCount() {

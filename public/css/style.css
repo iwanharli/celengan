@@ -1958,7 +1958,8 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .swal-celengan .swal2-icon.swal2-warning { border-color: #fbbf24; color: #f59e0b; }
 .swal-celengan .swal2-actions { margin-top: 20px; }
 .auto-pay-badge { margin-left: 6px; vertical-align: middle; }
-.bill-stats { gap: 10px; }
+.bill-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .bill-stats { grid-template-columns: minmax(0, 1fr); } }
 .bill-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
 .bill-stat small { color: var(--text-muted); font-weight: 700; }
 .bill-stat strong { font-size: 1.1rem; }
@@ -2045,8 +2046,8 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 /* Modal transaksi: nominal | akun & tanggal, lalu kategori, lalu catatan & isian tambahan | foto */
 .tx-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .tx-where { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
-.tx-where.transfer { gap: 12px 16px; }
-.tx-where.transfer > .field:last-child { grid-column: 1 / -1; }
+.tx-note-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.tx-note-row.with-date { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
 .tx-bottom > .stack:last-child, .tx-bottom > .tx-photos { position: static; }
 .tx-photos .photo-dropzone .filepond--root { margin-bottom: 0; }
 .tx-photos .camera-button { align-self: flex-start; }
@@ -2095,12 +2096,21 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .kind-filter button { padding: 8px 14px; }
 .tx-toolbar .button.filter-on { border-color: var(--primary); color: var(--primary); }
 .tx-toolbar .count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: inline-grid; place-items: center; font-size: .78rem; background: var(--primary); color: #fff; }
-.tx-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 18px; background: var(--surface-2); }
-.tx-filters select { width: auto; min-width: 180px; flex: 0 1 240px; }
+.tx-filters {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 14px; align-items: end;
+  padding: 14px 16px; border-radius: 18px; background: var(--surface-2);
+}
+.tx-filters .field { gap: 4px; }
+.tx-filters label { font-size: .85rem; }
+.tx-filters select, .tx-filters input { padding: 8px 12px; font-size: .92rem; }
+.range-inputs { display: flex; align-items: center; gap: 6px; }
+.range-inputs input { min-width: 0; }
+.segmented.compact { padding: 3px; }
+.segmented.compact button { padding: 6px 10px; font-size: .88rem; }
+.tx-filters-actions { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1.5px dashed var(--border); }
 @media (max-width: 640px) {
   .kind-filter { order: 3; width: 100%; }
   .kind-filter button { flex: 1; }
-  .tx-filters select { flex: 1 1 100%; }
 }
 .guideline p { flex: 1; margin: 0; }
 .guideline .button { flex-shrink: 0; }
@@ -2131,3 +2141,142 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 @media (max-width: 640px) {
   .account-tabs-bar { flex-direction: column; align-items: stretch; }
 }
+
+/* Wawasan: tiap item berbingkai, garis kiri berwarna sesuai nada */
+.insight { border: 1.5px solid var(--border); border-left-width: 5px; }
+.insight-positive { border-left-color: #34d399; }
+.insight-info { border-left-color: #818cf8; }
+.insight-warning { border-left-color: #f59e0b; }
+.insight-danger { border-left-color: #fb7185; }
+.insight[role="button"]:hover { border-color: var(--primary); }
+
+/* Beranda: dana pajak versi ringkas (satu baris) */
+.card.tax-strip { flex-direction: row; align-items: center; gap: 16px; padding: 16px 20px; }
+.tax-strip-emoji { width: 40px; height: 40px; flex-shrink: 0; }
+.tax-strip-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.tax-strip-top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.tax-strip-top .muted { font-size: .88rem; }
+.tax-strip .progress { height: 8px; }
+@media (max-width: 640px) {
+  .card.tax-strip { flex-wrap: wrap; }
+  .tax-strip .row-actions { width: 100%; justify-content: flex-end; }
+}
+
+.bill-history-empty { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; border: 2px dashed var(--border); }
+.bill-history-empty img { width: 44px; height: 44px; flex-shrink: 0; }
+.bill-history-empty p { margin: 2px 0 0; font-size: .92rem; }
+
+/* Label oranye (jatuh tempo bulan ini) & merah (lewat jatuh tempo) di mode gelap: lebih redup, tetap jelas */
+@media (prefers-color-scheme: dark) {
+  .badge-warning { background: rgba(245, 158, 11, .18); color: #fbbf24; }
+  .badge-danger { background: rgba(244, 63, 94, .18); color: #fb7185; }
+}
+
+/* Halaman Tagihan: dikelompokkan per waktu, kotak tanggal bergaya kalender */
+.bill-group + .bill-group { margin-top: 18px; }
+.bill-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 4px 8px; font-weight: 800; font-size: .95rem; }
+.bill-group-head small { font-weight: 700; }
+.tone-warning { color: #d97706; }
+@media (prefers-color-scheme: dark) { .tone-warning { color: #fbbf24; } }
+.bill-item {
+  display: grid; grid-template-columns: 58px minmax(0, 1fr) auto auto; gap: 16px; align-items: center;
+  padding: 12px 10px; border-bottom: 1.5px dashed var(--border);
+}
+.bill-item:last-child { border-bottom: 0; }
+.due-tile {
+  width: 58px; height: 58px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--surface-2); border: 2px solid var(--border); line-height: 1;
+}
+.due-tile strong { font-family: 'Fredoka', sans-serif; font-size: 1.45rem; }
+.due-tile small { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-top: 2px; }
+.due-warning .due-tile { background: rgba(245, 158, 11, .14); border-color: rgba(245, 158, 11, .55); }
+.due-warning .due-tile strong, .due-warning .due-tile small, .due-warning .due-text { color: #d97706; }
+.due-danger .due-tile { background: rgba(244, 63, 94, .14); border-color: rgba(244, 63, 94, .6); }
+.due-danger .due-tile strong, .due-danger .due-tile small, .due-danger .due-text { color: #e11d48; }
+@media (prefers-color-scheme: dark) {
+  .due-warning .due-tile strong, .due-warning .due-tile small, .due-warning .due-text { color: #fbbf24; }
+  .due-danger .due-tile strong, .due-danger .due-tile small, .due-danger .due-text { color: #fb7185; }
+}
+.bill-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bill-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text-muted); font-size: .9rem; margin-top: 4px; }
+.avatar.tiny { width: 22px; height: 22px; border-radius: 7px; font-size: .75rem; }
+.auto-pay-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; background: var(--primary-soft); color: var(--primary); font-weight: 700; font-size: .8rem; }
+.bill-when { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 120px; }
+.bill-when strong { font-size: 1.05rem; }
+.due-text { font-size: .85rem; font-weight: 700; color: var(--text-muted); }
+.bill-actions { display: flex; align-items: center; gap: 4px; }
+.bill-actions .button { margin-right: 6px; }
+.auto-pay-chip { white-space: nowrap; }
+@media (max-width: 760px) {
+  .bill-group-head { flex-direction: column; gap: 2px; }
+  .bill-item { grid-template-columns: 50px minmax(0, 1fr); gap: 6px 12px; align-items: start; }
+  .due-tile { width: 50px; height: 50px; grid-row: span 2; }
+  .bill-name { white-space: normal; }
+  .bill-when { grid-column: 2; flex-direction: row; align-items: baseline; justify-content: space-between; min-width: 0; }
+  .bill-actions { grid-column: 1 / -1; justify-content: space-between; }
+  .bill-actions .button { flex: 1; justify-content: center; }
+}
+.auto-pay-note {
+  display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; padding: 7px 12px; border-radius: 12px;
+  font-size: .85rem; font-weight: 800; white-space: nowrap; color: var(--primary); background: var(--primary-soft);
+}
+@media (max-width: 760px) { .auto-pay-note { flex: 1; justify-content: center; } }
+
+/* Halaman Utang: sub-kelompok per jenis */
+.debt-section-group + .debt-section-group { margin-top: 20px; }
+.debt-subhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.debt-subhead-icon { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-size: 1.05rem; }
+.debt-subhead strong { font-size: 1rem; }
+.debt-subhead small { margin-left: auto; font-weight: 700; }
+
+/* Halaman Utang: sub-menu Utang saya / Piutang */
+.debt-tabs-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.debt-tabs { flex: 0 1 auto; }
+.debt-tab-negative { background: linear-gradient(135deg, #fb7185, #f97316); }
+.debt-tab-positive { background: linear-gradient(135deg, #34d399, #10b981); }
+.debt-tabs-bar .segmented.compact { margin-left: auto; }
+.debt-tabs-bar .segmented .count { margin-left: 4px; }
+
+/* Tagihan: kolom tetap supaya nominal, status & ikon sejajar di semua baris */
+.bill-item { grid-template-columns: 58px minmax(0, 1fr) 150px 190px auto; }
+.bill-when { min-width: 0; }
+.bill-status { display: flex; justify-content: flex-start; }
+.bill-status .button, .bill-status .auto-pay-note { width: 100%; justify-content: center; margin: 0; }
+.bill-actions .button { margin-right: 0; }
+.bill-actions .invisible { visibility: hidden; }
+@media (max-width: 760px) {
+  .bill-item { grid-template-columns: 50px minmax(0, 1fr); }
+  .bill-status { grid-column: 1 / -1; }
+}
+.debt-tabs-actions { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+.debt-tabs-bar .segmented.compact { margin-left: 0; }
+
+/* Tagihan cicilan utang: aksen kuning */
+.bill-item.is-installment { background: rgba(250, 204, 21, .07); border-left: 4px solid #facc15; border-radius: 14px; }
+.bill-item.is-installment .avatar.tiny { background: #eab308 !important; }
+.installment-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: .8rem; font-weight: 800; background: #fef3c7; color: #a16207; }
+@media (prefers-color-scheme: dark) { .installment-chip { background: rgba(250, 204, 21, .16); color: #fde047; } }
+
+/* Halaman Kategori: grid kartu */
+.category-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.category-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 14px 16px; border-radius: 20px;
+  background: var(--surface); border: 2px solid var(--border); border-left: 5px solid var(--cat, var(--primary));
+  box-shadow: var(--shadow); transition: transform .2s var(--spring), box-shadow .2s;
+}
+.category-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.category-card.archived { opacity: .55; }
+.category-card-head { display: flex; align-items: center; gap: 12px; }
+.category-card-head .row-main { min-width: 0; }
+.category-card-head strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.category-card-head small { font-size: .82rem; }
+.category-card-actions { display: flex; margin-left: auto; opacity: .45; transition: opacity .2s; }
+.category-card:hover .category-card-actions, .category-card:focus-within .category-card-actions { opacity: 1; }
+.category-card-actions .icon-button { width: 32px; height: 32px; }
+.category-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.category-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: .78rem; font-weight: 700; background: var(--surface-2); color: var(--text); }
+.category-tag.muted-tag { color: var(--text-muted); font-weight: 600; }
+@media (hover: none) { .category-card-actions { opacity: 1; } }
+.category-foot { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.category-foot .category-tags { flex: 1; min-width: 0; }
+.category-card-head small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

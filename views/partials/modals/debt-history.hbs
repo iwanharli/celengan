@@ -1,0 +1,58 @@
+{{!-- Modal: Riwayat satu utang / piutang — dicatat / uang diterima, setiap pembayaran, lalu lunas. --}}
+<template x-if="modal === 'debtHistory'">
+  <div class="stack">
+    <div class="category-preview">
+      <span class="debt-initial" x-text="form.debt.counterparty.trim().charAt(0).toUpperCase()"></span>
+      <div>
+        <h2>Riwayat <span x-text="form.debt.counterparty"></span></h2>
+        <p class="muted" x-text="DEBT_TYPES[form.debt.type] + (form.debt.note ? ' · ' + form.debt.note : '')"></p>
+      </div>
+    </div>
+
+    <p class="muted" x-show="!form.history">Memuat riwayat…</p>
+
+    <template x-if="form.history">
+      <div class="stack">
+        <div class="bill-stats">
+          <div class="bill-stat"><small>Total</small><strong x-text="money(form.history.debt.total)"></strong>
+            <span class="hint" x-show="form.history.debt.total > form.history.debt.principal" x-text="'pokok ' + moneyShort(form.history.debt.principal)"></span></div>
+          <div class="bill-stat"><small x-text="form.debt.direction === 'payable' ? 'Sudah dibayar' : 'Sudah diterima'"></small>
+            <strong class="tone-positive" x-text="money(form.history.debt.paid)"></strong>
+            <span class="hint" x-text="form.history.events.filter((e) => e.type === 'payment').length + '× pembayaran'"></span></div>
+          <div class="bill-stat"><small>Sisa</small>
+            <strong :class="form.history.debt.remaining > 0 ? 'tone-negative' : 'tone-positive'" x-text="form.history.debt.remaining > 0 ? money(form.history.debt.remaining) : 'Lunas'"></strong></div>
+        </div>
+        <div class="progress"><div class="bar-ok" :style="{ width: Math.min(100, form.history.debt.paid / form.history.debt.total * 100) + '%' }"></div></div>
+
+        <ol class="timeline">
+          <template x-for="event in form.history.events" :key="event.id">
+            <li>
+              <span class="timeline-dot" :class="'tone-' + debtEventStyle(event, form.debt).tone">
+                <i class="ph-fill" :class="'ph-' + debtEventStyle(event, form.debt).icon"></i>
+              </span>
+              <div class="row-main">
+                <strong>
+                  <span x-text="debtEventStyle(event, form.debt).label"></span>
+                  <span x-show="event.amount" x-text="' · ' + money(event.amount)"></span>
+                </strong>
+                <span class="hint" x-show="event.type !== 'settled'" x-text="[
+                  event.account_name ? (event.type === 'payment' && form.debt.direction === 'payable' ? 'dari ' : 'ke ') + event.account_name : null,
+                  event.withheld ? 'PPh 21 dipotong ' + money(event.withheld) : null,
+                  event.type === 'payment' ? 'sisa ' + money(event.remaining_after) : null,
+                ].filter(Boolean).join(' · ')"></span>
+              </div>
+              <span class="muted" x-text="formatDate(event.date)"></span>
+            </li>
+          </template>
+        </ol>
+      </div>
+    </template>
+    <div class="form-actions">
+      <span class="spacer"></span>
+      <button type="button" class="button" @click="close()">Tutup</button>
+      <button type="button" class="button positive" x-show="form.debt.remaining > 0" @click="openPayDebt(form.debt)">
+        <i class="ph-duotone ph-hand-coins"></i> <span x-text="form.debt.direction === 'payable' ? 'Bayar' : 'Terima'"></span>
+      </button>
+    </div>
+  </div>
+</template>

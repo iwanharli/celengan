@@ -16,7 +16,12 @@ const DATA_SOURCES = {
   categories: () => '/categories',
   templates: () => '/templates',
   recipients: () => '/recipients',
-  transactions() { return `/transactions?${new URLSearchParams({ ...this.periodParams, ...this.filters })}`; },
+  transactions() {
+    // Nominal filter diketik dengan format rupiah ("50.000") → angka; filter kosong tidak dikirim.
+    const filters = { ...this.filters, min: parseAmount(this.filters.min) || '', max: parseAmount(this.filters.max) || '' };
+    const params = Object.fromEntries(Object.entries({ ...this.periodParams, ...filters }).filter(([, value]) => value !== '' && value != null));
+    return `/transactions?${new URLSearchParams(params)}`;
+  },
   bills: () => '/bills',
   endedBills: () => '/bills/ended',
   debts: () => '/debts',
@@ -94,6 +99,7 @@ export default {
     if (constants.PAGES.some((item) => item.id === fromHash)) this.page = fromHash;
     if (fromHash === 'settings' && constants.SETTINGS_SECTIONS.some((item) => item.id === section)) this.settingsSection = section;
     if (fromHash === 'accounts' && constants.ACCOUNT_TYPES[section]) this.accountTab = section;
+    if (fromHash === 'debts' && section === 'piutang') this.debtDirection = 'receivable';
     await this.reload();
   },
 
@@ -102,19 +108,24 @@ export default {
   //   - data milik halaman yang sedang dibuka (lihat PAGE_DATA).
   // Data halaman lain ditandai "basi" dan baru dimuat saat halamannya dibuka.
   async reload() {
+    // Hanya muat ulang terakhir yang dipakai: kalau periode diganti cepat beberapa kali,
+    // jawaban lama yang datang belakangan tidak boleh menimpa data periode terbaru.
+    const run = (this.reloadRun = (this.reloadRun ?? 0) + 1);
     this.staleData = new Set(Object.keys(DATA_SOURCES));
     await Promise.all([
-      this.loadData(['summary', 'accounts', 'categories', 'templates', 'recipients']),
-      this.loadPageData(),
+      this.loadData(['summary', 'accounts', 'categories', 'templates', 'recipients'], run),
+      this.loadPageData(run),
     ]);
+    if (run !== this.reloadRun) return;
     if (this.page === 'settings') { this.loadAutoBackups(); this.loadBackupMirror(); this.loadPushState(); }
     if (this.page === 'reports') await this.loadReport();
     if (this.page === 'export') this.refreshExportPreview();
     this.$nextTick(() => this.drawCharts());
   },
 
-  async loadData(keys) {
+  async loadData(keys, run = null) {
     const results = await Promise.all(keys.map((key) => api.get(DATA_SOURCES[key].call(this))));
+    if (run !== null && run !== this.reloadRun) return; // sudah ada muat ulang yang lebih baru
     keys.forEach((key, index) => {
       this[key] = results[index];
       this.staleData?.delete(key);
@@ -122,9 +133,9 @@ export default {
   },
 
   // Data halaman aktif yang belum dimuat / sudah basi.
-  async loadPageData() {
+  async loadPageData(run = null) {
     const needed = (PAGE_DATA[this.page] ?? []).filter((key) => this.staleData?.has(key));
-    if (needed.length) await this.loadData(needed);
+    if (needed.length) await this.loadData(needed, run);
   },
 
   drawCharts() {
@@ -146,7 +157,9 @@ export default {
   async goTo(page) {
     this.page = page;
     this.loadPageData().then(() => this.$nextTick(() => this.drawCharts()));
-    const sub = page === 'settings' ? this.settingsSection : page === 'accounts' && this.accountTab !== 'all' ? this.accountTab : null;
+    const sub = page === 'settings' ? this.settingsSection
+      : page === 'accounts' && this.accountTab !== 'all' ? this.accountTab
+        : page === 'debts' && this.debtDirection === 'receivable' ? 'piutang' : null;
     history.replaceState(null, '', sub ? `#${page}/${sub}` : `#${page}`);
     window.scrollTo({ top: 0 });
     if (page === 'settings') { this.loadAutoBackups(); this.loadBackupMirror(); }

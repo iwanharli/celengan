@@ -9,6 +9,14 @@ import historyRoutes from './transaction-history.js';
 const router = Router();
 router.use(historyRoutes); // /history/deleted & /:id/history
 
+// Urutan daftar transaksi (?sort=...).
+const SORTS = {
+  newest: 't.date DESC, t.id DESC',
+  oldest: 't.date ASC, t.id ASC',
+  largest: 'abs(t.amount) DESC, t.date DESC',
+  smallest: 'abs(t.amount) ASC, t.date DESC',
+};
+
 router.get('/', async (req, res) => {
   const { start, end } = await periodFromQuery(req.query);
   const params = [start, end];
@@ -30,6 +38,21 @@ router.get('/', async (req, res) => {
     params.push(req.query.bill_id);
     where.push(`t.bill_id = $${params.length}`);
   }
+  if (req.query.category_id) {
+    params.push(req.query.category_id);
+    where.push(`t.category_id = $${params.length}`);
+  }
+  // Rentang nominal (nilai mutlak, supaya penyesuaian minus ikut terfilter wajar).
+  if (Number(req.query.min) > 0) {
+    params.push(Number(req.query.min));
+    where.push(`abs(t.amount) >= $${params.length}`);
+  }
+  if (Number(req.query.max) > 0) {
+    params.push(Number(req.query.max));
+    where.push(`abs(t.amount) <= $${params.length}`);
+  }
+  if (req.query.photos === 'yes') where.push('EXISTS (SELECT 1 FROM transaction_attachments x WHERE x.transaction_id = t.id)');
+  if (req.query.photos === 'no') where.push('NOT EXISTS (SELECT 1 FROM transaction_attachments x WHERE x.transaction_id = t.id)');
   if (req.query.q) {
     params.push(`%${req.query.q}%`);
     where.push(`(t.note ILIKE $${params.length} OR c.name ILIKE $${params.length} OR t.client ILIKE $${params.length})`);
@@ -52,7 +75,7 @@ router.get('/', async (req, res) => {
      LEFT JOIN assets s     ON s.id = t.asset_id
      LEFT JOIN recipients r ON r.id = t.recipient_id
      WHERE ${where.join(' AND ')}
-     ORDER BY t.date DESC, t.id DESC`,
+     ORDER BY ${SORTS[req.query.sort] ?? SORTS.newest}`,
     params,
   );
   res.json(rows);

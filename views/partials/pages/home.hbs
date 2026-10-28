@@ -36,13 +36,13 @@
     </div>
   </div>
 
-  <!-- Favorit: catat sekali klik -->
+  <!-- Favorit: klik → form transaksi terisi, tinggal cek & simpan -->
   <template x-if="templates.length">
     <div class="favorites">
       <span class="favorites-label"><img :src="emojiUrl('2b50')" alt=""> Catat cepat</span>
       <template x-for="template in templates" :key="template.id">
         <span class="favorite">
-          <button type="button" class="favorite-use" @click="useTemplate(template)" :title="'Catat ' + template.name + ' hari ini'">
+          <button type="button" class="favorite-use" @click="openFromTemplate(template)" :title="'Catat ' + template.name + ' (bisa diubah dulu)'">
             <span class="avatar small" :style="{ background: template.kind === 'transfer' ? '#64748b' : template.category_color }">
               <i class="ph-duotone" :class="'ph-' + (template.kind === 'transfer' ? 'arrows-left-right' : template.category_icon)"></i>
             </span>
@@ -187,39 +187,63 @@
     </div>
   </template>
 
-  <!-- Dana pajak (freelance) -->
-  <template x-if="taxEnabled">
-    <div class="card tax-card">
+  <!-- Yang paling sering dicek: tagihan dekat & transaksi terakhir -->
+  <div class="grid-2">
+    <div class="card">
       <div class="card-header">
-        <div class="row">
-          <img class="stat-emoji" :src="emojiUrl('1f9fe')" alt="">
-          <div>
-            <h2>Dana pajak <span x-text="summary.tax.year"></span></h2>
-            <p class="muted" x-text="taxMethodText"></p>
-          </div>
+        <div>
+          <h2>Tagihan 14 hari ke depan</h2>
+          <p class="muted" x-show="summary.upcomingBills.length"
+             x-text="summary.upcomingBills.length + ' tagihan · total ' + money(summary.upcomingBills.reduce((sum, bill) => sum + bill.amount, 0))"></p>
         </div>
-        <div class="row-actions">
-          <a class="button small" :href="'/api/tax/report?format=pdf&year=' + summary.tax.year" download title="Bahan lapor SPT Tahunan">
-            <i class="ph-duotone ph-file-pdf"></i> Ringkasan SPT
-          </a>
-          <button class="button small primary" @click="openTaxPay()"><i class="ph-duotone ph-bank"></i> Bayar pajak</button>
-        </div>
+        <button class="link" @click="goTo('bills')">Lihat semua</button>
       </div>
-      <div class="grid-4 tax-numbers">
-        <div><span class="muted">Sisihkan bulan ini</span><strong x-text="money(summary.tax.periodReserve)"></strong></div>
-        <div><span class="muted">Total harus disisihkan</span><strong x-text="money(summary.tax.owed)"></strong></div>
-        <div><span class="muted">Sudah dibayar</span><strong class="tone-positive" x-text="money(summary.tax.paid + summary.tax.withheld)"></strong>
-          <small class="muted" x-show="summary.tax.withheld" x-text="'termasuk dipotong klien ' + money(summary.tax.withheld)"></small></div>
-        <div><span class="muted">Sisa dana pajak</span><strong :class="summary.tax.outstanding > 0 && 'tone-negative'" x-text="money(summary.tax.outstanding)"></strong></div>
-      </div>
-      <div class="progress"><div class="bar-ok" :style="{ width: (summary.tax.owed ? Math.min(100, (summary.tax.paid + summary.tax.withheld) / summary.tax.owed * 100) : 0) + '%' }"></div></div>
-      <p class="hint">
-        Dari penghasilan bruto kena pajak <span x-text="money(summary.tax.taxableIncome)"></span> tahun ini<span x-show="summary.tax.method === 'final'"> (Rp500 juta pertama bebas pajak)</span>.
-        Sisa dana pajak <strong>tidak dihitung</strong> sebagai uang yang bisa dipakai.
-      </p>
+      <template x-if="summary.upcomingBills.length === 0 && bills.length > 0">
+        {{> components/empty-state emoji="1f389" title="Santai dulu!" text="Tidak ada tagihan yang jatuh tempo dalam 14 hari ke depan."}}
+      </template>
+      <template x-if="bills.length === 0">
+        {{> components/empty-state emoji="1f4c5" title="Belum ada tagihan rutin" text="Catat langganan, listrik, internet, atau cicilan supaya diingatkan sebelum jatuh tempo." action="goTo('bills'); openBill()" actionLabel="Tambah tagihan"}}
+      </template>
+      <ul class="list">
+        <template x-for="bill in summary.upcomingBills" :key="bill.id">
+          <li class="row">
+            <span class="avatar" :style="{ background: bill.category_color ?? '#8b5cf6' }">
+              <i class="ph-duotone" :class="bill.debt_id ? 'ph-hand-coins' : 'ph-' + (bill.category_icon ?? 'receipt')"></i>
+            </span>
+            <div class="row-main">
+              <strong x-text="bill.name"></strong>
+              <span class="badge" :class="'badge-' + billStatus(bill).tone" x-text="billStatus(bill).text"></span>
+            </div>
+            <strong x-text="money(bill.amount)"></strong>
+          </li>
+        </template>
+      </ul>
     </div>
-  </template>
 
+    <div class="card">
+      <div class="card-header">
+        <h2>Transaksi terakhir</h2>
+        <button class="link" @click="goTo('transactions')">Lihat semua</button>
+      </div>
+      <template x-if="summary.recent.length === 0">
+        {{> components/empty-state emoji="1f4dd" title="Belum ada transaksi" text="Mulai catat dari yang kecil, misalnya kopi pagi ini. Kebiasaan kecil, hasilnya besar!" action="openTransaction()" actionLabel="Catat transaksi"}}
+      </template>
+      <ul class="list">
+        <template x-for="t in summary.recent" :key="t.id">
+          <li class="row clickable" x-data="{ s: style(t) }" @click="editTransaction(t)" title="Klik untuk edit">
+            <span class="avatar" :style="{ background: t.category_color ?? '#64748b' }">
+              <i class="ph-duotone" :class="'ph-' + (t.category_icon ?? s.icon)"></i>
+            </span>
+            <div class="row-main">
+              <strong x-text="transactionTitle(t)"></strong>
+              <span class="muted" x-text="formatDate(t.date)"></span>
+            </div>
+            <strong :class="'tone-' + s.tone" x-text="transactionAmount(t)"></strong>
+          </li>
+        </template>
+      </ul>
+    </div>
+  </div>
   <!-- Invoice klien yang belum dibayar (freelance) -->
   <template x-if="isFreelance && summary.invoices.items.length">
     <div class="card">
@@ -251,6 +275,62 @@
       </ul>
     </div>
   </template>
+
+  <div class="grid-2 chart-row">
+    <div class="card chart-card">
+      <div class="card-header">
+        <div>
+          <h2>Pengeluaran per kategori</h2>
+          <p class="muted" x-show="summary.expense > 0" x-text="summary.categories.filter(c => c.spent > 0).length + ' kategori periode ini'"></p>
+        </div>
+      </div>
+      <template x-if="summary.expense === 0">
+        {{> components/empty-state emoji="1f967" title="Belum ada pengeluaran" text="Pengeluaran bulan ini akan tampil di sini, dikelompokkan per kategori." action="openTransaction('expense')" actionLabel="Catat pengeluaran"}}
+      </template>
+      <div class="donut-wrap" x-show="summary.expense > 0">
+        <div class="donut">
+          <canvas x-ref="categoryChart"></canvas>
+          <div class="donut-center">
+            <small>Total</small>
+            <strong x-text="moneyShort(summary.expense)"></strong>
+          </div>
+        </div>
+        <ul class="legend">
+          <template x-for="category in summary.categories.filter(c => c.spent > 0).sort((a, b) => b.spent - a.spent).slice(0, 6)" :key="category.id">
+            <li>
+              <div class="legend-top">
+                <span class="dot" :style="{ background: category.color }"></span>
+                <span class="legend-name" x-text="category.name"></span>
+                <span class="legend-pct" x-text="Math.round(category.spent / summary.expense * 100) + '%'"></span>
+              </div>
+              <div class="legend-bar"><div :style="{ width: (category.spent / summary.expense * 100) + '%', background: category.color }"></div></div>
+              <strong x-text="money(category.spent)"></strong>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-header">
+        <div>
+          <h2>Tren 6 bulan</h2>
+          <p class="muted">Pemasukan vs pengeluaran per bulan</p>
+        </div>
+      </div>
+      <div class="trend-stats" x-show="hasTrendData">
+        <div class="trend-stat income"><span><i class="dot"></i> Pemasukan</span><strong x-text="moneyShort(summary.income)"></strong></div>
+        <div class="trend-stat expense"><span><i class="dot"></i> Pengeluaran</span><strong x-text="moneyShort(summary.expense)"></strong></div>
+        <div class="trend-stat net" :class="{ minus: summary.income - summary.expense < 0 }">
+          <span><i class="dot"></i> Selisih</span><strong x-text="(summary.income - summary.expense < 0 ? '−' : '+') + moneyShort(Math.abs(summary.income - summary.expense))"></strong>
+        </div>
+      </div>
+      <div class="trend" x-show="hasTrendData"><canvas x-ref="trendChart"></canvas></div>
+      <template x-if="!hasTrendData">
+        {{> components/empty-state emoji="1f4ca" title="Grafik masih kosong" text="Perbandingan pemasukan & pengeluaran 6 bulan terakhir akan muncul setelah kamu mulai mencatat."}}
+      </template>
+    </div>
+  </div>
 
   <!-- Perkiraan tabungan per bulan -->
   <template x-if="!hasSavingsData">
@@ -312,62 +392,6 @@
     </div>
   </template>
 
-  <div class="grid-2 chart-row">
-    <div class="card chart-card">
-      <div class="card-header">
-        <div>
-          <h2>Pengeluaran per kategori</h2>
-          <p class="muted" x-show="summary.expense > 0" x-text="summary.categories.filter(c => c.spent > 0).length + ' kategori periode ini'"></p>
-        </div>
-      </div>
-      <template x-if="summary.expense === 0">
-        {{> components/empty-state emoji="1f967" title="Belum ada pengeluaran" text="Pengeluaran bulan ini akan tampil di sini, dikelompokkan per kategori." action="openTransaction('expense')" actionLabel="Catat pengeluaran"}}
-      </template>
-      <div class="donut-wrap" x-show="summary.expense > 0">
-        <div class="donut">
-          <canvas x-ref="categoryChart"></canvas>
-          <div class="donut-center">
-            <small>Total</small>
-            <strong x-text="moneyShort(summary.expense)"></strong>
-          </div>
-        </div>
-        <ul class="legend">
-          <template x-for="category in summary.categories.filter(c => c.spent > 0).sort((a, b) => b.spent - a.spent).slice(0, 6)" :key="category.id">
-            <li>
-              <div class="legend-top">
-                <span class="dot" :style="{ background: category.color }"></span>
-                <span class="legend-name" x-text="category.name"></span>
-                <span class="legend-pct" x-text="Math.round(category.spent / summary.expense * 100) + '%'"></span>
-              </div>
-              <div class="legend-bar"><div :style="{ width: (category.spent / summary.expense * 100) + '%', background: category.color }"></div></div>
-              <strong x-text="money(category.spent)"></strong>
-            </li>
-          </template>
-        </ul>
-      </div>
-    </div>
-
-    <div class="card chart-card">
-      <div class="card-header">
-        <div>
-          <h2>Tren 6 bulan</h2>
-          <p class="muted">Pemasukan vs pengeluaran per bulan</p>
-        </div>
-      </div>
-      <div class="trend-stats" x-show="hasTrendData">
-        <div class="trend-stat income"><span><i class="dot"></i> Pemasukan</span><strong x-text="moneyShort(summary.income)"></strong></div>
-        <div class="trend-stat expense"><span><i class="dot"></i> Pengeluaran</span><strong x-text="moneyShort(summary.expense)"></strong></div>
-        <div class="trend-stat net" :class="{ minus: summary.income - summary.expense < 0 }">
-          <span><i class="dot"></i> Selisih</span><strong x-text="(summary.income - summary.expense < 0 ? '−' : '+') + moneyShort(Math.abs(summary.income - summary.expense))"></strong>
-        </div>
-      </div>
-      <div class="trend" x-show="hasTrendData"><canvas x-ref="trendChart"></canvas></div>
-      <template x-if="!hasTrendData">
-        {{> components/empty-state emoji="1f4ca" title="Grafik masih kosong" text="Perbandingan pemasukan & pengeluaran 6 bulan terakhir akan muncul setelah kamu mulai mencatat."}}
-      </template>
-    </div>
-  </div>
-
   <!-- Wishlist & impian: progres tiap impian yang masih dikejar -->
   <div class="card home-wish" x-show="wishItems('wanted').length > 0">
     <div class="card-header">
@@ -400,56 +424,25 @@
     </div>
   </div>
 
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-header">
-        <h2>Tagihan 14 hari ke depan</h2>
-        <button class="link" @click="goTo('bills')">Lihat semua</button>
+  <!-- Dana pajak (freelance): satu baris ringkas — rincian lengkap ada di Ringkasan SPT -->
+  <template x-if="taxEnabled">
+    <div class="card tax-strip">
+      <img class="tax-strip-emoji" :src="emojiUrl('1f9fe')" alt="">
+      <div class="tax-strip-main">
+        <div class="tax-strip-top">
+          <strong x-text="'Dana pajak ' + summary.tax.year"></strong>
+          <span class="muted" x-text="taxMethodText"></span>
+        </div>
+        <div class="progress"><div class="bar-ok" :style="{ width: (summary.tax.owed ? Math.min(100, (summary.tax.paid + summary.tax.withheld) / summary.tax.owed * 100) : 0) + '%' }"></div></div>
+        <small class="muted" x-text="summary.tax.owed
+          ? 'Sisa ' + money(summary.tax.outstanding) + ' dari perkiraan ' + money(summary.tax.owed) + ' · sisihkan bulan ini ' + money(summary.tax.periodReserve)
+          : 'Belum ada pajak terutang dari penghasilan bruto ' + money(summary.tax.taxableIncome) + ' tahun ini'"></small>
       </div>
-      <template x-if="summary.upcomingBills.length === 0 && bills.length > 0">
-        {{> components/empty-state emoji="1f389" title="Santai dulu!" text="Tidak ada tagihan yang jatuh tempo dalam 14 hari ke depan."}}
-      </template>
-      <template x-if="bills.length === 0">
-        {{> components/empty-state emoji="1f4c5" title="Belum ada tagihan rutin" text="Catat langganan, listrik, internet, atau cicilan supaya diingatkan sebelum jatuh tempo." action="goTo('bills'); openBill()" actionLabel="Tambah tagihan"}}
-      </template>
-      <ul class="list">
-        <template x-for="bill in summary.upcomingBills" :key="bill.id">
-          <li class="row">
-            <span class="avatar" :style="{ background: bill.category_color ?? '#8b5cf6' }">
-              <i class="ph-duotone" :class="bill.debt_id ? 'ph-hand-coins' : 'ph-' + (bill.category_icon ?? 'receipt')"></i>
-            </span>
-            <div class="row-main">
-              <strong x-text="bill.name"></strong>
-              <span class="badge" :class="'badge-' + billStatus(bill).tone" x-text="billStatus(bill).text"></span>
-            </div>
-            <strong x-text="money(bill.amount)"></strong>
-          </li>
-        </template>
-      </ul>
+      <div class="row-actions">
+        <a class="icon-button" :href="'/api/tax/report?format=pdf&year=' + summary.tax.year" download title="Ringkasan SPT (PDF)"><i class="ph-duotone ph-file-pdf"></i></a>
+        <button class="button small" @click="openTaxPay()"><i class="ph-duotone ph-bank"></i> Bayar</button>
+      </div>
     </div>
+  </template>
 
-    <div class="card">
-      <div class="card-header">
-        <h2>Transaksi terakhir</h2>
-        <button class="link" @click="goTo('transactions')">Lihat semua</button>
-      </div>
-      <template x-if="summary.recent.length === 0">
-        {{> components/empty-state emoji="1f4dd" title="Belum ada transaksi" text="Mulai catat dari yang kecil, misalnya kopi pagi ini. Kebiasaan kecil, hasilnya besar!" action="openTransaction()" actionLabel="Catat transaksi"}}
-      </template>
-      <ul class="list">
-        <template x-for="t in summary.recent" :key="t.id">
-          <li class="row clickable" x-data="{ s: style(t) }" @click="editTransaction(t)" title="Klik untuk edit">
-            <span class="avatar" :style="{ background: t.category_color ?? '#64748b' }">
-              <i class="ph-duotone" :class="'ph-' + (t.category_icon ?? s.icon)"></i>
-            </span>
-            <div class="row-main">
-              <strong x-text="transactionTitle(t)"></strong>
-              <span class="muted" x-text="formatDate(t.date)"></span>
-            </div>
-            <strong :class="'tone-' + s.tone" x-text="transactionAmount(t)"></strong>
-          </li>
-        </template>
-      </ul>
-    </div>
-  </div>
 </section>

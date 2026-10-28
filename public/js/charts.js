@@ -11,9 +11,19 @@ Chart.defaults.font.size = 15;
 // Instance chart disimpan di luar state Alpine agar tidak dibungkus Proxy.
 const charts = {};
 
-function draw(canvas, key, config) {
+// Grafik hanya digambar kalau kanvasnya sudah terlihat (punya ukuran). Saat periode berganti, area grafik
+// bisa sesaat tersembunyi (x-show); menggambar di saat itu menghasilkan grafik 0×0 yang tidak muncul lagi.
+// Jadi tunggu beberapa frame sampai terlihat. Permintaan baru untuk grafik yang sama membatalkan yang lama.
+const waiting = {};
+function draw(canvas, key, config, attempt = 0) {
+  cancelAnimationFrame(waiting[key]);
+  if (!canvas) return;
+  if (!canvas.isConnected || canvas.parentElement.offsetWidth === 0) {
+    if (attempt < 60) waiting[key] = requestAnimationFrame(() => draw(canvas, key, config, attempt + 1));
+    return;
+  }
   charts[key]?.destroy();
-  if (canvas) charts[key] = new Chart(canvas, config);
+  charts[key] = new Chart(canvas, config);
 }
 
 const textColor = () => getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();

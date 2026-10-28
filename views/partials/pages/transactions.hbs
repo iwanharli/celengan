@@ -20,19 +20,68 @@
   </div>
 
   <div class="tx-filters" x-show="showTxFilters || extraFilterCount">
-    <select x-model="filters.account_id" @change="reload()">
-      <option value="">Semua akun</option>
-      <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
-    </select>
-    <select x-model="filters.recipient_id" @change="filters.bill_id = ''; reload()" x-show="recipients.length">
-      <option value="">Semua penerima</option>
-      <template x-for="r in recipients" :key="r.id"><option :value="r.id" x-text="r.name"></option></template>
-    </select>
-    <select x-model="filters.bill_id" @change="filters.recipient_id = ''; reload()" x-show="bills.length || endedBills.length">
-      <option value="">Semua tagihan</option>
-      <template x-for="b in [...bills.filter((b) => !b.debt_id), ...endedBills]" :key="b.id"><option :value="b.id" x-text="b.name + (b.active === false ? ' (berhenti)' : '')"></option></template>
-    </select>
-    <button type="button" class="link" x-show="hasFilters" @click="resetFilters()">Hapus filter</button>
+    <div class="field">
+      <label>Akun</label>
+      <select x-model="filters.account_id" @change="reload()">
+        <option value="">Semua akun</option>
+        <template x-for="a in accounts" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
+      </select>
+    </div>
+    <div class="field">
+      <label>Kategori</label>
+      <select x-model="filters.category_id" @change="reload()">
+        <option value="">Semua kategori</option>
+        <optgroup label="Pengeluaran">
+          <template x-for="c in categoriesOf('expense')" :key="c.id"><option :value="c.id" x-text="c.name"></option></template>
+        </optgroup>
+        <optgroup label="Pemasukan">
+          <template x-for="c in categoriesOf('income')" :key="c.id"><option :value="c.id" x-text="c.name"></option></template>
+        </optgroup>
+      </select>
+    </div>
+    <div class="field">
+      <label>Nominal</label>
+      <div class="range-inputs">
+        <input inputmode="numeric" placeholder="min" x-model="filters.min" x-rupiah @input.debounce.500ms="reload()">
+        <span class="muted">–</span>
+        <input inputmode="numeric" placeholder="maks" x-model="filters.max" x-rupiah @input.debounce.500ms="reload()">
+      </div>
+    </div>
+    <div class="field">
+      <label>Urutkan</label>
+      <select x-model="filters.sort" @change="reload()">
+        <option value="newest">Terbaru dulu</option>
+        <option value="oldest">Terlama dulu</option>
+        <option value="largest">Nominal terbesar</option>
+        <option value="smallest">Nominal terkecil</option>
+      </select>
+    </div>
+    <div class="field" x-show="recipients.length">
+      <label>Penerima</label>
+      <select x-model="filters.recipient_id" @change="filters.bill_id = ''; reload()">
+        <option value="">Semua penerima</option>
+        <template x-for="r in recipients" :key="r.id"><option :value="r.id" x-text="r.name"></option></template>
+      </select>
+    </div>
+    <div class="field" x-show="bills.length || endedBills.length">
+      <label>Tagihan</label>
+      <select x-model="filters.bill_id" @change="filters.recipient_id = ''; reload()">
+        <option value="">Semua tagihan</option>
+        <template x-for="b in [...bills.filter((b) => !b.debt_id), ...endedBills]" :key="b.id"><option :value="b.id" x-text="b.name + (b.active === false ? ' (berhenti)' : '')"></option></template>
+      </select>
+    </div>
+    <div class="field">
+      <label>Foto bukti</label>
+      <div class="segmented compact">
+        <template x-for="[value, label] in [['', 'Semua'], ['yes', 'Ada'], ['no', 'Tidak ada']]" :key="value">
+          <button type="button" :class="{ active: filters.photos === value }" @click="filters.photos = value; reload()" x-text="label"></button>
+        </template>
+      </div>
+    </div>
+    <div class="tx-filters-actions">
+      <span class="muted" x-text="transactions.length + ' transaksi'"></span>
+      <button type="button" class="link" x-show="hasFilters" @click="resetFilters()">Hapus semua filter</button>
+    </div>
   </div>
 
   <div class="card">

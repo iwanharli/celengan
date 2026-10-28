@@ -19,24 +19,28 @@ const HISTORY_FIELDS = {
 // Kategori pemasukan yang berasal dari pekerjaan (punya klien, bisa dipotong PPh 21).
 const WORK_INCOME_CATEGORIES = ['Freelance', 'Komisi', 'Usaha / Jualan'];
 
+// Filter halaman Transaksi. min/max = nominal (angka), photos = '' | 'yes' | 'no', sort lihat SORTS di server.
+const EMPTY_FILTERS = { kind: '', q: '', account_id: '', category_id: '', recipient_id: '', bill_id: '', min: '', max: '', photos: '', sort: 'newest' };
+
 // Halaman Transaksi: daftar, filter, tambah & edit.
 export default {
-  filters: { kind: '', account_id: '', q: '', recipient_id: '', bill_id: '' },
+  filters: { ...EMPTY_FILTERS },
   clientNames: [],
 
   showTxFilters: false,
 
   // Filter di panel "Filter" (selain cari & jenis) yang sedang aktif.
   get extraFilterCount() {
-    return [this.filters.account_id, this.filters.recipient_id, this.filters.bill_id].filter(Boolean).length;
+    const f = this.filters;
+    return [f.account_id, f.category_id, f.recipient_id, f.bill_id, f.min, f.max, f.photos, f.sort !== 'newest' && f.sort].filter(Boolean).length;
   },
 
   get hasFilters() {
-    return Boolean(this.filters.kind || this.filters.account_id || this.filters.q || this.filters.recipient_id || this.filters.bill_id);
+    return Boolean(this.filters.kind || this.filters.q || this.extraFilterCount);
   },
 
   resetFilters() {
-    this.filters = { kind: '', account_id: '', q: '', recipient_id: '', bill_id: '' };
+    this.filters = { ...EMPTY_FILTERS };
     this.reload();
   },
 
@@ -169,24 +173,12 @@ export default {
   },
 
   // Sekali klik: langsung tercatat hari ini, dengan tombol Batalkan di toast.
-  async useTemplate(template) {
-    try {
-      const created = await api.post(`/templates/${template.id}/use`, {});
-      this.showToast(`${template.name} tercatat`, {
-        label: 'Batalkan',
-        run: async () => {
-          await api.delete(`/transactions/${created.id}`);
-          this.showToast('Dibatalkan');
-          await this.reload();
-        },
-      });
-      await this.reload();
-    } catch (error) {
-      this.showToast(error.message);
-    }
+  // Catat cepat: buka form transaksi yang sudah terisi dari favorit (tanggal hari ini), tinggal cek & simpan.
+  openFromTemplate(template) {
+    this.openTransaction(template.kind);
+    this.applyTemplate(template);
   },
 
-  // Di form: isi form dari favorit (belum tersimpan).
   applyTemplate(template) {
     Object.assign(this.form, {
       kind: template.kind,

@@ -1,10 +1,22 @@
 {{!-- Modal: Transaksi --}}
 <template x-if="modal === 'transaction'">
   <div class="stack">
-    <h2 x-text="form.id ? 'Edit transaksi' : form.paidProject ? 'Proyek sudah dibayar' : 'Tambah transaksi'"></h2>
+    <div class="card-header">
+      <h2 x-text="form.id ? 'Edit transaksi' : form.paidProject ? 'Proyek sudah dibayar' : 'Tambah transaksi'"></h2>
+      <button type="button" class="link" x-show="form.id" @click="openTransactionHistory({ ...form, account_name: '', attachments: [] })">
+        <i class="ph-duotone ph-clock-counter-clockwise"></i> Riwayat
+      </button>
+    </div>
+    <!-- Favorit: isi form sekali klik -->
+    <div class="template-chips" x-show="!form.id && templates.length">
+      <span class="muted"><i class="ph-fill ph-star"></i> Favorit:</span>
+      <template x-for="template in templates" :key="template.id">
+        <button type="button" class="chip small" @click="applyTemplate(template)" x-text="templateLabel(template)"></button>
+      </template>
+    </div>
     <div class="segmented">
       <template x-for="[kind, label] in [['expense','Pengeluaran'],['income','Pemasukan'],['transfer','Transfer']]">
-        <button type="button" :class="{ active: form.kind === kind }" :disabled="form.linked_to && form.kind !== kind"
+        <button type="button" :class="{ active: form.kind === kind }" :disabled="Boolean(form.linked_to) && form.kind !== kind"
                 @click="form.kind = kind; form.category_id = ''" x-text="label"></button>
       </template>
     </div>
@@ -92,6 +104,13 @@
       <p class="hint" x-show="!form.uploading">Foto dikecilkan otomatis sebelum diunggah supaya hemat ruang.</p>
     </div>
 
-    {{> components/form-actions submit="saveTransaction()"}}
+    <div class="form-actions">
+      <button type="button" class="button danger-text save-template" x-show="!form.id && !form.paidProject" @click="saveAsTemplate()" title="Simpan isian ini sebagai favorit">
+        <i class="ph-duotone ph-star"></i> Jadikan favorit
+      </button>
+      <span class="spacer"></span>
+      <button type="button" class="button" @click="close()">Batal</button>
+      <button class="button primary" @click="saveTransaction()">Simpan</button>
+    </div>
   </div>
 </template>

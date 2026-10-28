@@ -44,7 +44,7 @@ const PAYMENTS_SQL = `
   SELECT t.debt_id, t.amount, t.date
   FROM transactions t
   JOIN debts d ON d.id = t.debt_id
-  WHERE ((d.direction = 'payable' AND t.kind = 'debt_out')
+  WHERE ((d.direction = 'payable' AND t.kind IN ('debt_out', 'expense'))
       OR (d.direction = 'receivable' AND t.kind IN ('debt_in', 'income')))`;
 
 async function loadSchedules(db, debtIds) {
@@ -115,6 +115,24 @@ export async function afterDebtPayment(client, debtId) {
   return Boolean(debt.tenor);
 }
 
+// Kategori pengeluaran "Bayar utang" (dibuat otomatis bila belum ada).
+export async function debtCategoryId(client) {
+  const { rows: [existing] } = await client.query(
+    `SELECT id FROM categories WHERE kind = 'expense' AND name = 'Bayar utang' LIMIT 1`,
+  );
+  if (existing) return existing.id;
+  const { rows: [created] } = await client.query(
+    `INSERT INTO categories (name, kind, icon, color) VALUES ('Bayar utang', 'expense', 'hand-coins', '#f97316') RETURNING id`,
+  );
+  return created.id;
+}
+
+// Jenis & kategori transaksi pembayaran utang (dipakai di sini & saat bayar tagihan cicilan).
+export async function debtPaymentKind(client, debt) {
+  if (debt.direction === 'payable' && debt.count_as_expense) return { kind: 'expense', categoryId: await debtCategoryId(client) };
+  return { kind: debt.direction === 'payable' ? 'debt_out' : 'debt_in', categoryId: null };
+}
+
 // ---------- Endpoint ----------
 
 router.get('/', async (req, res) => {
@@ -138,9 +156,11 @@ router.post('/', async (req, res) => {
 
   const debt = await withTransaction(async (client) => {
     const { rows: [debt] } = await client.query(
-      `INSERT INTO debts (direction, type, counterparty, principal, total_amount, installment, tenor, due_date, note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [direction, type, counterparty, principal, terms.total, terms.installment, terms.tenor, due_date || null, note || null],
+      `INSERT INTO debts (direction, type, counterparty, principal, total_amount, installment, tenor, due_date, note, count_as_expense)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [direction, type, counterparty, principal, terms.total, terms.installment, terms.tenor, due_date || null, note || null,
+        // Bawaan: utang yang dicatat tanpa uang masuk → pembayarannya dihitung pengeluaran.
+        direction === 'payable' && (req.body.count_as_expense ?? !account_id) === true],
     );
 
     // Invoice klien belum ada uang yang berpindah; uang baru masuk saat klien membayar.
@@ -189,11 +209,25 @@ router.put('/:id', async (req, res) => {
       throw new HttpError(400, 'Jenis invoice tidak bisa diubah menjadi jenis lain (atau sebaliknya)');
     }
 
+    const countAsExpense = debt.direction === 'payable' && (req.body.count_as_expense ?? debt.count_as_expense) === true;
     const { rows: [updated] } = await client.query(
-      `UPDATE debts SET counterparty = $1, type = $2, principal = $3, total_amount = $4, due_date = $5, note = $6
-       WHERE id = $7 RETURNING *`,
-      [counterparty, type, principal, total, due_date || null, note || null, debt.id],
+      `UPDATE debts SET counterparty = $1, type = $2, principal = $3, total_amount = $4, due_date = $5, note = $6, count_as_expense = $7
+       WHERE id = $8 RETURNING *`,
+      [counterparty, type, principal, total, due_date || null, note || null, countAsExpense, debt.id],
     );
+    // Opsi diubah → pembayaran yang sudah ada ikut dikonversi (debt_out ↔ expense).
+    if (countAsExpense !== debt.count_as_expense) {
+      if (countAsExpense) {
+        await client.query(
+          `UPDATE transactions SET kind = 'expense', category_id = $1 WHERE debt_id = $2 AND kind = 'debt_out'`,
+          [await debtCategoryId(client), debt.id],
+        );
+      } else {
+        await client.query(
+          `UPDATE transactions SET kind = 'debt_out', category_id = NULL WHERE debt_id = $1 AND kind = 'expense'`, [debt.id],
+        );
+      }
+    }
 
     if (debt.tenor && total !== debt.total_amount) {
       const { rows: [first] } = await client.query(
@@ -256,14 +290,15 @@ router.post('/:id/pay', async (req, res) => {
 
     const isPayable = debt.direction === 'payable';
     const isInvoice = debt.type === 'invoice';
+    const payment = await debtPaymentKind(client, debt);
     await client.query(
       `INSERT INTO transactions (kind, amount, account_id, category_id, debt_id, date, note, client)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
-        isInvoice ? 'income' : isPayable ? 'debt_out' : 'debt_in',
+        isInvoice ? 'income' : payment.kind,
         req.body.amount,
         req.body.account_id,
-        isInvoice ? await freelanceCategoryId(client) : null,
+        isInvoice ? await freelanceCategoryId(client) : payment.categoryId,
         debt.id,
         req.body.date,
         isInvoice

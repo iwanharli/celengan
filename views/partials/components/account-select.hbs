@@ -2,7 +2,7 @@
 <div class="field">
   <label>{{label}}</label>
   <select x-model="{{#if model}}{{model}}{{else}}form.account_id{{/if}}">
-    <template x-for="a in accounts" :key="a.id">
+    <template x-for="a in accounts.filter((a) => a.type !== 'goal' || a.id == {{#if model}}{{model}}{{else}}form.account_id{{/if}})" :key="a.id">
       <option :value="a.id" x-text="a.name" :selected="a.id == {{#if model}}{{model}}{{else}}form.account_id{{/if}}"></option>
     </template>
   </select>

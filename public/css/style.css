@@ -1723,3 +1723,242 @@ button:focus-visible, a:focus-visible, label:focus-within > input[type="file"] +
   .flatpickr-months .flatpickr-prev-month svg, .flatpickr-months .flatpickr-next-month svg { fill: var(--text); }
   .flatpickr-current-month .flatpickr-monthDropdown-months option { background: var(--surface); }
 }
+
+/* ============ Catat cepat (favorit) ============ */
+.favorites { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.favorites-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--text-muted); font-size: .9rem; margin-right: 4px; }
+.favorites-label img { width: 22px; height: 22px; }
+.favorite { position: relative; display: inline-flex; }
+.favorite-use {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px;
+  border: 2px solid var(--border); border-radius: 16px; background: var(--surface); cursor: pointer; text-align: left;
+  transition: border-color .2s, transform .25s var(--spring), box-shadow .2s;
+}
+.favorite-use:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+.favorite-use:active { transform: scale(.96); }
+.favorite-use span:last-child { display: flex; flex-direction: column; line-height: 1.15; }
+.favorite-use strong { font-size: .9rem; }
+.favorite-use small { color: var(--text-muted); font-size: .78rem; font-weight: 700; }
+.avatar.small { width: 32px; height: 32px; border-radius: 10px; font-size: .9rem; }
+.favorite-remove {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; display: none; place-items: center;
+  border: 0; border-radius: 50%; background: var(--text-muted); color: #fff; font-size: .65rem; cursor: pointer;
+}
+.favorite:hover .favorite-remove { display: grid; }
+.favorite-remove:hover { background: var(--negative); }
+.template-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: -6px; }
+.template-chips .ph-star { color: #f59e0b; }
+.save-template { color: #d97706; }
+
+/* Riwayat & baris yang bisa diklik */
+.list .row.clickable { cursor: pointer; }
+.history-entry { align-items: flex-start !important; }
+.history-change { display: block; font-size: .9rem; }
+.history-change del { color: var(--text-muted); }
+.history-time { font-size: .8rem; white-space: nowrap; }
+.toast { gap: 12px; }
+.toast-action {
+  border: 0; border-radius: 999px; padding: 4px 12px; background: var(--bg); color: var(--text);
+  font-weight: 800; cursor: pointer;
+}
+
+/* ============ Halaman Akun (versi baru) ============ */
+.accounts-summary { gap: 14px; }
+.accounts-summary-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.share-bar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--surface-2); gap: 3px; }
+.share-bar span { height: 100%; transition: width .6s var(--spring); }
+.share-bank { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+.share-ewallet { background: linear-gradient(90deg, #06b6d4, #0ea5e9); }
+.share-cash { background: linear-gradient(90deg, #22c55e, #16a34a); }
+.share-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: .9rem; }
+.share-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.share-legend .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+.group-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.group-title h2 { display: flex; align-items: center; gap: 8px; }
+.group-title h2 .ph-duotone { color: var(--primary); }
+
+.account-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 18px; }
+.account-card {
+  display: flex; flex-direction: column; border-radius: 24px; overflow: hidden;
+  background: var(--surface); border: 2px solid var(--border); box-shadow: var(--shadow);
+  transition: transform .35s var(--spring), box-shadow .35s;
+}
+.account-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.account-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: #fff; position: relative; overflow: hidden; }
+.account-head::after {
+  content: ''; position: absolute; right: -30px; top: -40px; width: 120px; height: 120px; border-radius: 50%;
+  background: rgba(255, 255, 255, .14); pointer-events: none;
+}
+.type-bank .account-head { background: linear-gradient(120deg, #3b82f6, #6366f1); }
+.type-ewallet .account-head { background: linear-gradient(120deg, #06b6d4, #0ea5e9); }
+.type-cash .account-head { background: linear-gradient(120deg, #22c55e, #16a34a); }
+.account-icon {
+  width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px;
+  background: rgba(255, 255, 255, .22); font-size: 1.3rem;
+}
+.account-icon .ph-duotone { font-size: inherit; vertical-align: 0; }
+.account-head strong { display: block; font-size: 1.05rem; }
+.account-head small { opacity: .85; font-weight: 700; }
+.account-edit {
+  position: relative; z-index: 1; width: 36px; height: 36px; display: grid; place-items: center;
+  border: 0; border-radius: 12px; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer;
+}
+.account-edit:hover { background: rgba(255, 255, 255, .32); }
+.account-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 6px; }
+.account-balance { font-family: 'Fredoka', sans-serif; font-size: 1.85rem; font-weight: 700; line-height: 1.1; }
+.account-share { display: flex; align-items: center; gap: 10px; }
+.account-share .progress { flex: 1; height: 10px; padding: 2px; }
+.account-share small { white-space: nowrap; font-size: .78rem; }
+.account-card .account-number { margin-top: auto; min-height: 58px; }
+.account-number .label { display: block; font-size: .78rem; }
+.account-holder { min-height: 1.2em; font-size: .82rem; }
+.icon-button.small { width: 34px; height: 34px; }
+.account-actions { display: flex; align-items: center; gap: 8px; padding: 10px 16px 14px; border-top: 2px dashed var(--border); }
+
+/* ============ Kartu utang / piutang (versi baru) ============ */
+.debt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 18px; align-items: start; }
+.debt-card {
+  display: flex; flex-direction: column; border-radius: 24px; overflow: hidden;
+  background: var(--surface); border: 2px solid var(--border); box-shadow: var(--shadow);
+  transition: transform .35s var(--spring), box-shadow .35s;
+}
+.debt-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.debt-card.settled { opacity: .75; }
+.debt-head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; color: #fff; position: relative; overflow: hidden; }
+.debt-head::after {
+  content: ''; position: absolute; right: -30px; top: -40px; width: 120px; height: 120px; border-radius: 50%;
+  background: rgba(255, 255, 255, .14); pointer-events: none;
+}
+.kind-payable .debt-head { background: linear-gradient(120deg, #fb7185, #f97316); }
+.kind-receivable .debt-head { background: linear-gradient(120deg, #22c55e, #14b8a6); }
+.kind-invoice .debt-head { background: linear-gradient(120deg, #0ea5e9, #6366f1); }
+.settled .debt-head { background: linear-gradient(120deg, #94a3b8, #64748b); }
+.debt-initial {
+  width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px;
+  background: rgba(255, 255, 255, .25); font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 1.2rem;
+}
+.debt-head strong { display: block; font-size: 1.05rem; }
+.debt-head small { display: block; opacity: .9; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.debt-head .grow { min-width: 0; }
+.head-button {
+  position: relative; z-index: 1; width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center;
+  border: 0; border-radius: 11px; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer;
+}
+.head-button:hover { background: rgba(255, 255, 255, .34); }
+.debt-body { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.debt-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.debt-remaining { font-family: 'Fredoka', sans-serif; font-size: 1.75rem; font-weight: 700; line-height: 1.15; }
+.debt-progress { display: flex; align-items: center; gap: 10px; }
+.debt-progress .progress { flex: 1; height: 12px; padding: 2px; }
+.debt-progress strong { font-size: .85rem; min-width: 38px; text-align: right; }
+.debt-meta { font-size: .85rem; margin-top: -4px; }
+.debt-actions { display: flex; gap: 8px; padding: 12px 16px 14px; border-top: 2px dashed var(--border); }
+.debt-actions .button { flex: 1; }
+/* Masonry: kartu pendek mengisi celah di bawahnya (tidak ada ruang kosong karena kartu tinggi) */
+.debt-grid { display: block; columns: 3 330px; column-gap: 18px; }
+.debt-grid > .debt-card { break-inside: avoid; margin-bottom: 18px; display: inline-flex; width: 100%; }
+.debt-main { flex-wrap: wrap; }
+.debt-main .badge { max-width: 100%; white-space: normal; }
+.account-edit.starred { background: #fde047; color: #a16207; }
+.account-edit.starred:hover { background: #facc15; }
+.primary-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; vertical-align: 2px;
+  background: #fde047; color: #713f12; font-size: .7rem; font-weight: 800;
+}
+.button.danger-text.save-template { color: #d97706; }
+
+/* ============ Scroll saat modal terbuka ============ */
+/* Halaman di belakang tidak ikut bergulir & scrollbar halaman tidak tampil di atas latar modal */
+html:has(body.modal-open), body.modal-open { overflow: hidden; }
+/* Scrollbar modal dipotong mengikuti sudut membulat, dengan jarak dari tepi */
+.modal { clip-path: inset(0 round 28px); scrollbar-gutter: stable; padding-right: 22px; }
+.modal::-webkit-scrollbar { width: 14px; }
+.modal::-webkit-scrollbar-thumb { border: 4px solid transparent; background-clip: padding-box; }
+.modal::-webkit-scrollbar-track { margin-block: 28px; }
+.wish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+@media (max-width: 960px) { .wish-grid { grid-template-columns: minmax(0, 1fr); } }
+/* Kartu wishlist sama tinggi; tombol Sisihkan/Beli selalu di bawah */
+.wish-grid { align-items: stretch; }
+.wish-grid > .card.wish { height: 100%; }
+.wish .wish-actions { margin-top: auto; }
+.share-goal { background: linear-gradient(90deg, #f472b6, #a855f7); }
+.type-goal .account-head { background: linear-gradient(120deg, #f472b6, #a855f7); }
+.share-goal { background: linear-gradient(90deg, #f472b6, #a855f7); }
+.type-goal .account-head { background: linear-gradient(120deg, #f472b6, #a855f7); }
+.expense-toggle { align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.expense-toggle small { display: block; font-weight: 600; font-size: .82rem; margin-top: 2px; }
+.expense-badge { align-self: flex-start; }
+.income-toggle { display: flex; flex-direction: column; gap: 12px; }
+
+/* Beranda: kartu wishlist & impian */
+.home-wish { display: flex; flex-direction: column; gap: 16px; }
+.home-wish .card-header { margin-bottom: 0; align-items: flex-start; }
+.home-wish .card-header p { margin: 4px 0 0; }
+.home-wish-total { height: 12px; }
+.home-wish-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.home-wish-item {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface-2, rgba(139, 92, 246, .06)); border: 1px solid var(--border); border-radius: 20px;
+  transition: transform .25s var(--spring), box-shadow .25s;
+}
+.home-wish-item:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(139, 92, 246, .14); }
+.home-wish-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.home-wish-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.home-wish-top strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-wish-percent { font-weight: 800; color: var(--primary, #8b5cf6); }
+.home-wish-item .progress { background: var(--surface); height: 8px; }
+.home-wish-foot { display: flex; justify-content: space-between; gap: 8px; }
+.home-wish-foot small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Beranda: kartu grafik */
+.chart-card { display: flex; flex-direction: column; gap: 18px; }
+.chart-card .card-header { margin-bottom: 0; }
+.chart-card .card-header p { margin: 4px 0 0; }
+.chart-card .donut-wrap { flex: 1; gap: 32px; }
+.chart-card .donut { position: relative; width: 240px; margin: 0 auto; }
+.donut-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.donut-center small { color: var(--text-muted); font-weight: 700; }
+.donut-center strong { font-size: 1.35rem; font-weight: 800; }
+.chart-card .legend { gap: 14px; }
+.chart-card .legend li { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+.legend-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.legend-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-pct { color: var(--text-muted); font-size: .9rem; }
+.chart-card .legend li strong { margin-left: 0; text-align: right; }
+.legend-bar { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.legend-bar > div { height: 100%; border-radius: inherit; transition: width .8s var(--spring); }
+
+.trend-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.trend-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 16px; background: var(--surface-2); }
+.trend-stat span { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: .9rem; font-weight: 700; }
+.trend-stat strong { font-size: 1.1rem; }
+.trend-stat .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.trend-stat.income .dot { background: #34d399; }
+.trend-stat.expense .dot { background: #fb7185; }
+.trend-stat.net .dot { background: #a78bfa; }
+.trend-stat.income strong { color: var(--positive); }
+.trend-stat.expense strong { color: var(--negative); }
+.trend-stat.net.minus strong { color: var(--negative); }
+.chart-card .trend { height: 250px; }
+@media (max-width: 520px) { .trend-stats { grid-template-columns: 1fr 1fr; } }
+
+/* SweetAlert2: peringatan bergaya Celengan */
+.swal2-container { z-index: 2000; }
+.swal2-popup.swal-celengan {
+  border-radius: 28px; padding: 28px 24px 24px; background: var(--surface); color: var(--text);
+  font-family: 'Nunito', system-ui, sans-serif; box-shadow: var(--shadow-hover);
+}
+.swal-celengan .swal2-title { font-size: 1.35rem; font-weight: 800; color: var(--text); }
+.swal-celengan .swal2-html-container { font-size: 1.05rem; color: var(--text-muted); }
+.swal-celengan .swal2-icon.swal2-warning { border-color: #fbbf24; color: #f59e0b; }
+.swal-celengan .swal2-actions { margin-top: 20px; }
+.auto-pay-badge { margin-left: 6px; vertical-align: middle; }
+.bill-stats { gap: 10px; }
+.bill-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.bill-stat small { color: var(--text-muted); font-weight: 700; }
+.bill-stat strong { font-size: 1.1rem; }

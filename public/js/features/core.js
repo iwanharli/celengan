@@ -1,13 +1,36 @@
 import { api } from '../api.js';
 import { celebrate, celebrateBig, emojiUrl } from '../effects.js';
+import { showWarning } from '../alert.js';
 import { drawCategoryChart, drawTrendChart, drawNetWorthChart, drawYearChart } from '../charts.js';
 import {
-  rupiah, parseAmount, formatAmountInput, formatDate, formatMonthYear, monthLabel, daysUntil, todayISO, shiftMonth, currentMonth,
+  rupiah, rupiahShort, parseAmount, formatAmountInput, formatDate, formatMonthYear, monthLabel, daysUntil, todayISO, shiftMonth, currentMonth,
   addDays, daysBetween, formatRange,
 } from '../format.js';
 import * as constants from '../constants.js';
 
 // Inti aplikasi: data, navigasi, helper tampilan, dan pola form/modal yang dipakai semua halaman.
+// Sumber data (dipanggil dengan this = komponen Alpine).
+const DATA_SOURCES = {
+  summary() { return `/summary?${new URLSearchParams(this.periodParams)}`; },
+  accounts: () => '/accounts',
+  categories: () => '/categories',
+  templates: () => '/templates',
+  transactions() { return `/transactions?${new URLSearchParams({ ...this.periodParams, ...this.filters })}`; },
+  bills: () => '/bills',
+  debts: () => '/debts',
+  assets: () => '/assets',
+  wishlist: () => '/wishlist',
+};
+// Data tambahan per halaman (selain data dasar).
+const PAGE_DATA = {
+  home: ['bills', 'debts', 'wishlist'],
+  transactions: ['transactions'],
+  bills: ['bills'],
+  debts: ['debts'],
+  assets: ['assets'],
+  wishlist: ['wishlist'],
+};
+
 export default {
   ...constants,
   emojiUrl, rupiah, parseAmount, formatAmountInput, formatDate, formatRange,
@@ -25,12 +48,15 @@ export default {
   bills: [],
   debts: [],
   wishlist: [],
+  templates: [],
+  staleData: null,
   assets: { assets: [], netWorth: null, history: [] },
 
   modal: null, // nama form yang sedang terbuka
   form: {},
   formError: '',
   toast: '',
+  toastAction: null,
   hideAmounts: false,
   sidebarCollapsed: false,
 
@@ -39,6 +65,14 @@ export default {
       this.hideAmounts = localStorage.getItem('hideAmounts') === '1';
       this.sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === '1';
     } catch {}
+    // Semua peringatan form tampil sebagai SweetAlert, bukan teks merah di bawah form.
+    const titles = { formError: 'Ups, belum bisa disimpan', authError: 'Gagal masuk', exportError: 'Export gagal' };
+    for (const [key, title] of Object.entries(titles)) {
+      this.$watch(key, (message) => {
+        if (!message) return;
+        showWarning(message, title).then(() => { this[key] = ''; });
+      });
+    }
     window.addEventListener('auth:required', () => {
       this.auth.loggedIn = false;
       this.modal = null;
@@ -58,23 +92,34 @@ export default {
     await this.reload();
   },
 
+  // Memuat ulang data setelah ada perubahan. Supaya hemat, yang dimuat hanya:
+  //   - data dasar yang dipakai di mana-mana (ringkasan, akun, kategori, favorit), dan
+  //   - data milik halaman yang sedang dibuka (lihat PAGE_DATA).
+  // Data halaman lain ditandai "basi" dan baru dimuat saat halamannya dibuka.
   async reload() {
-    const query = new URLSearchParams({ ...this.periodParams, ...this.filters });
-    [this.summary, this.accounts, this.categories, this.transactions, this.bills, this.debts, this.assets, this.wishlist] =
-      await Promise.all([
-        api.get(`/summary?${new URLSearchParams(this.periodParams)}`),
-        api.get('/accounts'),
-        api.get('/categories'),
-        api.get(`/transactions?${query}`),
-        api.get('/bills'),
-        api.get('/debts'),
-        api.get('/assets'),
-        api.get('/wishlist'),
-      ]);
+    this.staleData = new Set(Object.keys(DATA_SOURCES));
+    await Promise.all([
+      this.loadData(['summary', 'accounts', 'categories', 'templates']),
+      this.loadPageData(),
+    ]);
     if (this.page === 'settings') this.loadAutoBackups();
     if (this.page === 'reports') await this.loadReport();
     if (this.page === 'export') this.refreshExportPreview();
     this.$nextTick(() => this.drawCharts());
+  },
+
+  async loadData(keys) {
+    const results = await Promise.all(keys.map((key) => api.get(DATA_SOURCES[key].call(this))));
+    keys.forEach((key, index) => {
+      this[key] = results[index];
+      this.staleData?.delete(key);
+    });
+  },
+
+  // Data halaman aktif yang belum dimuat / sudah basi.
+  async loadPageData() {
+    const needed = (PAGE_DATA[this.page] ?? []).filter((key) => this.staleData?.has(key));
+    if (needed.length) await this.loadData(needed);
   },
 
   drawCharts() {
@@ -93,8 +138,9 @@ export default {
 
   // ---------- Navigasi ----------
 
-  goTo(page) {
+  async goTo(page) {
     this.page = page;
+    this.loadPageData().then(() => this.$nextTick(() => this.drawCharts()));
     history.replaceState(null, '', page === 'settings' ? `#settings/${this.settingsSection}` : `#${page}`);
     window.scrollTo({ top: 0 });
     if (page === 'settings') this.loadAutoBackups();
@@ -148,6 +194,11 @@ export default {
     return this.hideAmounts ? 'Rp ●●●●●' : rupiah(amount);
   },
 
+  // Versi ringkas untuk ringkasan grafik: "Rp 4,1 jt"
+  moneyShort(amount) {
+    return this.hideAmounts ? 'Rp ●●●' : `Rp ${rupiahShort(amount)}`;
+  },
+
   toggleHideAmounts() {
     this.hideAmounts = !this.hideAmounts;
     try { localStorage.setItem('hideAmounts', this.hideAmounts ? '1' : '0'); } catch {}
@@ -160,6 +211,17 @@ export default {
 
   // Kategori untuk form: aktif saja, urut dari yang paling sering dipakai (diurutkan server).
   // Kategori arsip tetap muncul bila sedang dipakai oleh data yang diedit.
+  // Akun bawaan untuk semua form: akun utama, kalau belum ada pakai akun pertama.
+  get defaultAccountId() {
+    const regular = this.regularAccounts;
+    return (regular.find((account) => account.is_primary) ?? regular[0])?.id ?? '';
+  },
+
+  // Akun biasa (bank, e-wallet, tunai) — tanpa akun tabungan impian.
+  get regularAccounts() {
+    return this.accounts.filter((account) => account.type !== 'goal');
+  },
+
   categoriesOf(kind) {
     const selected = Number(this.form?.category_id);
     return this.categories.filter((category) => category.kind === kind && (!category.archived || category.id === selected));
@@ -170,7 +232,7 @@ export default {
   open(modal, values = {}) {
     this.modal = modal;
     this.formError = '';
-    this.form = { amountText: '', date: todayISO(), account_id: this.accounts[0]?.id ?? '', ...values };
+    this.form = { amountText: '', date: todayISO(), account_id: this.defaultAccountId, ...values };
     this.$nextTick(() => document.querySelector('.modal [autofocus]')?.focus());
   },
 
@@ -238,9 +300,18 @@ export default {
     return api.post(path, body);
   },
 
-  showToast(message) {
+  // action (opsional): { label, run } → tombol di toast, misal "Batalkan".
+  showToast(message, action = null) {
     this.toast = message;
+    this.toastAction = action;
     clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => (this.toast = ''), 2500);
+    this.toastTimer = setTimeout(() => { this.toast = ''; this.toastAction = null; }, action ? 5000 : 2500);
+  },
+
+  async runToastAction() {
+    const action = this.toastAction;
+    this.toast = '';
+    this.toastAction = null;
+    await action?.run();
   },
 };

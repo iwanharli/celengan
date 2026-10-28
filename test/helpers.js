@@ -10,7 +10,8 @@ import { join } from 'node:path';
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://localhost:5432/catat_keuangan_test';
 
 const ALL_TABLES = [
-  'wishlist_events', 'wishlist_parts', 'wishlist_items', 'transaction_attachments', 'transactions', 'bills', 'debt_installments', 'debts',
+  'wishlist_events', 'wishlist_parts', 'wishlist_items', 'transaction_attachments', 'transaction_templates',
+  'transaction_history', 'transactions', 'bills', 'debt_installments', 'debts',
   'assets', 'accounts', 'net_worth_snapshots', 'categories', 'sessions', 'owner',
 ];
 

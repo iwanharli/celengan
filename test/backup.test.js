@@ -48,8 +48,8 @@ test('restore mengembalikan semua data persis seperti semula', async () => {
   const before = { ...backup };
   await app.restoreData(before);
   const restored = await snapshot();
-  assert.equal(restored.accounts[0].balance, 5000000 - 25000 + 1500000);
-  assert.equal(restored.transactions.length, 2);
+  assert.equal(restored.accounts[0].balance, 5000000 - 25000 + 1500000 - 300000); // 300rb pindah ke tabungan impian
+  assert.equal(restored.transactions.length, 3); // + transfer ke tabungan impian
   assert.equal(restored.debts[0].installments.length, 6);
   assert.equal(restored.bills.length, 1);
   assert.equal(restored.wishlist[0].saved, 300000);
@@ -64,7 +64,7 @@ test('setelah restore, data baru tetap bisa ditambahkan (penomoran id lanjut)', 
 
 test('file yang bukan backup ditolak', async () => {
   await assert.rejects(app.restoreData({ hello: 'world' }), /bukan backup/);
-  assert.equal((await app.api.get('/accounts')).length, 2); // data tidak berubah
+  assert.equal((await app.api.get('/accounts')).length, 3); // data tidak berubah (2 akun + 1 akun impian)
 });
 
 test('unduh & pulihkan backup tidak tersedia lagi dari aplikasi', async () => {

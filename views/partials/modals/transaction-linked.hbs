@@ -1,0 +1,23 @@
+{{!-- Modal: Edit transaksi utang / aset / penyesuaian — jenis dikunci, yang bisa diubah: nominal, akun, tanggal, catatan --}}
+<template x-if="modal === 'transactionLinked'">
+  <div class="stack">
+    <div class="card-header">
+      <h2>Edit transaksi</h2>
+      <button type="button" class="link" @click="openTransactionHistory(form.transaction)"><i class="ph-duotone ph-clock-counter-clockwise"></i> Riwayat</button>
+    </div>
+    <div class="category-preview">
+      <span class="avatar"><i class="ph-duotone" :class="'ph-' + style(form.transaction).icon"></i></span>
+      <div>
+        <strong x-text="transactionTitle(form.transaction)"></strong>
+        <p class="muted" x-text="linkedEditHint"></p>
+      </div>
+    </div>
+    {{> components/amount-field label="Nominal" autofocus=true}}
+    <div class="grid-2 tight">
+      {{> components/account-select label="Akun"}}
+      <div class="field"><label>Tanggal</label><input type="date" x-model="form.date"></div>
+    </div>
+    <div class="field"><label>Catatan</label><input x-model="form.note"></div>
+    {{> components/form-actions submit="saveLinkedEdit()"}}
+  </div>
+</template>

@@ -19,7 +19,7 @@ async function periodTotals({ start, end }, taxCategoryIds = []) {
             COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'income' AND t.category_id = ANY($3)), 0)::bigint
               AS taxable_income,
             COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'expense'), 0)::bigint                      AS expense,
-            COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'expense' AND t.bill_id IS NULL), 0)::bigint AS daily_expense,
+            COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'expense' AND t.bill_id IS NULL AND t.debt_id IS NULL), 0)::bigint AS daily_expense,
             COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'debt_out' AND d.direction = 'payable'), 0)::bigint
               AS debt_payments,
             count(*)::int AS transaction_count

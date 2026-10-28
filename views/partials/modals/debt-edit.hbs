@@ -29,6 +29,11 @@
       <input type="date" x-model="form.due_date">
     </div>
     <div class="field"><label>Catatan (opsional)</label><input x-model="form.note"></div>
+    <label class="checkbox expense-toggle" x-show="form.debt.direction === 'payable'">
+      <input type="checkbox" x-model="form.count_as_expense">
+      <span><strong>Hitung pembayaran sebagai pengeluaran</strong>
+        <small class="muted">Masuk laporan & anggaran kategori "Bayar utang". Cocok untuk utang yang uangnya tidak dicatat masuk.</small></span>
+    </label>
     {{> components/form-actions submit="saveDebtEdit()"}}
   </div>
 </template>

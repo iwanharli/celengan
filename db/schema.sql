@@ -114,6 +114,9 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS provider text;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS account_number text;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS holder_name text;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS note text;
+-- Akun utama: dipakai sebagai pilihan bawaan di semua form. Maksimal satu.
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_primary boolean NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX IF NOT EXISTS accounts_one_primary ON accounts (is_primary) WHERE is_primary;
 
 -- View di-DROP dulu karena Postgres membekukan daftar kolom a.* saat view dibuat.
 DROP VIEW IF EXISTS account_balances;
@@ -137,6 +140,10 @@ ALTER TABLE debts ADD CONSTRAINT debts_type_check
 ALTER TABLE debts DROP CONSTRAINT IF EXISTS debts_invoice_check;
 ALTER TABLE debts ADD CONSTRAINT debts_invoice_check CHECK (type <> 'invoice' OR direction = 'receivable');
 
+-- count_as_expense: pembayaran utang ini dicatat sebagai PENGELUARAN (kategori "Bayar utang"),
+-- misal utang lama yang dicatat tanpa uang masuk. Kalau false: debt_out (bukan pengeluaran).
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS count_as_expense boolean NOT NULL DEFAULT false;
+
 -- Tenor cicilan (3, 6, 12 bulan, ...). Ditambahkan sebelum view di bawah dibuat.
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS tenor int CHECK (tenor > 0);
 
@@ -148,7 +155,7 @@ SELECT s.*, s.total_amount - s.paid AS remaining
 FROM (
   SELECT d.*,
          COALESCE(SUM(t.amount) FILTER (
-           WHERE (d.direction = 'payable'    AND t.kind = 'debt_out')
+           WHERE (d.direction = 'payable'    AND t.kind IN ('debt_out', 'expense'))
               OR (d.direction = 'receivable' AND t.kind IN ('debt_in', 'income'))
          ), 0)::bigint AS paid
   FROM debts d
@@ -214,6 +221,16 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
 -- due_day menyimpan tanggal aslinya. Di bulan pendek dipakai hari terakhir bulan itu,
 -- lalu kembali ke tanggal aslinya di bulan berikutnya (31 Jan → 28 Feb → 31 Mar).
 ALTER TABLE bills ADD COLUMN IF NOT EXISTS due_day int CHECK (due_day BETWEEN 1 AND 31);
+-- Potong otomatis: saat jatuh tempo, saldo akun langsung dipotong (kalau saldonya cukup).
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS auto_pay boolean NOT NULL DEFAULT false;
+
+-- Periode tagihan yang dilewati (tombol "Lewati"). Pembayarannya sendiri ada di transactions.bill_id.
+CREATE TABLE IF NOT EXISTS bill_skips (
+  id         serial PRIMARY KEY,
+  bill_id    int NOT NULL REFERENCES bills ON DELETE CASCADE,
+  due_date   date NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 UPDATE bills SET due_day = extract(day FROM next_due) WHERE due_day IS NULL;
 
 CREATE OR REPLACE FUNCTION next_due_date(current_due date, frequency text, due_day int)
@@ -315,3 +332,114 @@ CREATE TABLE IF NOT EXISTS transaction_attachments (
   created_at     timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS transaction_attachments_transaction_idx ON transaction_attachments (transaction_id);
+
+-- ---------- Transaksi favorit (template sekali klik) ----------
+CREATE TABLE IF NOT EXISTS transaction_templates (
+  id            serial PRIMARY KEY,
+  name          text NOT NULL,
+  kind          text NOT NULL CHECK (kind IN ('income', 'expense', 'transfer')),
+  amount        bigint NOT NULL CHECK (amount > 0),
+  account_id    int NOT NULL REFERENCES accounts ON DELETE CASCADE,
+  to_account_id int REFERENCES accounts ON DELETE CASCADE,
+  category_id   int REFERENCES categories ON DELETE SET NULL,
+  note          text,
+  position      int NOT NULL DEFAULT 0,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+-- ---------- Riwayat perubahan transaksi ----------
+-- Dicatat otomatis oleh trigger: berlaku untuk SEMUA cara transaksi berubah (form, bayar tagihan, dll.).
+-- changes (untuk 'updated') = { kolom: [nilai lama, nilai baru] }; snapshot = isi transaksi setelah/ sebelum dihapus.
+CREATE TABLE IF NOT EXISTS transaction_history (
+  id             serial PRIMARY KEY,
+  transaction_id int NOT NULL,            -- tanpa foreign key: riwayat tetap ada setelah transaksi dihapus
+  action         text NOT NULL CHECK (action IN ('created', 'updated', 'deleted')),
+  changes        jsonb,
+  snapshot       jsonb NOT NULL,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS transaction_history_transaction_idx ON transaction_history (transaction_id, id);
+
+CREATE OR REPLACE FUNCTION log_transaction_change() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  diff jsonb := '{}';
+  key text;
+BEGIN
+  -- Saat memulihkan backup, riwayat tidak dicatat (diatur lewat SET LOCAL celengan.skip_history = 'on').
+  IF current_setting('celengan.skip_history', true) = 'on' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO transaction_history (transaction_id, action, snapshot) VALUES (NEW.id, 'created', to_jsonb(NEW));
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' THEN
+    FOR key IN SELECT jsonb_object_keys(to_jsonb(NEW)) LOOP
+      IF key <> 'created_at' AND (to_jsonb(OLD) -> key) IS DISTINCT FROM (to_jsonb(NEW) -> key) THEN
+        diff := diff || jsonb_build_object(key, jsonb_build_array(to_jsonb(OLD) -> key, to_jsonb(NEW) -> key));
+      END IF;
+    END LOOP;
+    IF diff <> '{}' THEN
+      INSERT INTO transaction_history (transaction_id, action, changes, snapshot) VALUES (NEW.id, 'updated', diff, to_jsonb(NEW));
+    END IF;
+    RETURN NEW;
+  ELSE
+    INSERT INTO transaction_history (transaction_id, action, snapshot) VALUES (OLD.id, 'deleted', to_jsonb(OLD));
+    RETURN OLD;
+  END IF;
+END $$;
+
+DROP TRIGGER IF EXISTS transactions_history ON transactions;
+CREATE TRIGGER transactions_history AFTER INSERT OR UPDATE OR DELETE ON transactions
+  FOR EACH ROW EXECUTE FUNCTION log_transaction_change();
+
+-- ---------- Akun tabungan impian (wishlist) ----------
+-- Setiap impian punya akun sendiri (type 'goal'). "Sisihkan" = transfer ke akun itu, jadi uangnya
+-- benar-benar berpindah. Saldo akun impian = uang yang sudah disisihkan.
+ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_type_check;
+ALTER TABLE accounts ADD CONSTRAINT accounts_type_check CHECK (type IN ('cash', 'bank', 'ewallet', 'goal'));
+ALTER TABLE wishlist_items ADD COLUMN IF NOT EXISTS account_id int REFERENCES accounts ON DELETE SET NULL;
+
+-- Migrasi: impian yang masih diinginkan & belum punya akun → dibuatkan akun. Uang yang dulu
+-- "disisihkan" secara virtual dipindah dari akun utama (atau akun pertama) supaya total tetap sama.
+DO $$
+DECLARE
+  item record;
+  goal_id int;
+  source_id int;
+BEGIN
+  FOR item IN SELECT * FROM wishlist_items WHERE account_id IS NULL AND status = 'wanted' LOOP
+    INSERT INTO accounts (name, type, initial_balance) VALUES ('🎁 ' || item.name, 'goal', 0) RETURNING id INTO goal_id;
+    UPDATE wishlist_items SET account_id = goal_id WHERE id = item.id;
+    IF item.saved > 0 THEN
+      SELECT id INTO source_id FROM accounts WHERE type <> 'goal' ORDER BY is_primary DESC, id LIMIT 1;
+      IF source_id IS NOT NULL THEN
+        INSERT INTO transactions (kind, amount, account_id, to_account_id, note)
+        VALUES ('transfer', item.saved, source_id, goal_id, 'Sisihkan untuk ' || item.name);
+      END IF;
+    END IF;
+  END LOOP;
+END $$;
+
+-- ---------- Migrasi: utang tanpa uang masuk → pembayarannya dihitung pengeluaran ----------
+-- Dijalankan sekali (ditandai di settings). Pembayaran yang sudah ada dikonversi ke 'expense'.
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS migrated_debt_expense boolean NOT NULL DEFAULT false;
+DO $$
+DECLARE
+  debt_category int;
+BEGIN
+  IF (SELECT migrated_debt_expense FROM settings WHERE id = 1) THEN RETURN; END IF;
+  UPDATE debts d SET count_as_expense = true
+  WHERE d.direction = 'payable'
+    AND NOT EXISTS (SELECT 1 FROM transactions t WHERE t.debt_id = d.id AND t.kind = 'debt_in');
+  IF EXISTS (SELECT 1 FROM debts WHERE count_as_expense) THEN
+    SELECT id INTO debt_category FROM categories WHERE kind = 'expense' AND name = 'Bayar utang' LIMIT 1;
+    IF debt_category IS NULL THEN
+      INSERT INTO categories (name, kind, icon, color) VALUES ('Bayar utang', 'expense', 'hand-coins', '#f97316')
+      RETURNING id INTO debt_category;
+    END IF;
+    UPDATE transactions t SET kind = 'expense', category_id = debt_category
+    FROM debts d WHERE d.id = t.debt_id AND d.count_as_expense AND t.kind = 'debt_out';
+  END IF;
+  UPDATE settings SET migrated_debt_expense = true WHERE id = 1;
+END $$;

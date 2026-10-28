@@ -1,0 +1,34 @@
+{{!-- Modal: Riwayat perubahan satu transaksi (dicatat otomatis) --}}
+<template x-if="modal === 'transactionHistory'">
+  <div class="stack">
+    <div class="category-preview">
+      <span class="avatar"><i class="ph-duotone ph-clock-counter-clockwise"></i></span>
+      <div>
+        <h2>Riwayat perubahan</h2>
+        <p class="muted" x-text="transactionTitle(form.transaction) + ' · ' + transactionAmount(form.transaction)"></p>
+      </div>
+    </div>
+    <p class="muted" x-show="form.history === null">Memuat…</p>
+    <ol class="timeline" x-show="form.history">
+      <template x-for="entry in form.history ?? []" :key="entry.id">
+        <li class="history-entry">
+          <span class="timeline-dot" :class="{ 'tone-positive': entry.action === 'created', 'tone-info': entry.action === 'updated', 'tone-negative': entry.action === 'deleted' }">
+            <i class="ph-fill" :class="{ created: 'ph-plus-circle', updated: 'ph-pencil-simple', deleted: 'ph-trash' }[entry.action]"></i>
+          </span>
+          <div class="row-main">
+            <strong x-text="{ created: 'Dicatat', updated: 'Diubah', deleted: 'Dihapus' }[entry.action]"></strong>
+            <template x-for="change in historyChanges(entry)" :key="change.label">
+              <span class="history-change">
+                <span class="muted" x-text="change.label + ':'"></span>
+                <del x-text="change.before"></del> → <strong x-text="change.after"></strong>
+              </span>
+            </template>
+            <span class="hint" x-show="entry.action === 'updated' && historyChanges(entry).length === 0">Perubahan teknis (foto, tautan)</span>
+          </div>
+          <span class="muted history-time" x-text="new Date(entry.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })"></span>
+        </li>
+      </template>
+    </ol>
+    <div class="form-actions"><button type="button" class="button" @click="close()">Tutup</button></div>
+  </div>
+</template>

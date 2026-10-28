@@ -25,7 +25,7 @@
     components/ potongan yang dipakai ulang
   Semua interaksi diatur oleh Alpine.js (public/js/app.js).
 --}}
-<body x-data="app" x-cloak>
+<body x-data="app" x-cloak :class="{ 'modal-open': modal }">
   {{> layout/auth}}
 
   <div class="layout" :class="{ collapsed: sidebarCollapsed }" x-show="auth.loggedIn">
@@ -65,6 +65,7 @@
       {{> modals/budget}}
       {{> modals/bill}}
       {{> modals/pay-bill}}
+      {{> modals/bill-history}}
       {{> modals/debt}}
       {{> modals/debt-edit}}
       {{> modals/pay-debt}}
@@ -79,6 +80,9 @@
       {{> modals/category-delete}}
       {{> modals/confirm}}
       {{> modals/photos}}
+      {{> modals/transaction-linked}}
+      {{> modals/transaction-history}}
+      {{> modals/deleted-transactions}}
       {{> modals/period}}
       {{> modals/asset}}
       {{> modals/asset-value}}
@@ -86,10 +90,12 @@
       {{> modals/tax-pay}}
       {{> modals/reset}}
 
-      <p class="form-error" x-show="formError" x-text="formError"></p>
     </form>
   </div>
 
-  <div class="toast" x-show="toast" x-transition x-text="toast"></div>
+  <div class="toast" x-show="toast" x-transition>
+    <span x-text="toast"></span>
+    <button type="button" class="toast-action" x-show="toastAction" @click="runToastAction()" x-text="toastAction?.label"></button>
+  </div>
 </body>
 </html>

@@ -1,0 +1,52 @@
+{{!-- Modal: Riwayat satu tagihan — pembayaran (manual / potong otomatis) & periode yang dilewati. --}}
+<template x-if="modal === 'billHistory'">
+  <div class="stack">
+    <div class="category-preview">
+      <span class="avatar" :style="{ background: form.bill.category_color ?? '#8b5cf6' }">
+        <i class="ph-duotone" :class="form.bill.debt_id ? 'ph-hand-coins' : 'ph-' + (form.bill.category_icon ?? 'receipt')"></i>
+      </span>
+      <div>
+        <h2>Riwayat <span x-text="form.bill.name"></span></h2>
+        <p class="muted" x-text="FREQUENCIES[form.bill.frequency] + ' · ' + money(form.bill.amount)"></p>
+      </div>
+    </div>
+
+    <p class="muted" x-show="!form.history">Memuat riwayat…</p>
+
+    <template x-if="form.history">
+      <div class="stack">
+        <div class="grid-2 tight bill-stats">
+          <div class="bill-stat"><small>Dibayar tahun ini</small><strong x-text="money(form.history.stats.yearTotal)"></strong></div>
+          <div class="bill-stat"><small>Rata-rata per bayar</small><strong x-text="money(form.history.stats.average)"></strong></div>
+          <div class="bill-stat"><small>Total semua</small>
+            <strong x-text="money(form.history.stats.total)"></strong>
+            <span class="hint" x-text="form.history.stats.count + '× bayar' + (form.history.stats.skipped ? ' · ' + form.history.stats.skipped + '× dilewati' : '')"></span></div>
+          <div class="bill-stat" x-show="form.history.stats.count > 1"><small>Terendah – tertinggi</small>
+            <strong x-text="moneyShort(form.history.stats.min) + ' – ' + moneyShort(form.history.stats.max)"></strong></div>
+        </div>
+
+        <template x-if="form.history.events.length === 0">
+          {{> components/empty-state emoji="1f4dc" title="Belum ada riwayat" text="Pembayaran dan periode yang dilewati akan tercatat di sini."}}
+        </template>
+
+        <ol class="timeline">
+          <template x-for="event in form.history.events" :key="event.type + event.id">
+            <li>
+              <span class="timeline-dot" :class="event.type === 'paid' ? 'tone-positive' : 'tone-neutral'">
+                <i class="ph-fill" :class="event.type === 'skipped' ? 'ph-skip-forward' : event.auto ? 'ph-lightning' : 'ph-check'"></i>
+              </span>
+              <div class="row-main">
+                <strong x-text="event.type === 'skipped' ? 'Dilewati' : money(event.amount)"></strong>
+                <span class="hint" x-text="event.type === 'skipped'
+                  ? 'Periode jatuh tempo ini tidak dibayar'
+                  : (event.auto ? 'Potong otomatis' : 'Dibayar manual') + (event.account_name ? ' · ' + event.account_name : '')"></span>
+              </div>
+              <span class="muted" x-text="formatDate(event.date)"></span>
+            </li>
+          </template>
+        </ol>
+      </div>
+    </template>
+    <div class="form-actions"><button type="button" class="button" @click="close()">Tutup</button></div>
+  </div>
+</template>

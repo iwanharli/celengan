@@ -1,51 +1,113 @@
-{{!-- Halaman: Akun — bank, e-wallet, tunai beserta detailnya --}}
+{{!-- Halaman: Akun — ringkasan total & porsi per jenis, lalu kartu akun dikelompokkan (Bank, E-Wallet, Tunai) --}}
 <section class="page stack" x-show="page === 'accounts'">
-  <p class="intro">Saldo di aplikasi berbeda dengan saldo asli? Gunakan <strong>Sesuaikan saldo</strong>.</p>
-  <div class="grid-3">
-    <template x-for="account in accounts" :key="account.id">
-      <div class="card account" :class="'account-' + account.type">
-        <div class="row">
-          <span class="avatar large"><i class="ph-duotone" :class="'ph-' + ACCOUNT_TYPES[account.type].icon"></i></span>
-          <div class="row-main">
-            <strong x-text="account.name"></strong>
-            <span class="muted" x-text="ACCOUNT_TYPES[account.type].label + (account.provider && account.provider !== account.name ? ' · ' + account.provider : '')"></span>
-          </div>
-          <button class="icon-button subtle" title="Edit akun" @click="openAccount(account)"><i class="ph-duotone ph-pencil-simple"></i></button>
+  <!-- Ringkasan -->
+  <div class="card accounts-summary">
+    <div class="accounts-summary-head">
+      <div>
+        <p class="label">Total saldo semua akun</p>
+        <p class="big-number" :class="accountsTotal < 0 && 'tone-negative'" x-text="money(accountsTotal)"></p>
+        <p class="muted" x-text="accounts.length + ' akun'"></p>
+      </div>
+      <button class="button primary" @click="openAccount()"><i class="ph-duotone ph-plus"></i> Tambah akun</button>
+    </div>
+    <template x-if="accounts.length">
+      <div class="stack-sm">
+        <div class="share-bar">
+          <template x-for="group in accountGroups" :key="group.type">
+            <span :class="'share-' + group.type" :style="{ width: group.percent + '%' }"></span>
+          </template>
         </div>
-
-        <p class="big-number" :class="account.balance < 0 && 'tone-negative'" x-text="money(account.balance)"></p>
-
-        <!-- Nomor rekening / HP (disamarkan) -->
-        <template x-if="account.account_number || account.holder_name">
-          <div class="account-number">
-            <div class="row-main">
-              <span class="label" x-text="account.type === 'bank' ? 'No. rekening' : 'No. HP'"></span>
-              <strong class="mono" x-show="account.account_number" x-text="accountNumberText(account)"></strong>
-              <span class="muted" x-show="account.holder_name" x-text="'a.n. ' + account.holder_name"></span>
-            </div>
-            <template x-if="account.account_number">
-              <div class="row-actions">
-                <button class="icon-button subtle" :title="revealedAccounts[account.id] ? 'Sembunyikan' : 'Tampilkan'" @click="toggleAccountNumber(account)" :disabled="hideAmounts">
-                  <i class="ph-duotone" :class="revealedAccounts[account.id] ? 'ph-eye-slash' : 'ph-eye'"></i>
-                </button>
-                <button class="icon-button subtle" title="Salin nomor" @click="copyAccountNumber(account)"><i class="ph-duotone ph-copy"></i></button>
-              </div>
-            </template>
-          </div>
-        </template>
-        <p class="muted account-note" x-show="account.note"><i class="ph-duotone ph-note"></i> <span x-text="account.note"></span></p>
-
-        <div class="row-actions">
-          <button class="button small" @click="openAdjust(account)"><i class="ph-duotone ph-scales"></i> Sesuaikan saldo</button>
-          <span class="spacer"></span>
-          <button class="icon-button subtle" title="Hapus" @click="deleteAccount(account)">
-            <i class="ph-duotone ph-trash"></i>
-          </button>
+        <div class="share-legend">
+          <template x-for="group in accountGroups" :key="group.type">
+            <span>
+              <i class="dot" :class="'share-' + group.type"></i>
+              <strong x-text="ACCOUNT_TYPES[group.type].label"></strong>
+              <span class="muted" x-text="money(group.subtotal) + ' · ' + group.percent + '%'"></span>
+            </span>
+          </template>
         </div>
       </div>
     </template>
-    <button class="card add-card" @click="openAccount()">
-      <i class="ph-duotone ph-plus-circle"></i> Tambah akun
-    </button>
+    <p class="hint"><i class="ph-duotone ph-info"></i> Tandai ⭐ <strong>akun utama</strong> supaya otomatis terpilih di semua form. Saldo berbeda dengan aslinya? Gunakan <strong>Sesuaikan saldo</strong>.</p>
   </div>
+
+  <template x-if="accounts.length === 0">
+    <div class="card">
+      {{> components/empty-state emoji="1f45b" title="Belum ada akun" text="Tambahkan rekening bank, e-wallet, atau dompet tunai beserta saldonya sekarang." action="openAccount()" actionLabel="Tambah akun"}}
+    </div>
+  </template>
+
+  <!-- Per jenis -->
+  <template x-for="group in accountGroups" :key="group.type">
+    <div class="stack-sm">
+      <div class="group-title">
+        <h2><i class="ph-duotone" :class="'ph-' + ACCOUNT_TYPES[group.type].icon"></i> <span x-text="ACCOUNT_TYPES[group.type].label"></span></h2>
+        <span class="muted" x-text="group.items.length + ' akun · ' + money(group.subtotal)"></span>
+      </div>
+      <div class="account-grid">
+        <template x-for="account in group.items" :key="account.id">
+          <div class="account-card" :class="'type-' + account.type">
+            <div class="account-head">
+              <span class="account-icon"><i class="ph-duotone" :class="'ph-' + ACCOUNT_TYPES[account.type].icon"></i></span>
+              <div class="grow">
+                <strong>
+                  <span x-text="account.name"></span>
+                  <span class="primary-badge" x-show="account.is_primary">Utama</span>
+                </strong>
+                <small x-text="account.provider && account.provider !== account.name ? account.provider : ACCOUNT_TYPES[account.type].label"></small>
+              </div>
+              <button class="account-edit" x-show="account.type !== 'goal'" :class="{ starred: account.is_primary }" @click="setPrimaryAccount(account)"
+                      :title="account.is_primary ? 'Akun utama (klik untuk melepas)' : 'Jadikan akun utama'">
+                <i :class="account.is_primary ? 'ph-fill ph-star' : 'ph-duotone ph-star'"></i>
+              </button>
+              <button class="account-edit" x-show="account.type !== 'goal'" title="Edit akun" @click="openAccount(account)"><i class="ph-duotone ph-pencil-simple"></i></button>
+            </div>
+
+            <div class="account-body">
+              <p class="account-balance" :class="account.balance < 0 && 'tone-negative'" x-text="money(account.balance)"></p>
+              <div class="account-share">
+                <div class="progress"><div :class="'share-' + account.type" :style="{ width: accountShare(account) + '%' }"></div></div>
+                <small class="muted" x-text="accountShare(account) + '% dari total'"></small>
+              </div>
+
+              <!-- Nomor rekening / HP, atau catatan untuk tunai — baris ini selalu ada supaya kartu sama tinggi -->
+              <div class="account-number">
+                <template x-if="account.account_number">
+                  <div class="grow">
+                    <span class="label" x-text="account.type === 'bank' ? 'No. rekening' : 'No. HP'"></span>
+                    <strong class="mono" x-text="accountNumberText(account)"></strong>
+                  </div>
+                </template>
+                <template x-if="!account.account_number">
+                  <div class="grow">
+                    <span class="label" x-text="account.type === 'cash' ? 'Disimpan di' : account.type === 'goal' ? 'Untuk' : 'No. rekening'"></span>
+                    <strong x-text="account.type === 'cash' ? (account.provider || account.note || 'Tunai') : account.type === 'goal' ? 'Uang yang disisihkan untuk impian ini' : 'Belum diisi'"
+                            :class="!['cash', 'goal'].includes(account.type) && 'muted'"></strong>
+                  </div>
+                </template>
+                <template x-if="account.account_number">
+                  <div class="row-actions">
+                    <button class="icon-button subtle small" :title="revealedAccounts[account.id] ? 'Sembunyikan' : 'Tampilkan'" @click="toggleAccountNumber(account)" :disabled="hideAmounts">
+                      <i class="ph-duotone" :class="revealedAccounts[account.id] ? 'ph-eye-slash' : 'ph-eye'"></i>
+                    </button>
+                    <button class="icon-button subtle small" title="Salin nomor" @click="copyAccountNumber(account)"><i class="ph-duotone ph-copy"></i></button>
+                  </div>
+                </template>
+              </div>
+              <small class="muted account-holder" x-text="account.holder_name ? 'a.n. ' + account.holder_name : (account.note && account.account_number ? account.note : ' ')"></small>
+            </div>
+
+            <div class="account-actions" x-show="account.type === 'goal'">
+              <button class="button small" @click="goTo('wishlist')"><i class="ph-duotone ph-gift"></i> Kelola di Wishlist</button>
+            </div>
+            <div class="account-actions" x-show="account.type !== 'goal'">
+              <button class="button small" @click="openAdjust(account)"><i class="ph-duotone ph-scales"></i> Sesuaikan saldo</button>
+              <span class="spacer"></span>
+              <button class="icon-button subtle" title="Hapus" @click="deleteAccount(account)"><i class="ph-duotone ph-trash"></i></button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
 </section>

@@ -4,7 +4,7 @@
     <h2>Sisihkan untuk <span x-text="form.item.name"></span></h2>
     <p class="muted">
       Sudah <strong x-text="rupiah(form.item.saved)"></strong> dari <strong x-text="rupiah(form.item.price)"></strong>.
-      Ini hanya penanda, saldo akunmu tidak berubah.
+      Uangnya <strong>dipindah</strong> ke akun tabungan <span x-text="'🎁 ' + form.item.name"></span>.
     </p>
     <div class="segmented">
       <button type="button" :class="{ active: form.direction === 'add' }" @click="form.direction = 'add'">
@@ -21,6 +21,14 @@
       </template>
     </div>
     {{> components/amount-field label="Nominal" autofocus=true placeholder="contoh: 200rb"}}
+    <div class="field">
+      <label x-text="form.direction === 'add' ? 'Ambil dari akun' : 'Kembalikan ke akun'"></label>
+      <select x-model="form.account_id">
+        <template x-for="a in regularAccounts" :key="a.id">
+          <option :value="a.id" x-text="a.name + ' · ' + rupiah(a.balance)" :selected="a.id == form.account_id"></option>
+        </template>
+      </select>
+    </div>
     {{> components/form-actions submit="saveWishSave()"}}
   </div>
 </template>

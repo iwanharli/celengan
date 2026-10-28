@@ -1,0 +1,31 @@
+{{!-- Modal: Transaksi yang baru dihapus (30 terakhir) --}}
+<template x-if="modal === 'deletedTransactions'">
+  <div class="stack">
+    <div class="category-preview">
+      <span class="avatar" style="background:#fb7185"><i class="ph-duotone ph-trash"></i></span>
+      <div>
+        <h2>Baru dihapus</h2>
+        <p class="muted">30 transaksi terakhir yang dihapus, beserta isinya saat dihapus.</p>
+      </div>
+    </div>
+    <p class="muted" x-show="form.items === null">Memuat…</p>
+    <template x-if="form.items && form.items.length === 0">
+      {{> components/empty-state emoji="2728" title="Belum ada yang dihapus" text="Transaksi yang kamu hapus akan tercatat di sini."}}
+    </template>
+    <ul class="list">
+      <template x-for="item in form.items ?? []" :key="item.id">
+        <li class="row">
+          <span class="avatar" :style="{ background: item.category_color ?? '#64748b' }">
+            <i class="ph-duotone" :class="'ph-' + (item.category_icon ?? 'receipt')"></i>
+          </span>
+          <div class="row-main">
+            <strong x-text="item.snapshot.note || item.category_name || 'Transaksi'"></strong>
+            <span class="muted" x-text="formatDate(item.snapshot.date) + ' · ' + (item.account_name ?? 'akun terhapus') + ' · dihapus ' + new Date(item.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })"></span>
+          </div>
+          <strong x-text="money(Math.abs(item.snapshot.amount))"></strong>
+        </li>
+      </template>
+    </ul>
+    <div class="form-actions"><button type="button" class="button" @click="close()">Tutup</button></div>
+  </div>
+</template>

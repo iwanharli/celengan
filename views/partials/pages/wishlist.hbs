@@ -33,7 +33,7 @@
       {{> components/empty-state emoji="1f381" title="Wishlist masih kosong" text="Catat impianmu: HP baru, liburan, lamaran, pernikahan, rumah… Bisa dirinci biayanya, dan kelihatan kapan bisa tercapai." action="openWish()" actionLabel="Tambah impian"}}
     </div>
   </template>
-  <div class="grid-3" x-show="wishTab === 'wanted'">
+  <div class="grid-2 wish-grid" x-show="wishTab === 'wanted'">
     <template x-for="item in wishItems('wanted')" :key="item.id">
       <div class="card wish" x-data="{ plan: null }" x-effect="plan = wishPlan(item)">
         <div class="wish-top">
@@ -77,7 +77,7 @@
 
         <!-- Rincian biaya -->
         <template x-if="item.parts.length">
-          <div class="wish-parts" x-data="{ expanded: item.parts.length <= 4 }">
+          <div class="wish-parts" x-data="{ expanded: false }">
             <button class="link" @click="expanded = !expanded">
               <i class="ph-duotone" :class="expanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
               <span x-text="'Rincian biaya (' + item.parts.length + ')'"></span>

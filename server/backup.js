@@ -7,6 +7,7 @@ import { query, withTransaction, HttpError } from './db.js';
 const DATA_TABLES = [
   'categories', 'accounts', 'assets', 'debts', 'debt_installments', 'bills',
   'wishlist_items', 'wishlist_parts', 'transactions', 'transaction_attachments', 'wishlist_events', 'net_worth_snapshots',
+  'transaction_templates', 'transaction_history', 'bill_skips',
 ];
 // Tabel yang dikosongkan saat "Mulai dari nol" (kategori & pengaturan dipertahankan).
 const USER_DATA_TABLES = DATA_TABLES.filter((table) => table !== 'categories');
@@ -48,6 +49,8 @@ export function validateBackup(backup) {
 export async function restoreData(backup) {
   validateBackup(backup);
   await withTransaction(async (client) => {
+    // Memasukkan ulang transaksi dari backup tidak perlu dicatat sebagai riwayat baru.
+    await client.query("SET LOCAL celengan.skip_history = 'on'");
     await client.query(`TRUNCATE ${DATA_TABLES.join(', ')} RESTART IDENTITY CASCADE`);
 
     // wishlist_items.transaction_id menunjuk ke transactions, sementara transactions.wish_part_id

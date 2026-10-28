@@ -6,7 +6,7 @@
     <div class="field">
       <label>Jenis akun</label>
       <div class="segmented">
-        <template x-for="[type, info] in Object.entries(ACCOUNT_TYPES)">
+        <template x-for="[type, info] in Object.entries(ACCOUNT_TYPES).filter(([type]) => type !== 'goal')">
           <button type="button" :class="{ active: form.type === type }" @click="form.type = type; form.provider = ''">
             <i class="ph-duotone" :class="'ph-' + info.icon"></i> <span x-text="info.label"></span>
           </button>
@@ -54,6 +54,24 @@
       </div>
       {{> components/amount-field label="Saldo awal" placeholder="0"
           hint="(form.id ? 'Saldo sebelum transaksi pertama dicatat. ' : '') + '= ' + rupiah(parsedAmount)"}}
+    </div>
+
+    <!-- Saldo awal sebagai pemasukan (hanya saat membuat akun) -->
+    <div class="expense-toggle income-toggle" x-show="!form.id && parsedAmount > 0">
+      <label class="checkbox">
+        <input type="checkbox" x-model="form.asIncome">
+        <span><strong>Catat saldo awal sebagai pemasukan</strong>
+          <small class="muted">Centang kalau uangnya baru diterima (misal gaji masuk ke rekening baru). Kalau tidak, dianggap uang lama yang sudah kamu punya.</small></span>
+      </label>
+      <div class="grid-2 tight" x-show="form.asIncome">
+        <div class="field">
+          <label>Kategori pemasukan</label>
+          <select x-model="form.income_category_id">
+            <template x-for="c in categoriesOf('income')" :key="c.id"><option :value="c.id" x-text="c.name" :selected="c.id == form.income_category_id"></option></template>
+          </select>
+        </div>
+        <div class="field"><label>Tanggal diterima</label><input type="date" x-model="form.income_date"></div>
+      </div>
     </div>
 
     <div class="field"><label>Catatan (opsional)</label><input placeholder="contoh: khusus dana darurat, cabang Sudirman" x-model="form.note"></div>

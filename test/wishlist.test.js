@@ -15,7 +15,12 @@ before(async () => {
 after(() => app.close());
 
 const getItem = async () => (await app.api.get('/wishlist')).find((w) => w.id === item.id);
-const balance = async () => (await app.api.get('/accounts'))[0].balance;
+const balance = async () => (await app.api.get('/accounts')).find((a) => a.id === account.id).balance;
+const total = async () => (await app.api.get('/accounts')).reduce((sum, a) => sum + a.balance, 0);
+const goalBalance = async () => {
+  const { account_id: id } = await getItem();
+  return (await app.api.get('/accounts')).find((a) => a.id === id).balance;
+};
 
 test('sisihkan & ambil kembali, tidak boleh melebihi yang disisihkan', async () => {
   await app.api.post(`/wishlist/${item.id}/save`, { amount: 500000 });
@@ -23,7 +28,17 @@ test('sisihkan & ambil kembali, tidak boleh melebihi yang disisihkan', async () 
   assert.equal((await getItem()).saved, 400000);
   const { status } = await app.call('POST', `/wishlist/${item.id}/save`, { amount: -500000 });
   assert.equal(status, 400);
-  assert.equal(await balance(), 20000000); // amplop virtual: saldo tidak berubah
+  // Uang benar-benar pindah ke akun impian; total uang tetap sama.
+  assert.equal(await balance(), 20000000 - 400000);
+  assert.equal(await goalBalance(), 400000);
+  assert.equal(await total(), 20000000);
+});
+
+test('membuat wishlist otomatis membuat akun tabungan impian', async () => {
+  const { account_id: id } = await getItem();
+  const goal = (await app.api.get('/accounts')).find((a) => a.id === id);
+  assert.equal(goal.type, 'goal');
+  assert.equal(goal.name, '🎁 Headphone');
 });
 
 test('beli → status terbeli & tercatat sebagai pengeluaran', async () => {
@@ -41,7 +56,9 @@ test('batalkan pembelian → transaksi dihapus, kembali ke diinginkan', async ()
   const reverted = await getItem();
   assert.equal(reverted.status, 'wanted');
   assert.equal(reverted.transaction_id, null);
-  assert.equal(await balance(), 20000000);
+  // Uang pembelian kembali ke tabungan impian, total uang utuh lagi.
+  assert.equal(await goalBalance(), 1100000);
+  assert.equal(await total(), 20000000);
 });
 
 test('menghapus transaksi pembelian dari halaman Transaksi juga mengembalikan barang', async () => {
@@ -56,6 +73,7 @@ test('tidak jadi beli → dana dilepas; bisa diinginkan lagi', async () => {
   const cancelled = await getItem();
   assert.equal(cancelled.status, 'cancelled');
   assert.equal(cancelled.saved, 0);
+  assert.equal(await balance(), 20000000); // sisa tabungan dikembalikan ke akun utama
   assert.equal(cancelled.cancel_reason, 'Belum butuh');
 
   const { status } = await app.call('POST', `/wishlist/${item.id}/save`, { amount: 1000 });
@@ -70,5 +88,13 @@ test('semua langkah tercatat di riwayat', async () => {
   assert.deepEqual(events.map((event) => event.type).reverse(), [
     'created', 'saved', 'withdrawn', 'bought', 'purchase_cancelled', 'bought', 'purchase_cancelled', 'cancelled', 'restored',
   ]);
-  assert.equal(events.find((event) => event.type === 'cancelled').amount, 400000);
+  assert.equal(events.find((event) => event.type === 'cancelled').amount, 1200000); // yang dikembalikan
+});
+
+test('tidak bisa menyisihkan melebihi saldo akun asal', async () => {
+  const small = await app.api.post('/accounts', { name: 'Dompet', type: 'cash', initial_balance: 50000 });
+  const wish = await app.api.post('/wishlist', { name: 'Sepatu', price: 900000 });
+  const { status, data } = await app.call('POST', `/wishlist/${wish.id}/save`, { amount: 100000, account_id: small.id });
+  assert.equal(status, 400);
+  assert.match(data.error, /tidak cukup/);
 });

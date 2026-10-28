@@ -32,6 +32,11 @@
           <label x-text="form.type === 'invoice' ? 'Jatuh tempo pembayaran' : 'Jatuh tempo pelunasan (opsional)'"></label>
           <input type="date" x-model="form.due_date">
         </div>
+        <label class="checkbox expense-toggle" x-show="form.direction === 'payable'">
+          <input type="checkbox" x-model="form.count_as_expense">
+          <span><strong>Hitung pembayaran sebagai pengeluaran</strong>
+            <small class="muted">Masuk laporan & anggaran kategori "Bayar utang". Cocok untuk utang yang uangnya tidak dicatat masuk.</small></span>
+        </label>
         <div class="field"><label>Catatan (opsional)</label><input x-model="form.note"></div>
       </div>
       <div class="stack">
@@ -70,7 +75,7 @@
           </div>
         </template>
         <label class="checkbox" x-show="form.type !== 'invoice'">
-          <input type="checkbox" x-model="form.recordCash">
+          <input type="checkbox" x-model="form.recordCash" @change="form.count_as_expense = !form.recordCash">
           <span x-text="form.direction === 'payable' ? 'Uangnya masuk ke akun saya' : 'Uangnya keluar dari akun saya'"></span>
         </label>
         <div class="field" x-show="form.recordCash && form.type !== 'invoice'">

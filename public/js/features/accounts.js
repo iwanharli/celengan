@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { parseAmount, formatAmountInput } from '../format.js';
+import { parseAmount, formatAmountInput, todayISO } from '../format.js';
 
 // Rupiah boleh negatif (mis. saldo kartu kredit): "-500rb" → -500000
 const parseSignedAmount = (text) => {
@@ -13,6 +13,26 @@ const groupDigits = (number) => number.replace(/(\d{4})(?=\d)/g, '$1 ');
 // Halaman Akun (dompet, bank, e-wallet).
 export default {
   revealedAccounts: {}, // id akun → nomor sedang ditampilkan
+
+  // Akun dikelompokkan per jenis (Bank, E-Wallet, Tunai) dengan subtotal & porsi dari total.
+  get accountGroups() {
+    const total = this.accountsTotal;
+    return ['bank', 'ewallet', 'cash', 'goal']
+      .map((type) => {
+        const items = this.accounts.filter((account) => account.type === type);
+        const subtotal = items.reduce((sum, account) => sum + account.balance, 0);
+        return { type, items, subtotal, percent: total > 0 ? Math.max(0, Math.round((subtotal / total) * 100)) : 0 };
+      })
+      .filter((group) => group.items.length);
+  },
+
+  get accountsTotal() {
+    return this.accounts.reduce((sum, account) => sum + account.balance, 0);
+  },
+
+  accountShare(account) {
+    return this.accountsTotal > 0 && account.balance > 0 ? Math.round((account.balance / this.accountsTotal) * 100) : 0;
+  },
 
   // Nomor rekening/HP disamarkan: "•••• 4521". Ikut tersembunyi saat mode sembunyikan nominal.
   accountNumberText(account) {
@@ -47,7 +67,10 @@ export default {
         holder_name: account.holder_name ?? '',
         note: account.note ?? '',
       }
-      : { type: 'bank', name: '', provider: '', account_number: '', holder_name: this.auth.name ?? '', note: '' });
+      : {
+        type: 'bank', name: '', provider: '', account_number: '', holder_name: this.auth.name ?? '', note: '',
+        asIncome: false, income_category_id: this.categoriesOf('income')[0]?.id ?? '', income_date: todayISO(),
+      });
   },
 
   saveAccount() {
@@ -65,6 +88,10 @@ export default {
         holder_name: this.form.holder_name,
         note: this.form.note,
       };
+      if (isNew && this.form.asIncome) {
+        if (!(body.initial_balance > 0)) throw new Error('Saldo awal harus lebih dari 0 untuk dicatat sebagai pemasukan');
+        body.income = { category_id: Number(this.form.income_category_id), date: this.form.income_date };
+      }
       if (isNew) await api.post('/accounts', body);
       else await api.put(`/accounts/${this.form.id}`, body);
     }, isNew ? 'Akun ditambahkan' : 'Akun diperbarui');
@@ -88,6 +115,16 @@ export default {
       requireCheck: count > 0,
       successMessage: 'Akun dihapus',
     }, () => api.delete(`/accounts/${account.id}`));
+  },
+
+  async setPrimaryAccount(account) {
+    try {
+      await api.put(`/accounts/${account.id}/primary`, { primary: !account.is_primary });
+      this.showToast(account.is_primary ? 'Tanda akun utama dilepas' : `⭐ ${account.name} jadi akun utama`);
+      await this.reload();
+    } catch (error) {
+      this.showToast(error.message);
+    }
   },
 
   openAdjust(account) {

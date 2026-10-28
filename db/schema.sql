@@ -231,6 +231,23 @@ ALTER TABLE bills ADD COLUMN IF NOT EXISTS ended_at date;
 -- ke transfernya. Ikut terhapus saat transfernya dihapus.
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS fee_of int REFERENCES transactions ON DELETE CASCADE;
 
+-- Penerima: buku rekening tujuan kiriman uang (orang tua, keluarga, teman, dll.).
+-- Kiriman dicatat sebagai pengeluaran dengan recipient_id; biaya admin-nya ikut (fee_of).
+CREATE TABLE IF NOT EXISTS recipients (
+  id             serial PRIMARY KEY,
+  name           text NOT NULL,
+  relation       text NOT NULL DEFAULT 'other' CHECK (relation IN ('parent', 'family', 'partner', 'friend', 'other')),
+  method         text NOT NULL DEFAULT 'bank' CHECK (method IN ('bank', 'ewallet', 'cash')),
+  provider       text,
+  account_number text,
+  holder_name    text,
+  category_id    int REFERENCES categories ON DELETE SET NULL,
+  note           text,
+  is_favorite    boolean NOT NULL DEFAULT false,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS recipient_id int REFERENCES recipients ON DELETE SET NULL;
+
 -- Periode tagihan yang dilewati (tombol "Lewati"). Pembayarannya sendiri ada di transactions.bill_id.
 CREATE TABLE IF NOT EXISTS bill_skips (
   id         serial PRIMARY KEY,

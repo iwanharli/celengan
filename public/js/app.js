@@ -19,11 +19,12 @@ import reports from './features/reports.js';
 import categories from './features/categories.js';
 import period from './features/period.js';
 import exporter from './features/export.js';
+import recipients from './features/recipients.js';
 
 // Satu komponen Alpine untuk seluruh aplikasi, disusun dari modul per fitur di features/.
 // Tampilannya ada di views/ (layout, pages, modals, components).
 Alpine.data('app', () => combine(
-  core, auth, home, transactions, budget, bills, debts, assets, accounts, categories, wishlist, reports, period, exporter, settings,
+  core, auth, home, transactions, budget, bills, debts, assets, accounts, categories, wishlist, reports, period, exporter, settings, recipients,
 ));
 
 registerCountUp(Alpine);

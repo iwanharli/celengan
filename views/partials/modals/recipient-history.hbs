@@ -1,0 +1,32 @@
+{{!-- Modal: Riwayat kiriman ke satu penerima --}}
+<template x-if="modal === 'recipientHistory'">
+  <div class="stack">
+    <div class="category-preview">
+      <span class="recipient-avatar" :style="{ background: RECIPIENT_RELATIONS[form.recipient.relation].color }" x-text="recipientInitials(form.recipient)"></span>
+      <div>
+        <h2>Kiriman ke <span x-text="form.recipient.name"></span></h2>
+        <p class="muted" x-text="form.recipient.sent_count + '× kiriman · total ' + money(form.recipient.total_sent)"></p>
+      </div>
+    </div>
+    <p class="muted" x-show="!form.history">Memuat riwayat…</p>
+    <template x-if="form.history && form.history.length === 0">
+      {{> components/empty-state emoji="1f4ec" title="Belum ada kiriman" text="Kiriman lewat tombol Kirim akan tercatat di sini."}}
+    </template>
+    <ol class="timeline" x-show="form.history?.length">
+      <template x-for="item in form.history ?? []" :key="item.id">
+        <li>
+          <span class="timeline-dot tone-positive"><i class="ph-fill ph-paper-plane-tilt"></i></span>
+          <div class="row-main">
+            <strong x-text="money(item.amount)"></strong>
+            <span class="hint" x-text="'dari ' + item.account_name + (item.fee ? ' · biaya admin ' + money(item.fee) : '') + (item.note ? ' · ' + item.note : '')"></span>
+          </div>
+          <span class="muted" x-text="formatDate(item.date)"></span>
+        </li>
+      </template>
+    </ol>
+    <div class="form-actions">
+      <button type="button" class="button" @click="close()">Tutup</button>
+      <button type="button" class="button primary" @click="sendToRecipient(form.recipient)"><i class="ph-duotone ph-paper-plane-tilt"></i> Kirim lagi</button>
+    </div>
+  </div>
+</template>

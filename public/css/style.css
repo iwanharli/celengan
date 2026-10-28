@@ -1963,3 +1963,22 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .bill-stat small { color: var(--text-muted); font-weight: 700; }
 .bill-stat strong { font-size: 1.1rem; }
 .bill-row.ended > .avatar, .bill-row.ended > .row-main { opacity: .6; filter: saturate(.5); }
+
+/* Penerima */
+.recipient-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.recipient-card { display: flex; flex-direction: column; gap: 14px; }
+.recipient-head { display: flex; align-items: center; gap: 12px; }
+.recipient-head strong { display: block; font-size: 1.1rem; }
+.recipient-head .badge { margin-top: 4px; display: inline-flex; gap: 4px; align-items: center; background: var(--surface-2); }
+.recipient-avatar {
+  width: 48px; height: 48px; border-radius: 16px; flex-shrink: 0; display: grid; place-items: center;
+  color: #fff; font-weight: 800; font-size: 1.05rem; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12);
+}
+.recipient-dest { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.recipient-dest > i { font-size: 1.5rem; color: var(--primary); }
+.recipient-dest .grow { display: flex; flex-direction: column; min-width: 0; }
+.recipient-dest strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recipient-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.recipient-stats > div { display: flex; flex-direction: column; }
+.recipient-stats small { color: var(--text-muted); font-weight: 700; }
+.recipient-dest strong.mono { white-space: normal; overflow: visible; font-size: .98rem; letter-spacing: .02em; word-break: break-all; }

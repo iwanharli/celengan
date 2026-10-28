@@ -1,0 +1,70 @@
+{{!-- Modal: Tambah / edit penerima kiriman uang --}}
+<template x-if="modal === 'recipient'">
+  <div class="stack">
+    <h2 x-text="form.id ? 'Edit penerima' : 'Tambah penerima'"></h2>
+    <div class="field"><label>Nama</label><input autofocus placeholder="contoh: Ibu, Bapak, Rina" x-model="form.name"></div>
+
+    <div class="field">
+      <label>Hubungan</label>
+      <div class="chips">
+        <template x-for="[key, relation] in Object.entries(RECIPIENT_RELATIONS)" :key="key">
+          <button type="button" class="chip" :class="{ active: form.relation === key }" @click="pickRecipientRelation(key)">
+            <i class="ph-duotone" :class="'ph-' + relation.icon"></i> <span x-text="relation.label"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Dikirim lewat</label>
+      <div class="segmented">
+        <template x-for="[key, method] in Object.entries(RECIPIENT_METHODS)" :key="key">
+          <button type="button" :class="{ active: form.method === key }" @click="form.method = key; form.provider = ''">
+            <i class="ph-duotone" :class="'ph-' + method.icon"></i> <span x-text="method.label"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <template x-if="form.method !== 'cash'">
+      <div class="stack">
+        <div class="field">
+          <label x-text="form.method === 'bank' ? 'Bank' : 'E-Wallet'"></label>
+          <input list="recipient-providers" x-model="form.provider" autocomplete="off"
+                 :placeholder="form.method === 'bank' ? 'contoh: BRI, BCA' : 'contoh: DANA, GoPay'">
+          <datalist id="recipient-providers">
+            <template x-for="name in ACCOUNT_PROVIDERS[form.method]" :key="name"><option :value="name"></option></template>
+          </datalist>
+          <div class="chips provider-chips">
+            <template x-for="name in ACCOUNT_PROVIDERS[form.method].slice(0, 6)" :key="name">
+              <button type="button" class="chip small" :class="{ active: form.provider === name }" @click="form.provider = name" x-text="name"></button>
+            </template>
+          </div>
+        </div>
+        <div class="grid-2 tight">
+          <div class="field">
+            <label x-text="RECIPIENT_METHODS[form.method].number"></label>
+            <input inputmode="numeric" autocomplete="off" x-model="form.account_number"
+                   :placeholder="form.method === 'bank' ? 'contoh: 1234 5678 90' : 'contoh: 0812 3456 7890'">
+          </div>
+          <div class="field">
+            <label>Atas nama</label>
+            <input autocomplete="off" placeholder="nama di rekening" x-model="form.holder_name">
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div class="field">
+      <label>Kategori pengeluaran</label>
+      <select x-model="form.category_id">
+        <option value="">— Pilih saat mengirim —</option>
+        <template x-for="c in categoriesOf('expense')" :key="c.id"><option :value="c.id" x-text="c.name" :selected="c.id == form.category_id"></option></template>
+      </select>
+      <p class="hint">Otomatis terpilih setiap kali mengirim ke penerima ini.</p>
+    </div>
+    <div class="field"><label>Catatan (opsional)</label><input placeholder="contoh: kiriman bulanan tiap tanggal 1" x-model="form.note"></div>
+    <label class="checkbox" x-show="!form.id"><input type="checkbox" x-model="form.is_favorite"> <span>Jadikan favorit ⭐</span></label>
+    {{> components/form-actions submit="saveRecipient()"}}
+  </div>
+</template>

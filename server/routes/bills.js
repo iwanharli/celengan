@@ -51,8 +51,60 @@ router.put('/:id', async (req, res) => {
   res.json(bill);
 });
 
+// Tagihan yang sudah berhenti, terbaru dulu, beserta total yang pernah dibayar.
+router.get('/ended', async (req, res) => {
+  res.json(await query(
+    `SELECT b.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color,
+            a.name AS account_name,
+            COALESCE(p.total, 0)::bigint AS total_paid, COALESCE(p.count, 0)::int AS paid_count
+     FROM bills b
+     LEFT JOIN categories c ON c.id = b.category_id
+     LEFT JOIN accounts a   ON a.id = b.account_id
+     LEFT JOIN (SELECT bill_id, SUM(amount) AS total, COUNT(*) AS count FROM transactions GROUP BY bill_id) p ON p.bill_id = b.id
+     WHERE NOT b.active AND b.debt_id IS NULL
+     ORDER BY b.ended_at DESC NULLS LAST, b.id DESC`,
+  ));
+});
+
+// Berhenti langganan: pengingat & potong otomatis berhenti, riwayat tetap ada.
+router.post('/:id/stop', async (req, res) => {
+  const [bill] = await query(
+    `UPDATE bills SET active = false, ended_at = COALESCE($2::date, current_date)
+     WHERE id = $1 AND active AND debt_id IS NULL RETURNING *`,
+    [req.params.id, req.body?.date || null],
+  );
+  if (!bill) throw new HttpError(404, 'Tagihan tidak ditemukan');
+  res.json(bill);
+});
+
+// Aktifkan lagi: jatuh tempo dimajukan sampai hari ini atau sesudahnya (periode selama berhenti tidak ditagih).
+router.post('/:id/resume', async (req, res) => {
+  const bill = await withTransaction(async (client) => {
+    const { rows: [bill] } = await client.query(
+      `UPDATE bills SET active = true, ended_at = NULL WHERE id = $1 AND NOT active AND debt_id IS NULL RETURNING *`,
+      [req.params.id],
+    );
+    if (!bill) throw new HttpError(404, 'Tagihan tidak ditemukan');
+    const { rows: [updated] } = await client.query(
+      `WITH RECURSIVE due(d, n) AS (
+         SELECT next_due, 0 FROM bills WHERE id = $1
+         UNION ALL
+         SELECT next_due_date(d, b.frequency, b.due_day), n + 1 FROM due, bills b
+         WHERE b.id = $1 AND d < current_date AND n < 1000
+       )
+       UPDATE bills SET next_due = (SELECT d FROM due WHERE d >= current_date ORDER BY d LIMIT 1)
+       WHERE id = $1 AND next_due < current_date RETURNING *`,
+      [bill.id],
+    );
+    return updated ?? bill;
+  });
+  res.json(bill);
+});
+
+// Hapus permanen (misal salah input). Transaksi pembayarannya tetap ada, hanya tidak terhubung lagi.
 router.delete('/:id', async (req, res) => {
-  await query('UPDATE bills SET active = false WHERE id = $1', [req.params.id]);
+  const [bill] = await query('DELETE FROM bills WHERE id = $1 AND debt_id IS NULL RETURNING id', [req.params.id]);
+  if (!bill) throw new HttpError(404, 'Tagihan tidak ditemukan');
   res.status(204).end();
 });
 

@@ -1962,3 +1962,4 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .bill-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
 .bill-stat small { color: var(--text-muted); font-weight: 700; }
 .bill-stat strong { font-size: 1.1rem; }
+.bill-row.ended > .avatar, .bill-row.ended > .row-main { opacity: .6; filter: saturate(.5); }

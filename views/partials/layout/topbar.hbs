@@ -24,6 +24,11 @@
     <button class="topbar-add" @click="openTransaction()" title="Catat transaksi">
       <i class="ph-bold ph-plus"></i> <span>Catat</span>
     </button>
+    <!-- Lonceng: ke halaman Notifikasi, titik merah = ada yang belum dibaca -->
+    <button class="icon-button bell-button" @click="goTo('notifications')" title="Notifikasi">
+      <i class="ph-duotone ph-bell"></i>
+      <span class="bell-dot" x-show="inbox.unread > 0" x-text="inbox.unread > 9 ? '9+' : inbox.unread"></span>
+    </button>
     <button class="icon-button" @click="toggleHideAmounts()" :title="hideAmounts ? 'Tampilkan nominal' : 'Sembunyikan nominal'">
       <i class="ph-duotone" :class="hideAmounts ? 'ph-eye-slash' : 'ph-eye'"></i>
     </button>

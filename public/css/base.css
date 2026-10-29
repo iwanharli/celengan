@@ -1,0 +1,259 @@
+/* Celengan — base.css: Dasar: token warna & ukuran, animasi, teks, layout sidebar + konten.
+   Urutan file penting (lihat views/layout.hbs): yang belakangan menimpa yang lebih awal. */
+
+/* ============ Token warna & ukuran ============ */
+:root {
+  --bg: #faf7ff;
+  --surface: #ffffff;
+  --surface-2: #f4effe;
+  --border: #ebe4fa;
+  --text: #2e2549;
+  --text-muted: #776d93;
+
+  --primary: #8b5cf6;
+  --primary-dark: #7c3aed;
+  --primary-soft: #efe8ff;
+  --mint: #34d399;
+  --peach-soft: #fff1e0;
+
+  --positive: #059669;
+  --negative: #e11d48;
+  --info: #6366f1;
+
+  --radius: 24px;
+  --sidebar: 248px;
+  --sidebar-collapsed: 88px;
+  --shadow: 0 1px 0 rgba(139, 92, 246, .05), 0 10px 28px -10px rgba(139, 92, 246, .2);
+  --shadow-hover: 0 2px 0 rgba(139, 92, 246, .06), 0 18px 36px -12px rgba(139, 92, 246, .32);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15112a;
+    --surface: #211a3a;
+    --surface-2: #2b234d;
+    --border: #372e5e;
+    --text: #f3eeff;
+    --text-muted: #b3a8d4;
+    --primary: #a78bfa;
+    --primary-dark: #8b5cf6;
+    --primary-soft: #31285a;
+    --peach-soft: #43301f;
+    --positive: #6ee7b7;
+    --negative: #fda4af;
+    --info: #a5b4fc;
+    --shadow: 0 10px 28px -10px rgba(0, 0, 0, .5);
+    --shadow-hover: 0 18px 36px -12px rgba(0, 0, 0, .65);
+    color-scheme: dark;
+  }
+}
+
+/* ============ Animasi ============ */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(.85) translateY(16px); }
+  70%  { opacity: 1; transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+@keyframes bounce-in {
+  0%   { transform: scale(0) rotate(-20deg); }
+  60%  { transform: scale(1.2) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-10px) rotate(4deg); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0); }
+  25%      { transform: rotate(-14deg) scale(1.15); }
+  75%      { transform: rotate(10deg) scale(1.15); }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes grow {
+  from { transform: scaleX(0); }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(236, 72, 153, .45); }
+  100% { box-shadow: 0 0 0 16px rgba(236, 72, 153, 0); }
+}
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(40px, -30px) scale(1.1); }
+  66%      { transform: translate(-30px, 20px) scale(.95); }
+}
+@keyframes toast-in {
+  0%   { opacity: 0; transform: translate(-50%, 40px) scale(.8); }
+  70%  { opacity: 1; transform: translate(-50%, -6px) scale(1.04); }
+  100% { transform: translate(-50%, 0) scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+/* ============ Dasar — teks minimal 15px, isi utama 18px ============ */
+* { box-sizing: border-box; }
+[x-cloak] { display: none !important; }
+.invisible { visibility: hidden; }
+
+html { font-size: 18px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* Gelembung warna lembut yang bergerak pelan di latar belakang */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  width: 480px; height: 480px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: .3;
+  animation: blob 24s ease-in-out infinite;
+  pointer-events: none;
+}
+body::before { background: #c4b5fd; top: -160px; right: -120px; }
+body::after  { background: #fbcfe8; bottom: -180px; left: 20%; animation-delay: -12s; }
+
+h1, h2, h3, .big-number, .stat-value, .brand { font-family: 'Fredoka', 'Nunito', sans-serif; }
+h1 { font-size: 1.9rem; margin: 0; font-weight: 700; }
+h2 { font-size: 1.25rem; margin: 0; font-weight: 600; }
+h3 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+
+.ph-duotone, .ph-fill { font-size: 1.3em; vertical-align: -0.2em; }
+
+.muted, .label { color: var(--text-muted); font-size: .9rem; }
+.hint { color: var(--text-muted); font-size: .85rem; margin-top: 4px; }
+.intro { color: var(--text-muted); }
+.grow { flex: 1; min-width: 0; }
+
+/* Kondisi kosong diberi emoji tunas yang mengambang */
+.empty { color: var(--text-muted); text-align: center; padding: 24px; }
+.empty::before {
+  content: '';
+  display: block;
+  width: 60px; height: 60px;
+  margin: 0 auto 10px;
+  background: url('https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/1f331.webp') center / contain no-repeat;
+  animation: float 3.5s ease-in-out infinite;
+}
+
+.tone-positive { color: var(--positive); }
+.tone-negative { color: var(--negative); }
+.tone-neutral  { color: var(--text); }
+.tone-info     { color: var(--info); }
+.tone-muted    { color: var(--text-muted); }
+
+/* ============ Layout: sidebar bisa dikecilkan, konten selebar layar ============ */
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar) minmax(0, 1fr);
+  min-height: 100vh;
+  transition: grid-template-columns .3s ease;
+}
+.layout.collapsed { grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr); }
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: var(--surface);
+  border-right: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.collapse-toggle {
+  top: 26px; right: 12px;
+  display: grid; place-items: center;
+  border: 0;
+  cursor: pointer;
+  z-index: 1;
+  transition: transform .3s var(--spring), background .2s;
+}
+.collapse-toggle:hover { color: var(--primary); }
+
+.brand {
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--primary);
+  white-space: nowrap;
+}
+.brand img { flex-shrink: 0; animation: float 4s ease-in-out infinite; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+.nav-emoji { flex-shrink: 0; transition: transform .3s var(--spring); }
+.nav-item:hover { color: var(--text); }
+.nav-item:hover .nav-emoji { animation: wiggle .5s ease-in-out; }
+.nav-scroll { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.nav-group { display: flex; flex-direction: column; }
+/* Garis pemisah antar kelompok */
+.nav-group.nav-bottom { margin-top: auto; }
+.nav-label { font-weight: 800; text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Mode menu kecil: hanya emoji */
+/* (aturan lama untuk menu kecil dipindah ke bagian "Sidebar (versi baru)") */
+.collapsed .brand { padding-top: 52px; }
+.collapsed .nav-label { display: none; }
+.collapsed .collapse-toggle { right: 50%; }
+
+.content {
+  min-width: 0;
+  padding: 28px clamp(16px, 3vw, 40px) 120px;
+}
+
+.topbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.page-title { display: flex; align-items: center; gap: 12px; }
+.page-title img { width: 50px; height: 50px; animation: bounce-in .6s var(--spring); }
+
+/* Halaman masuk dengan animasi bertahap */
+.page > * { animation: fade-up .5s var(--spring) both; }
+.page > *:nth-child(2) { animation-delay: .05s; }
+.page > *:nth-child(3) { animation-delay: .1s; }
+.page > *:nth-child(4) { animation-delay: .15s; }
+.page > *:nth-child(n+5) { animation-delay: .2s; }
+
+.stack { display: flex; flex-direction: column; gap: 20px; }
+.stack-sm { display: flex; flex-direction: column; gap: 12px; }
+.grid-2, .grid-3, .grid-4 { display: grid; gap: 20px; }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.grid-4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.grid-2.tight { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px; }

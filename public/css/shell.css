@@ -1,0 +1,421 @@
+/* Celengan — shell.css: Kerangka aplikasi: menu samping/bawah, topbar & periode, pengaturan, export, kontras mode gelap.
+   Urutan file penting (lihat views/layout.hbs): yang belakangan menimpa yang lebih awal. */
+
+/* =========================================================
+   Sidebar (versi baru): logo + nama pendek, tombol catat, menu aktif beraksen, kartu profil
+   ========================================================= */
+.sidebar { padding: 16px 12px; gap: 6px; }
+.sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 8px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0; font-size: 1.35rem; }
+.brand-logo {
+  width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 14px; background: linear-gradient(135deg, #fbcfe8, #ddd6fe);
+  box-shadow: 0 6px 14px -6px rgba(236, 72, 153, .5);
+}
+.brand-logo img { width: 30px; height: 30px; animation: float 4s ease-in-out infinite; }
+.brand img { width: 30px; height: 30px; }
+.brand-name {
+  font-family: 'Fredoka', sans-serif; font-weight: 700; letter-spacing: -.01em;
+  background: linear-gradient(120deg, #7c3aed, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.collapse-toggle {
+  position: static; transform: none; width: 30px; height: 30px; border-radius: 10px;
+  background: transparent; color: var(--text-muted); opacity: .7;
+}
+.collapse-toggle:hover { opacity: 1; background: var(--surface-2); transform: none; }
+
+.nav-group { gap: 1px; }
+.nav-group + .nav-group { margin-top: 8px; padding-top: 8px; border-top: 1.5px solid var(--border); }
+.nav-label { padding: 4px 12px 4px; font-size: .7rem; letter-spacing: .1em; opacity: .65; }
+.nav-item {
+  position: relative; gap: 10px; padding: 7px 10px; border-radius: 14px; font-size: .95rem;
+}
+.nav-icon {
+  width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 11px; transition: background .2s, transform .3s var(--spring);
+}
+.nav-emoji { width: 24px; height: 24px; }
+.nav-item:hover { transform: none; background: var(--surface-2); }
+.nav-item:hover .nav-icon { transform: scale(1.08); }
+.nav-item.active {
+  background: linear-gradient(90deg, var(--primary-soft), transparent 120%);
+  color: var(--primary); font-weight: 800;
+}
+.nav-item.active::before {
+  content: ''; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 4px;
+  border-radius: 0 4px 4px 0; background: linear-gradient(180deg, #8b5cf6, #ec4899);
+}
+.nav-item.active .nav-icon { background: var(--surface); box-shadow: 0 4px 10px -4px rgba(139, 92, 246, .45); }
+.nav-item.active .nav-emoji { transform: scale(1.1); }
+/* Pengaturan pindah ke kartu profil di desktop */
+.nav-group.nav-bottom { display: none; }
+
+.nav-user {
+  display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px;
+  border: 1.5px solid var(--border); border-radius: 18px; background: var(--surface); cursor: pointer; text-align: left;
+  transition: border-color .2s, background .2s;
+}
+.nav-user:hover, .nav-user.active { border-color: var(--primary); background: var(--primary-soft); }
+.user-avatar {
+  width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff;
+  font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 1.05rem;
+}
+.user-info { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.user-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-info small { color: var(--text-muted); font-size: .78rem; }
+.user-gear { color: var(--text-muted); font-size: 1.2rem; transition: transform .4s var(--spring); }
+.nav-user:hover .user-gear { transform: rotate(60deg); color: var(--primary); }
+
+/* Menu dikecilkan */
+.collapsed .sidebar-head { padding-bottom: 6px; }
+.collapsed .brand-name, .collapsed .user-info, .collapsed .user-gear, .collapsed .nav-text { display: none; }
+.collapsed .brand { justify-content: center; padding: 0; }
+.collapsed .nav-item { justify-content: center; padding: 6px 0; }
+.collapsed .nav-item.active::before { left: -12px; }
+.collapsed .nav-user { justify-content: center; padding: 6px; border-color: transparent; background: none; }
+.collapsed .collapse-toggle { position: static; transform: none; }
+.collapsed .collapse-toggle:hover { transform: none; }
+
+/* HP: menu bawah seperti sebelumnya (Pengaturan tetap jadi menu biasa) */
+@media (max-width: 860px) {
+  .sidebar-head, .nav-user { display: none; }
+  .nav-group.nav-bottom { display: flex; }
+  .nav-item { padding: 6px 4px; }
+  .nav-item.active::before { display: none; }
+  .nav-icon { width: 30px; height: 30px; }
+  .nav-text { display: inline; }
+  .collapsed .nav-text { display: inline; }
+}
+
+/* ============ Kotak unggah foto (FilePond) — garis putus-putus ============ */
+.photo-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.photo-dropzone .filepond--root { margin-bottom: 0; font-family: 'Nunito', sans-serif; }
+.photo-dropzone .filepond--panel-root {
+  background: var(--surface-2);
+  border: 2.5px dashed #c4b5fd;
+  border-radius: 20px;
+  transition: background .2s, border-color .2s;
+}
+.photo-dropzone .filepond--root:hover .filepond--panel-root,
+.photo-dropzone .filepond--root[data-hopper-state='drag-over'] .filepond--panel-root {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+.photo-dropzone .filepond--drop-label { min-height: 120px; color: var(--text-muted); }
+.pond-idle { display: flex; flex-direction: column; align-items: center; gap: 4px; line-height: 1.4; }
+.pond-idle .ph-duotone { font-size: 2.2rem; color: var(--primary); transition: transform .4s var(--spring); }
+.filepond--root:hover .pond-idle .ph-duotone { transform: translateY(-4px) scale(1.1); }
+.pond-idle strong { color: var(--text); font-size: 1rem; }
+.pond-idle span { font-size: .85rem; }
+.photo-dropzone .filepond--label-action { color: var(--primary); text-decoration: none; font-weight: 800; border-bottom: 2px solid var(--primary-soft); }
+
+/* Kartu foto di dalam kotak */
+.photo-dropzone .filepond--item { width: calc(33.33% - .5em); }
+.photo-dropzone .filepond--item-panel { border-radius: 14px; background: #2e2549; }
+.photo-dropzone .filepond--image-preview-wrapper,
+.photo-dropzone .filepond--image-preview { border-radius: 14px; }
+.photo-dropzone .filepond--image-preview { background: #2e2549; }
+.photo-dropzone .filepond--file-action-button { background: rgba(46, 37, 73, .7); cursor: pointer; }
+.photo-dropzone .filepond--file-action-button:hover { background: var(--negative); box-shadow: none; }
+.photo-dropzone .filepond--file-info-main { font-weight: 800; font-size: .8rem; }
+.photo-dropzone [data-filepond-item-state*='invalid'] .filepond--item-panel { background: #e11d48; }
+@media (max-width: 560px) { .photo-dropzone .filepond--item { width: calc(50% - .5em); } }
+
+.camera-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 16px; border-radius: 14px; cursor: pointer; font-weight: 800; font-size: .92rem;
+  border: 2px solid var(--border); background: var(--surface); color: var(--primary);
+  transition: border-color .2s, background .2s;
+}
+.camera-button:hover { border-color: var(--primary); background: var(--primary-soft); }
+.camera-button .ph-duotone { font-size: 1.3rem; }
+@media (min-width: 861px) { .camera-button { align-self: flex-start; } }
+
+/* ============ Topbar: periode di tengah ============ */
+.topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; }
+.topbar-left { min-width: 0; }
+.period-picker {
+  grid-column: 2; display: flex; align-items: center; gap: 4px;
+  padding: 5px; border-radius: 20px; background: var(--surface); border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.period-nav {
+  width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 14px;
+  background: transparent; color: var(--text-muted); cursor: pointer; transition: background .2s, color .2s;
+}
+.period-nav:hover { background: var(--surface-2); color: var(--primary); }
+.period-current {
+  display: flex; align-items: center; gap: 10px; padding: 6px 14px; border: 0; border-radius: 14px;
+  background: var(--primary-soft); cursor: pointer; text-align: left; min-width: 210px;
+  transition: transform .25s var(--spring), background .2s;
+}
+.period-current:hover { transform: translateY(-1px); background: #e4d9ff; }
+.period-current > .ph-duotone { font-size: 1.4rem; color: var(--primary); }
+.period-current span { display: flex; flex-direction: column; line-height: 1.2; flex: 1; }
+.period-current strong { font-family: 'Fredoka', sans-serif; font-weight: 600; color: var(--text); }
+.period-current small { font-size: .78rem; color: var(--text-muted); }
+.period-caret { color: var(--primary); font-size: .9rem; }
+@media (prefers-color-scheme: dark) { .period-current:hover { background: #3d3270; } }
+@media (max-width: 860px) {
+  .topbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .period-picker { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
+  .period-current { flex: 1; min-width: 0; }
+}
+
+/* ============ Modal pilih periode ============ */
+.period-modal h2 { display: flex; align-items: center; gap: 8px; }
+.period-presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.preset {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px;
+  border: 2px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 700; font-size: .9rem; text-align: left;
+  transition: border-color .2s, background .2s, transform .25s var(--spring);
+}
+.preset .ph-duotone { color: var(--primary); font-size: 1.2rem; }
+.preset:hover { border-color: var(--primary); transform: translateY(-2px); }
+.preset.active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+@media (max-width: 760px) { .period-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.year-nav { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.year-nav strong { font-family: 'Fredoka', sans-serif; font-size: 1.3rem; min-width: 70px; text-align: center; }
+.month-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.month-grid button {
+  padding: 14px 8px; border-radius: 14px; border: 2px solid var(--border); background: var(--surface);
+  font-weight: 800; cursor: pointer; transition: border-color .2s, background .2s, transform .25s var(--spring);
+}
+.month-grid button:hover { border-color: var(--primary); transform: translateY(-2px); }
+.month-grid button.active { background: linear-gradient(120deg, #8b5cf6, #ec4899); border-color: transparent; color: #fff; }
+.month-grid button.future { color: var(--text-muted); opacity: .6; }
+
+/* Kalender flatpickr menyatu dengan tema */
+.range-calendar { justify-content: center; }
+.range-calendar .flatpickr-input { display: none; }
+.flatpickr-calendar.inline {
+  box-shadow: none; border: 2px solid var(--border); border-radius: 20px; padding: 10px;
+  background: var(--surface); font-family: 'Nunito', sans-serif; width: auto !important;
+}
+.flatpickr-months .flatpickr-month, .flatpickr-current-month .flatpickr-monthDropdown-months, span.flatpickr-weekday { color: var(--text); fill: var(--text); background: transparent; font-weight: 800; }
+.flatpickr-current-month { font-family: 'Fredoka', sans-serif; }
+.flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg { fill: var(--primary); }
+.flatpickr-day { color: var(--text); border-radius: 12px; font-weight: 700; }
+.flatpickr-day:hover { background: var(--surface-2); border-color: var(--surface-2); }
+.flatpickr-day.today { border-color: var(--primary); }
+.flatpickr-day.inRange { background: var(--primary-soft); border-color: var(--primary-soft); box-shadow: -5px 0 0 var(--primary-soft), 5px 0 0 var(--primary-soft); border-radius: 0; }
+.flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange,
+.flatpickr-day.selected:hover, .flatpickr-day.startRange:hover, .flatpickr-day.endRange:hover {
+  background: var(--primary); border-color: var(--primary); color: #fff;
+}
+.flatpickr-day.startRange { border-radius: 12px 0 0 12px; }
+.flatpickr-day.endRange { border-radius: 0 12px 12px 0; }
+.flatpickr-day.startRange.endRange { border-radius: 12px; }
+.flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: var(--text-muted); opacity: .5; }
+.range-summary { text-align: center; padding: 8px; border-radius: 14px; background: var(--surface-2); }
+/* Judul bulan flatpickr: beri ruang lebih karena ukuran huruf aplikasi lebih besar */
+.flatpickr-months { align-items: center; }
+.flatpickr-months .flatpickr-month { height: 46px; overflow: visible; }
+.flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month { top: 10px; padding: 10px; }
+.flatpickr-current-month { position: static; width: auto; height: auto; padding: 10px 0 0; left: 0; font-size: 1rem; line-height: 1.3; }
+.flatpickr-current-month .flatpickr-monthDropdown-months, .flatpickr-current-month input.cur-year { font-size: 1rem; font-weight: 700; font-family: 'Fredoka', sans-serif; }
+.flatpickr-weekdays { margin-top: 4px; }
+/* Tombol sembunyikan nominal selalu di pojok kanan, ada atau tidak ada pemilih periode */
+.topbar-left { grid-column: 1; grid-row: 1; }
+.topbar-actions { grid-column: 3; grid-row: 1; justify-self: end; }
+@media (max-width: 860px) { .topbar-actions { grid-column: 2; } }
+
+/* ============ Pengaturan: sub-menu ============ */
+.settings-page { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
+.settings-nav {
+  position: sticky; top: 20px; display: flex; flex-direction: column; gap: 4px;
+  padding: 10px; border-radius: 22px; background: var(--surface); border: 2px solid var(--border); box-shadow: var(--shadow);
+}
+.settings-nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: 16px;
+  background: none; cursor: pointer; text-align: left; color: var(--text-muted); transition: background .2s, color .2s;
+}
+.settings-nav-icon {
+  width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 12px; background: var(--surface-2); font-size: 1.25rem; color: var(--primary);
+}
+.settings-nav-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.settings-nav-text strong { color: var(--text); font-size: .95rem; }
+.settings-nav-text small { font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.settings-nav-item:hover { background: var(--surface-2); }
+.settings-nav-item.active { background: var(--primary-soft); }
+.settings-nav-item.active .settings-nav-icon { background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; }
+.settings-nav-item.active strong { color: var(--primary); }
+.settings-nav-item.danger .settings-nav-icon { color: var(--negative); background: #fff1f3; }
+.settings-nav-item.danger.active .settings-nav-icon { background: #fb7185; color: #fff; }
+.settings-nav-item.danger { margin-top: 8px; border-top: 1.5px solid var(--border); border-radius: 0 0 16px 16px; padding-top: 14px; }
+
+.settings-body { min-width: 0; }
+.settings-panel { gap: 20px; animation: fade-up .35s var(--spring); }
+.panel-head { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 2px dashed var(--border); }
+.panel-icon {
+  width: 52px; height: 52px; flex-shrink: 0; display: grid; place-items: center; border-radius: 16px;
+  background: var(--primary-soft); color: var(--primary); font-size: 1.6rem;
+}
+.panel-icon.danger { background: #ffe4e9; color: var(--negative); }
+.panel-actions { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+.danger-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px; border-radius: 18px; border: 2px dashed #fecdd3; }
+@media (prefers-color-scheme: dark) { .settings-nav-item.danger .settings-nav-icon { background: #4a1d2a; } }
+
+@media (max-width: 860px) {
+  .settings-page { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .settings-nav { position: static; flex-direction: row; overflow-x: auto; padding: 6px; scrollbar-width: none; }
+  .settings-nav-item { flex: 0 0 auto; padding: 8px 12px; }
+  .settings-nav-icon { width: 32px; height: 32px; font-size: 1.1rem; }
+  .settings-nav-text small { display: none; }
+  .settings-nav-item.danger { margin-top: 0; border-top: 0; border-radius: 16px; padding-top: 8px; }
+}
+
+.settings-nav-icon .ph-duotone { font-size: inherit; color: inherit; vertical-align: 0; }
+.settings-nav-item.active .settings-nav-icon .ph-duotone::before { opacity: .4; }
+.danger-row > .grow { flex: 1 1 260px; }
+.panel-icon .ph-duotone { font-size: inherit; vertical-align: 0; }
+.backup-status { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 18px; background: #ecfdf5; }
+.backup-status .ph-fill { font-size: 2rem; color: #10b981; }
+.backup-status.off { background: var(--surface-2); }
+.backup-status.off .ph-fill { color: var(--text-muted); }
+@media (prefers-color-scheme: dark) { .backup-status { background: #123a2f; } }
+
+/* ============ Kalender rentang: isi penuh, dua bulan sama lebar ============ */
+.range-calendar { display: block; }
+.range-calendar .flatpickr-calendar.inline { width: 100% !important; max-width: none; padding: 14px 16px 10px; }
+.range-calendar .flatpickr-innerContainer,
+.range-calendar .flatpickr-rContainer { display: block; width: 100%; }
+.range-calendar .flatpickr-months { display: flex; position: relative; }
+.range-calendar .flatpickr-months .flatpickr-month { flex: 1; }
+.range-calendar .flatpickr-weekdays { display: flex; width: 100%; }
+.range-calendar .flatpickr-weekdaycontainer { flex: 1; display: flex; }
+.range-calendar .flatpickr-weekdaycontainer + .flatpickr-weekdaycontainer,
+.range-calendar .dayContainer + .dayContainer { margin-left: 28px; }
+.range-calendar span.flatpickr-weekday { flex: 1; font-size: .8rem; color: var(--text-muted); }
+.range-calendar .flatpickr-days { display: flex; width: 100% !important; border: 0; }
+.range-calendar .dayContainer {
+  flex: 1; width: auto; min-width: 0; max-width: none; padding: 0;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 4px;
+  box-shadow: none !important;
+}
+.range-calendar .flatpickr-day {
+  width: auto; max-width: none; height: 42px; line-height: 38px; margin: 0;
+  font-size: .95rem; border-radius: 12px;
+}
+.range-calendar .flatpickr-day.inRange { box-shadow: none; border-radius: 0; }
+.range-calendar .flatpickr-day.startRange:not(.endRange) { border-radius: 12px 0 0 12px; }
+.range-calendar .flatpickr-day.endRange:not(.startRange) { border-radius: 0 12px 12px 0; }
+.range-calendar .flatpickr-day.today:not(.selected):not(.inRange) { border: 2px solid var(--primary); }
+.range-calendar .flatpickr-day.hidden { visibility: hidden; }
+.range-calendar .flatpickr-months .flatpickr-prev-month,
+.range-calendar .flatpickr-months .flatpickr-next-month {
+  top: 4px; width: 36px; height: 36px; padding: 9px; border-radius: 12px; display: grid; place-items: center;
+}
+.range-calendar .flatpickr-months .flatpickr-prev-month:hover,
+.range-calendar .flatpickr-months .flatpickr-next-month:hover { background: var(--surface-2); }
+
+/* Fokus keyboard: garis lembut sesuai tema, bukan garis biru bawaan browser */
+button:focus, a:focus { outline: none; }
+button:focus-visible, a:focus-visible, label:focus-within > input[type="file"] + * {
+  outline: 3px solid #c4b5fd; outline-offset: 2px;
+}
+.range-calendar .flatpickr-day.today.inRange { background: var(--primary-soft); border-color: var(--primary-soft); color: var(--primary); font-weight: 800; }
+
+/* ============ Tombol kecilkan menu: bulat, menempel di tepi luar sidebar ============ */
+.sidebar { overflow: visible; z-index: 30; }
+.collapse-toggle.edge,
+.collapsed .collapse-toggle.edge {
+  position: absolute; top: 30px; right: -15px; left: auto; transform: none;
+  width: 30px; height: 30px; border-radius: 50%; opacity: 1;
+  display: grid; place-items: center;
+  background: var(--surface); color: var(--text-muted);
+  border: 2px solid var(--border); box-shadow: 0 4px 12px -4px rgba(139, 92, 246, .35);
+  font-size: .8rem; cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s, transform .3s var(--spring);
+}
+.collapse-toggle.edge:hover,
+.collapsed .collapse-toggle.edge:hover {
+  background: var(--primary); border-color: var(--primary); color: #fff; transform: scale(1.12);
+}
+.collapse-toggle.edge .ph-bold { font-size: inherit; vertical-align: 0; }
+.collapsed .sidebar-head { flex-direction: row; justify-content: center; padding-top: 2px; }
+@media (max-width: 860px) { .collapse-toggle.edge { display: none; } }
+
+/* ============ Halaman Export ============ */
+.export-page { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.export-page > .stack { grid-column: 1; }
+.export-summary { grid-column: 2; grid-row: 1; position: sticky; top: 20px; gap: 14px; }
+.export-sample { grid-column: 1 / -1; }
+.step {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 6px;
+  border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; font-size: .9rem; vertical-align: 2px;
+}
+.dataset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.dataset-option, .format-option {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; cursor: pointer;
+  border: 2px solid var(--border); background: var(--surface); transition: border-color .2s, background .2s;
+}
+.dataset-option input, .format-option input { display: none; }
+.dataset-option:hover, .format-option:hover { border-color: #c4b5fd; }
+.dataset-option.active, .format-option.active { border-color: var(--primary); background: var(--primary-soft); }
+.dataset-option strong, .format-option strong { display: block; }
+.dataset-option small, .format-option small { display: block; color: var(--text-muted); font-size: .8rem; line-height: 1.3; }
+.dataset-icon {
+  width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;
+  background: var(--surface-2); color: var(--primary); font-size: 1.2rem;
+}
+.dataset-icon .ph-duotone { font-size: inherit; vertical-align: 0; }
+.dataset-option.active .dataset-icon { background: var(--primary); color: #fff; }
+.format-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.format-option > .ph-duotone { font-size: 2rem; color: var(--primary); }
+.table-scroll { overflow-x: auto; border-radius: 14px; border: 2px solid var(--border); }
+.export-sample table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.export-sample th { background: var(--primary); color: #fff; text-align: left; padding: 8px 12px; white-space: nowrap; }
+.export-sample td { padding: 8px 12px; border-top: 1px solid var(--border); white-space: nowrap; }
+.export-sample tbody tr:nth-child(even) { background: var(--surface-2); }
+@media (max-width: 1100px) {
+  .export-page { grid-template-columns: minmax(0, 1fr); }
+  .export-summary { grid-column: 1; grid-row: auto; position: static; }
+  .format-grid { grid-template-columns: 1fr; }
+}
+.hero-debt {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 12px;
+  border: 0; border-radius: 999px; background: rgba(255, 255, 255, .2); color: #fff;
+  font-size: .85rem; font-weight: 700; cursor: pointer; text-align: left; transition: background .2s;
+}
+.hero-debt:hover { background: rgba(255, 255, 255, .32); }
+.hero-debt strong { font-weight: 800; }
+
+/* ============ Tombol "Catat" di topbar (minimalis) ============ */
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.topbar-add {
+  display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px; border-radius: 14px; font-weight: 800; cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s, transform .25s var(--spring);
+}
+.topbar-add .ph-bold { font-size: 1rem; vertical-align: 0; }
+.topbar-add:hover { border-color: var(--primary); transform: translateY(-1px); }
+.topbar-add:active { transform: scale(.96); }
+@media (max-width: 860px) { .topbar-add { display: none; } }
+/* Tombol "Catat": berwarna (gradasi ungu → pink) */
+.topbar-add {
+  border: 0; color: #fff;
+  background: linear-gradient(120deg, #8b5cf6, #ec4899);
+  box-shadow: 0 6px 14px -6px rgba(139, 92, 246, .7);
+}
+.topbar-add:hover {
+  background: linear-gradient(120deg, #7c3aed, #db2777); color: #fff;
+  box-shadow: 0 10px 18px -8px rgba(139, 92, 246, .8);
+}
+.segmented button:disabled { opacity: .35; cursor: not-allowed; }
+.locked-hint { display: flex; gap: 6px; align-items: flex-start; margin-top: -6px; }
+
+/* ============ Perbaikan kontras mode gelap ============ */
+@media (prefers-color-scheme: dark) {
+  /* Tombol utama: ungu lebih pekat supaya teks putih terbaca */
+  .button.primary { background: #7c3aed; border-color: #7c3aed; box-shadow: 0 3px 0 #5b21b6; }
+  .button.primary:hover { box-shadow: 0 5px 0 #5b21b6; }
+  /* Kotak peringatan (biaya pinjaman, dampak hapus, dll.) */
+  .cost-warning { background: #43301f; color: #fdba74; }
+  .cost-warning strong { color: #fed7aa; }
+  /* Panah ganti bulan di kalender */
+  .flatpickr-months .flatpickr-prev-month svg, .flatpickr-months .flatpickr-next-month svg { fill: var(--text); }
+  .flatpickr-current-month .flatpickr-monthDropdown-months option { background: var(--surface); }
+}

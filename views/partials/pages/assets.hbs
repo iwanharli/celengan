@@ -35,12 +35,13 @@
   </div>
 
   <h2>Daftar aset</h2>
-  <template x-if="assets.assets.length === 0">
+  <template x-if="assets.netWorth && assets.assets.length === 0">
     <div class="card">{{> components/empty-state emoji="1f48e" title="Belum ada aset" text="Catat emas, reksa dana, saham, deposito, atau kendaraan supaya kekayaan bersihmu terlihat utuh." action="openAsset()" actionLabel="Tambah aset"}}</div>
   </template>
   <div class="grid-2">
     <template x-for="asset in assets.assets" :key="asset.id">
       <div class="card">
+        <template x-if="!asset.wallet_address"><div class="contents">
         <div class="row">
           <span class="avatar" :style="{ background: ASSET_TYPES[asset.type].color }">
             <i class="ph-duotone" :class="'ph-' + ASSET_TYPES[asset.type].icon"></i>
@@ -58,10 +59,136 @@
         </div>
         <p class="hint" :class="assetGain(asset) >= 0 ? 'tone-positive' : 'tone-negative'"
            x-text="(assetGain(asset) >= 0 ? 'Untung ' : 'Rugi ') + money(Math.abs(assetGain(asset)))"></p>
-        <div class="row-actions">
-          <button class="button small" @click="openAssetValue(asset)"><i class="ph-duotone ph-arrows-clockwise"></i> Perbarui nilai</button>
-          <button class="button small" @click="openAssetTrade(asset, 'buy')"><i class="ph-duotone ph-plus"></i> Beli</button>
-          <button class="button small" @click="openAssetTrade(asset, 'sell')"><i class="ph-duotone ph-minus"></i> Jual</button>
+
+        </div></template>
+
+        <!-- Wallet Solana: total & perubahan 24 jam, porsi wallet vs LP, token, posisi LP Meteora -->
+        <template x-if="asset.wallet_address">
+          <div class="wallet-card">
+            <div class="wallet-top">
+              <span class="avatar" :style="{ background: ASSET_TYPES.crypto.color }"><i class="ph-duotone ph-wallet"></i></span>
+              <div class="row-main">
+                <strong x-text="asset.name"></strong>
+                <span class="muted wallet-address" :title="asset.wallet_address"
+                      x-text="asset.wallet_address.slice(0, 4) + '…' + asset.wallet_address.slice(-4) + ' · Solana'"></span>
+              </div>
+              <div class="wallet-total">
+                <strong x-text="money(asset.current_value)"></strong>
+                <span>
+                  <small class="muted" x-text="formatUsd(asset.wallet_tokens?.total_usd)"></small>
+                  <small class="change" x-show="asset.wallet_tokens?.change_24h != null"
+                         :class="asset.wallet_tokens?.change_24h >= 0 ? 'tone-positive' : 'tone-negative'"
+                         :title="'Perubahan nilai 24 jam terakhir'"
+                         x-text="changeText(asset.wallet_tokens?.change_24h) + ' 24j'"></small>
+                </span>
+              </div>
+              <div class="wallet-tools">
+                <button class="icon-button edit" title="Edit" @click="openAsset(asset)"><i class="ph-duotone ph-pencil-simple"></i></button>
+                <button class="icon-button remove" title="Hapus" @click="deleteAsset(asset)"><i class="ph-duotone ph-trash"></i></button>
+              </div>
+            </div>
+
+            <!-- Porsi nilai: di wallet vs di LP -->
+            <div class="wallet-split" x-show="asset.wallet_tokens?.positions?.length">
+              <div class="split-bar"><span class="split-wallet" :style="{ width: walletSplit(asset).wallet + '%' }"></span><span class="split-lp" :style="{ width: walletSplit(asset).lp + '%' }"></span></div>
+              <div class="split-legend">
+                <span><i class="dot dot-wallet"></i> Di wallet <strong x-text="walletSplit(asset).wallet + '%'"></strong></span>
+                <span><i class="dot dot-lp"></i> Di LP <strong x-text="walletSplit(asset).lp + '%'"></strong></span>
+              </div>
+            </div>
+
+            <!-- Token di wallet -->
+            <div class="wallet-section">
+              <p class="section-label">Di wallet</p>
+              <ul class="wallet-lines">
+                <template x-for="token in walletTokens(asset).filter(t => t.value > 0)" :key="token.mint">
+                  <li>
+                    <img class="token-icon" :src="token.icon" alt="" x-show="token.icon" loading="lazy" referrerpolicy="no-referrer">
+                    <span class="token-icon placeholder" x-show="!token.icon"><i class="ph-duotone ph-coin"></i></span>
+                    <span class="line-name">
+                      <strong x-text="token.symbol"></strong>
+                      <small class="muted" x-text="formatTokenAmount(token.amount) + ' × ' + formatUsd(token.usd_price)"></small>
+                    </span>
+                    <span class="line-value">
+                      <strong x-text="money(token.value)"></strong>
+                      <small class="change" :class="token.change_24h >= 0 ? 'tone-positive' : 'tone-negative'" x-text="changeText(token.change_24h)"></small>
+                    </span>
+                  </li>
+                </template>
+                <li class="muted unpriced" x-show="walletTokens(asset).some(t => !t.value)">
+                  <span class="token-icon placeholder"><i class="ph-duotone ph-question"></i></span>
+                  <span class="line-name" x-text="walletTokens(asset).filter(t => !t.value).map(t => t.symbol).join(', ')"></span>
+                  <small class="line-value">tanpa harga · Rp 0</small>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Posisi LP Meteora DLMM -->
+            <template x-for="lp in asset.wallet_tokens?.positions ?? []" :key="lp.position">
+              <div class="wallet-section lp-box" x-data="{ r: null }" x-effect="r = lpRange(lp)">
+                <div class="lp-head">
+                  <span class="token-icon placeholder lp"><i class="ph-duotone ph-drop-half"></i></span>
+                  <span class="line-name"><strong x-text="lp.label"></strong> <small class="muted">Meteora DLMM</small></span>
+                  <span class="badge" x-show="r" :class="r?.inRange ? 'badge-ok' : 'badge-danger'"
+                        :title="r?.inRange ? 'Harga di dalam rentang: posisi menghasilkan fee' : 'Harga di luar rentang: posisi tidak menghasilkan fee'"
+                        x-text="r?.inRange ? 'Dalam rentang' : 'Di luar rentang'"></span>
+                  <strong class="line-value" x-text="money(lp.value)"></strong>
+                </div>
+
+                <template x-if="r">
+                  <div class="lp-range">
+                    <div class="range-bar"><span class="range-marker" :style="{ left: r.marker + '%' }"></span></div>
+                    <div class="range-labels">
+                      <small class="muted" x-text="formatUsd(r.lower)"></small>
+                      <small><span class="muted">Harga </span><strong x-text="lp.tokens[0].symbol + ' ' + formatUsd(r.current)"></strong></small>
+                      <small class="muted" x-text="formatUsd(r.upper)"></small>
+                    </div>
+                  </div>
+                </template>
+
+                <ul class="wallet-lines compact">
+                  <template x-for="token in lp.tokens" :key="token.mint">
+                    <li>
+                      <img class="token-icon small" :src="token.icon" alt="" x-show="token.icon" loading="lazy" referrerpolicy="no-referrer">
+                      <span class="line-name">
+                        <strong x-text="token.symbol"></strong>
+                        <small class="muted" x-text="formatTokenAmount(token.amount) + ' · ' + (lp.value ? Math.round(token.value / lp.value * 100) : 0) + '%'"></small>
+                      </span>
+                      <span class="line-value">
+                        <span x-text="money(token.value)"></span>
+                        <small class="change" :class="token.change_24h >= 0 ? 'tone-positive' : 'tone-negative'" x-text="changeText(token.change_24h)"></small>
+                      </span>
+                    </li>
+                  </template>
+                </ul>
+                <p class="lp-fee" x-show="lp.fee_value > 0">
+                  <i class="ph-duotone ph-coins"></i>
+                  Fee belum diklaim <strong x-text="money(lp.fee_value)"></strong>
+                  <span class="muted" x-text="'(' + (lp.fee_tokens ?? []).map(t => formatTokenAmount(t.amount) + ' ' + t.symbol).join(' + ') + ') · sudah termasuk'"></span>
+                </p>
+              </div>
+            </template>
+
+            <div class="wallet-foot">
+              <span class="muted" x-show="asset.invested > 0">
+                Modal <span x-text="money(asset.invested)"></span> ·
+                <strong :class="assetGain(asset) >= 0 ? 'tone-positive' : 'tone-negative'"
+                        x-text="(assetGain(asset) >= 0 ? 'Untung ' : 'Rugi ') + money(Math.abs(assetGain(asset))) + ' (' + assetGainPercent(asset) + '%)'"></strong>
+              </span>
+              <button type="button" class="link" x-show="!(asset.invested > 0)" @click="openAsset(asset)">Isi modal untuk melihat untung/rugi</button>
+              <span :class="asset.sync_error ? 'tone-negative' : 'muted'" class="wallet-sync"
+                    :title="asset.sync_error ? 'Gagal terakhir: ' + asset.sync_error : 'Diperbarui otomatis tiap 10 menit'">
+                <i class="ph-duotone" :class="asset.sync_error ? 'ph-warning' : 'ph-arrows-clockwise'"></i>
+                <span x-text="walletSyncText(asset)"></span>
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <div class="row-actions" x-show="!asset.wallet_address">
+          <button class="button small" x-show="!asset.wallet_address" @click="openAssetValue(asset)"><i class="ph-duotone ph-arrows-clockwise"></i> Perbarui nilai</button>
+          <button class="button small" x-show="!asset.wallet_address" @click="openAssetTrade(asset, 'buy')"><i class="ph-duotone ph-plus"></i> Beli</button>
+          <button class="button small" x-show="!asset.wallet_address" @click="openAssetTrade(asset, 'sell')"><i class="ph-duotone ph-minus"></i> Jual</button>
           <button class="icon-button subtle" title="Edit" @click="openAsset(asset)"><i class="ph-duotone ph-pencil-simple"></i></button>
           <button class="icon-button subtle" title="Hapus"
             @click="deleteAsset(asset)">

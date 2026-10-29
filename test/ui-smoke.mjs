@@ -70,7 +70,7 @@ await sleep(4000);
 const component = "document.querySelector('[x-data]')._x_dataStack[0]";
 
 // Setiap halaman.
-const pages = ['home', 'transactions', 'budget', 'bills', 'recipients', 'categories', 'accounts', 'assets', 'debts', 'wishlist', 'reports', 'export', 'settings'];
+const pages = ['home', 'notifications', 'transactions', 'budget', 'bills', 'recipients', 'categories', 'accounts', 'assets', 'debts', 'wishlist', 'reports', 'export', 'settings'];
 for (const page of pages) {
   where = `halaman ${page}`;
   await evaluate(`${component}.goTo('${page}')`);

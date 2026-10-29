@@ -16,6 +16,8 @@
   "dependencies": {
     "@fontsource/fredoka": "^5.2.7",
     "@fontsource/nunito": "^5.2.7",
+    "@meteora-ag/dlmm": "^1.9.14",
+    "@solana/web3.js": "^1.99.0",
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "handlebars": "^4.7.8",

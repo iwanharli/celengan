@@ -1,9 +1,41 @@
 import { Router } from 'express';
 import { query, HttpError } from '../db.js';
 import { vapidKeys, sendToAll } from '../notify.js';
+import { collectNotifications } from '../inbox.js';
 
-// Pengingat tagihan: daftar/berhenti langganan notifikasi browser & kirim tes.
+// Notifikasi browser (daftar/berhenti langganan & kirim tes) dan kotak notifikasi di aplikasi.
 const router = Router();
+
+// Kotak notifikasi: 100 terbaru + jumlah yang belum dibaca. ?collect=1 memeriksa kondisi terbaru dulu.
+router.get('/inbox', async (req, res) => {
+  if (req.query.collect) await collectNotifications();
+  const [items, [{ unread }]] = await Promise.all([
+    query(`SELECT * FROM notifications WHERE title <> '' ORDER BY created_at DESC, id DESC LIMIT 100`),
+    query(`SELECT count(*)::int AS unread FROM notifications WHERE read_at IS NULL AND title <> ''`),
+  ]);
+  res.json({ items, unread, loaded: true });
+});
+
+router.post('/inbox/read-all', async (req, res) => {
+  await query('UPDATE notifications SET read_at = now() WHERE read_at IS NULL');
+  res.status(204).end();
+});
+
+router.post('/inbox/:id/read', async (req, res) => {
+  await query('UPDATE notifications SET read_at = COALESCE(read_at, now()) WHERE id = $1', [req.params.id]);
+  res.status(204).end();
+});
+
+// Hapus yang sudah dibaca (kunci tetap disimpan supaya kondisi yang sama tidak muncul lagi).
+router.delete('/inbox/read', async (req, res) => {
+  await query(`UPDATE notifications SET title = '', body = NULL WHERE read_at IS NOT NULL`);
+  res.status(204).end();
+});
+
+router.delete('/inbox/:id', async (req, res) => {
+  await query(`UPDATE notifications SET title = '', body = NULL, read_at = COALESCE(read_at, now()) WHERE id = $1`, [req.params.id]);
+  res.status(204).end();
+});
 
 router.get('/', async (req, res) => {
   const [{ publicKey }, [{ count }]] = await Promise.all([

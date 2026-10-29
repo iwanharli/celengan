@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { formatDate, daysUntil, formatAmountInput, todayISO } from '../format.js';
+import { formatDate, daysUntil, formatAmountInput, todayISO, shiftMonth } from '../format.js';
 
 const addDays = (iso, days) => {
   const date = new Date(`${iso}T00:00:00`);
@@ -9,9 +9,87 @@ const addDays = (iso, days) => {
 
 const PER_MONTH = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 };
 
+// Tanggal ke-dueDay di bulan (year, monthIndex); di bulan pendek dipakai hari terakhirnya (sama dengan server).
+const dayInMonth = (year, monthIndex, dueDay) => {
+  const last = new Date(year, monthIndex + 1, 0).getDate();
+  return new Date(year, monthIndex, Math.min(dueDay, last)).toLocaleDateString('sv-SE');
+};
+
+// Jatuh tempo berikutnya setelah `iso` sesuai frekuensi tagihan.
+function nextOccurrence(iso, bill) {
+  if (bill.frequency === 'weekly') return addDays(iso, 7);
+  const [year, month] = iso.split('-').map(Number);
+  const dueDay = bill.due_day ?? Number(bill.next_due.slice(8, 10));
+  return dayInMonth(year, month - 1 + (bill.frequency === 'yearly' ? 12 : 1), dueDay);
+}
+
 // Halaman Tagihan: tagihan rutin, bayar, lewati, tambah & edit.
 export default {
   billTab: 'active',
+  billView: 'list', // 'list' | 'calendar'
+  billCalMonth: todayISO().slice(0, 7),
+
+  // Jadwal tagihan di satu bulan (mulai jatuh tempo berikutnya; yang sudah dibayar tidak ditampilkan).
+  // Cicilan utang berhenti setelah sisa utangnya habis.
+  billOccurrences(month) {
+    const today = todayISO();
+    const monthEnd = `${shiftMonth(month, 1)}-01`;
+    const list = [];
+    for (const bill of this.bills) {
+      const debt = bill.debt_id ? this.debts.find((item) => item.id === bill.debt_id) : null;
+      let left = debt ? Math.ceil(debt.remaining / bill.amount) : Infinity;
+      for (let date = bill.next_due; date < monthEnd && left > 0; date = nextOccurrence(date, bill), left -= 1) {
+        if (date.slice(0, 7) === month) list.push({ bill, date, late: date < today, key: `${bill.id}-${date}` });
+      }
+    }
+    return list.sort((a, b) => a.date.localeCompare(b.date) || b.bill.amount - a.bill.amount);
+  },
+
+  // Kotak kalender (Senin–Minggu), termasuk sisa hari bulan sebelum/sesudahnya.
+  get billCalendar() {
+    const month = this.billCalMonth;
+    const occurrences = this.billOccurrences(month);
+    const first = new Date(`${month}-01T00:00:00`);
+    const start = addDays(`${month}-01`, -((first.getDay() + 6) % 7));
+    const today = todayISO();
+    const weeks = [];
+    for (let date = start; weeks.length < 6; ) {
+      const days = [];
+      for (let i = 0; i < 7; i += 1, date = addDays(date, 1)) {
+        const items = occurrences.filter((item) => item.date === date);
+        days.push({ date, day: Number(date.slice(8, 10)), inMonth: date.slice(0, 7) === month, today: date === today, items, total: items.reduce((sum, item) => sum + item.bill.amount, 0) });
+      }
+      weeks.push({ days, total: days.reduce((sum, day) => sum + (day.inMonth ? day.total : 0), 0) });
+      if (date.slice(0, 7) !== month && date > `${month}-28`) break;
+    }
+    const total = occurrences.reduce((sum, item) => sum + item.bill.amount, 0);
+    const busiest = Math.max(0, ...weeks.map((week) => week.total));
+    return {
+      month, weeks, total, busiest, count: occurrences.length,
+      installments: occurrences.filter((item) => item.bill.debt_id).reduce((sum, item) => sum + item.bill.amount, 0),
+      late: occurrences.filter((item) => item.late).length,
+      label: first.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+    };
+  },
+
+  get thisMonthISO() {
+    return todayISO().slice(0, 7);
+  },
+
+  // Buka kalender: kalau bulan ini sudah tidak ada yang perlu dibayar, langsung ke bulan tagihan berikutnya.
+  showBillCalendar() {
+    this.billView = 'calendar';
+    const month = this.thisMonthISO;
+    if (this.billOccurrences(month).length === 0 && this.bills.length) {
+      this.billCalMonth = this.bills.map((bill) => bill.next_due.slice(0, 7)).sort()[0];
+    } else {
+      this.billCalMonth = month;
+    }
+  },
+
+  shiftBillMonth(step) {
+    this.billCalMonth = shiftMonth(this.billCalMonth, step);
+  },
   // Label tanggal tagihan: merah = sudah lewat jatuh tempo, oranye = jatuh tempo bulan ini
   // (atau ≤ 7 hari lagi walau sudah masuk bulan depan), selain itu netral.
   // text = label singkat (dipakai di Beranda), relative = selalu waktu relatif (halaman Tagihan).

@@ -5,6 +5,9 @@ import { parseAmount, formatDate, formatMonthYear, daysUntil, addMonths, todayIS
 // Halaman Utang: utang, piutang, invoice klien, dan jadwal cicilan.
 export default {
   debtTab: 'active', // 'active' | 'settled' (lunas)
+  // Rencana bebas utang: strategi & dana tambahan per bulan (diingat di browser ini).
+  payoffStrategy: 'avalanche', // 'avalanche' (biaya tertinggi dulu) | 'snowball' (sisa terkecil dulu)
+  payoffExtraText: '',
   debtDirection: 'payable', // sub-menu: 'payable' (utang saya) | 'receivable' (piutang)
 
   goToDebtTab(direction) {
@@ -69,6 +72,93 @@ export default {
   // Jenis utang yang bisa dipilih: invoice hanya untuk piutang.
   debtTypesFor(direction) {
     return Object.entries(DEBT_TYPES).filter(([type]) => type !== 'invoice' || direction === 'receivable');
+  },
+
+  // ---------- Rencana bebas utang ----------
+
+  // Biaya pinjaman (bunga + biaya) dalam persen pokok; utang pribadi tanpa bunga = 0.
+  debtCost(debt) {
+    return debt.principal > 0 ? Math.max(0, (debt.total_amount - debt.principal) / debt.principal) : 0;
+  },
+
+  // Simulasi per bulan: cicilan wajib dibayar sesuai jadwal; dana tambahan (+ cicilan yang sudah selesai)
+  // diarahkan ke satu utang sesuai strategi sampai lunas, lalu pindah ke berikutnya.
+  // → { months, finish, order: [{ debt, month, finish }], stuck } — stuck = ada utang yang tidak akan lunas.
+  simulatePayoff(extra, strategy) {
+    const debts = this.debts
+      .filter((debt) => debt.direction === 'payable' && debt.remaining > 0)
+      .map((debt) => ({ debt, left: debt.remaining, installment: Math.min(debt.installment || 0, debt.remaining), month: null }));
+    const priority = (a, b) => (strategy === 'avalanche'
+      ? this.debtCost(b.debt) - this.debtCost(a.debt) || a.left - b.left
+      : a.left - b.left || this.debtCost(b.debt) - this.debtCost(a.debt));
+    const freed = { amount: 0 };
+    let month = 0;
+    while (debts.some((item) => item.left > 0) && month < 360) {
+      month += 1;
+      for (const item of debts) {
+        if (item.left <= 0 || !item.installment) continue;
+        const pay = Math.min(item.installment, item.left);
+        item.left -= pay;
+        if (item.left <= 0) { item.month = month; freed.amount += item.installment; }
+      }
+      let pool = extra + freed.amount;
+      for (const item of debts.filter((other) => other.left > 0).sort(priority)) {
+        if (pool <= 0) break;
+        const pay = Math.min(pool, item.left);
+        item.left -= pay;
+        pool -= pay;
+        if (item.left <= 0) { item.month = month; if (item.installment) freed.amount += item.installment; }
+      }
+      if (!extra && !freed.amount && debts.every((item) => item.left <= 0 || !item.installment)) break; // sisa utang tanpa cicilan & tanpa dana
+    }
+    const start = todayISO().slice(0, 7) + '-01';
+    const finishOf = (m) => (m ? formatMonthYear(addMonths(start, m)) : null); // bulan ke-1 = bulan depan
+    const order = debts.slice().sort((a, b) => (a.month ?? 9999) - (b.month ?? 9999) || priority(a, b))
+      .map((item) => ({ debt: item.debt, month: item.month, finish: finishOf(item.month) }));
+    const stuck = debts.some((item) => item.left > 0);
+    const months = stuck ? null : Math.max(0, ...debts.map((item) => item.month ?? 0));
+    return { months, finish: finishOf(months), order, stuck };
+  },
+
+  get payoffExtra() {
+    return parseAmount(this.payoffExtraText) || 0;
+  },
+
+  get payoffMonthlyInstallments() {
+    return this.debts.filter((debt) => debt.direction === 'payable' && debt.remaining > 0)
+      .reduce((sum, debt) => sum + Math.min(debt.installment || 0, debt.remaining), 0);
+  },
+
+  get payoffPlan() {
+    const plan = this.simulatePayoff(this.payoffExtra, this.payoffStrategy);
+    const other = this.simulatePayoff(this.payoffExtra, this.payoffStrategy === 'avalanche' ? 'snowball' : 'avalanche');
+    const base = this.payoffExtra ? this.simulatePayoff(0, this.payoffStrategy) : null;
+    return { ...plan, other, base, maxMonth: Math.max(1, plan.months ?? 0, ...plan.order.map((item) => item.month ?? 0)) };
+  },
+
+  // Pilihan cepat dana tambahan, termasuk perkiraan tabungan bulanan kalau ada.
+  get payoffExtraChoices() {
+    const choices = [0, 500000, 1000000, 2000000];
+    const saving = Math.round((this.summary?.savings?.estimate ?? 0) / 50000) * 50000;
+    if (saving >= 100000 && !choices.includes(saving)) choices.push(saving);
+    return choices.sort((a, b) => a - b);
+  },
+
+  setPayoffExtra(amount) {
+    this.payoffExtraText = amount ? formatAmountInput(amount) : '';
+    try { localStorage.setItem('celengan.payoff', JSON.stringify({ extra: amount, strategy: this.payoffStrategy })); } catch { /* opsional */ }
+  },
+
+  setPayoffStrategy(strategy) {
+    this.payoffStrategy = strategy;
+    try { localStorage.setItem('celengan.payoff', JSON.stringify({ extra: this.payoffExtra, strategy })); } catch { /* opsional */ }
+  },
+
+  restorePayoffSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('celengan.payoff') ?? 'null');
+      if (saved) { this.payoffStrategy = saved.strategy ?? 'avalanche'; this.payoffExtraText = saved.extra ? formatAmountInput(saved.extra) : ''; }
+    } catch { /* opsional */ }
   },
 
   // ---------- Jadwal cicilan ----------

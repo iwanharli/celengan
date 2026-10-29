@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS assets (
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
 
+-- Wallet kripto Solana (Jupiter, Phantom, ...): nilai sekarang diambil otomatis dari alamat wallet.
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS wallet_address text;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS wallet_tokens jsonb;     -- rincian token terakhir
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS synced_at timestamptz;   -- terakhir berhasil diperbarui
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS sync_error text;         -- pesan gagal terakhir (null = berhasil)
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS sync_tried_at timestamptz; -- percobaan terakhir (berhasil / gagal)
+
 -- Riwayat kekayaan bersih, satu baris per bulan (diperbarui setiap halaman Aset dibuka).
 CREATE TABLE IF NOT EXISTS net_worth_snapshots (
   month text PRIMARY KEY,   -- 'YYYY-MM'
@@ -168,7 +175,8 @@ FROM (
   GROUP BY d.id
 ) s;
 
-CREATE OR REPLACE VIEW asset_status AS
+DROP VIEW IF EXISTS asset_status;
+CREATE VIEW asset_status AS
 SELECT a.*,
        (a.initial_cost
          + COALESCE(SUM(t.amount) FILTER (WHERE t.kind = 'asset_out'), 0)
@@ -508,3 +516,18 @@ BEGIN
   END IF;
   UPDATE settings SET migrated_debt_expense = true WHERE id = 1;
 END $$;
+
+-- Kotak notifikasi (halaman Notifikasi). key unik mencegah kondisi yang sama dicatat dua kali.
+CREATE TABLE IF NOT EXISTS notifications (
+  id         serial PRIMARY KEY,
+  key        text NOT NULL UNIQUE,
+  kind       text NOT NULL,        -- bill | debt | budget | asset | tax
+  tone       text NOT NULL DEFAULT 'info',
+  icon       text NOT NULL DEFAULT 'bell',
+  page       text,                 -- halaman tujuan saat diklik
+  title      text NOT NULL,
+  body       text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  read_at    timestamptz
+);
+CREATE INDEX IF NOT EXISTS notifications_created_idx ON notifications (created_at DESC);

@@ -1,5 +1,5 @@
 {{!-- Modal: Tambah / edit tagihan rutin. Tagihan cicilan utang: frekuensi & kategori mengikuti utangnya.
-     Baris: nama | nominal · frekuensi | jatuh tempo · kategori | dibayar dari · potong otomatis --}}
+     Baris: nama | nominal · frekuensi | jatuh tempo · kategori | dibayar dari --}}
 <template x-if="modal === 'bill'">
   <div class="stack">
     <h2 x-text="form.id ? 'Edit tagihan' : 'Tambah tagihan rutin'"></h2>
@@ -36,13 +36,7 @@
       {{> components/account-select label="Dibayar dari"}}
     </div>
 
-    <label class="expense-toggle auto-pay-toggle" x-show="form.account_id">
-      <input type="checkbox" x-model="form.auto_pay">
-      <span>
-        <strong><i class="ph-duotone ph-lightning"></i> Potong otomatis saat jatuh tempo</strong>
-        <small class="muted">Seperti autodebet: saldo akun langsung dipotong di tanggal jatuh tempo. Kalau saldonya kurang, tagihan ditandai "saldo kurang" dan dipotong begitu saldonya cukup.</small>
-      </span>
-    </label>
+    <p class="hint"><i class="ph-duotone ph-bell-ringing"></i> Kamu diingatkan saat jatuh tempo. Saldo tidak dipotong otomatis — klik <strong>Bayar</strong> setelah benar-benar membayar.</p>
     {{> components/form-actions submit="saveBill()"}}
   </div>
 </template>

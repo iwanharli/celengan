@@ -21,7 +21,7 @@ test('pengingat H-1 & hari-H, sekali per jatuh tempo', async () => {
   const account = await app.api.post('/accounts', { name: 'BCA', type: 'bank', initial_balance: 0 });
   const category = await categoryId(app.api, 'Hiburan');
   const bill = (body) => app.api.post('/bills', { frequency: 'monthly', category_id: category, account_id: account.id, ...body });
-  await bill({ name: 'Netflix', amount: 65000, next_due: '2026-11-02', auto_pay: true });
+  await bill({ name: 'Netflix', amount: 65000, next_due: '2026-11-02' });
   await bill({ name: 'Listrik', amount: 300000, next_due: '2026-11-01' });
   await bill({ name: 'Kos', amount: 1500000, next_due: '2026-11-10' });
 
@@ -29,7 +29,7 @@ test('pengingat H-1 & hari-H, sekali per jatuh tempo', async () => {
   assert.deepEqual(due.map((b) => [b.name, b.kind]), [['Listrik', 'today'], ['Netflix', 'tomorrow']]);
   const netflix = reminderMessage(due.find((b) => b.name === 'Netflix'));
   assert.equal(netflix.title, 'Besok jatuh tempo: Netflix');
-  assert.match(netflix.body, /Rp 65\.000 · Dipotong otomatis dari BCA/);
+  assert.match(netflix.body, /Rp 65\.000 · ⚠️ Saldo BCA kurang Rp 65\.000, isi dulu ya\./);
 
   // Sudah diingatkan → tidak muncul lagi untuk jatuh tempo yang sama.
   for (const b of due) await query('INSERT INTO bill_reminders (bill_id, due_date, kind) VALUES ($1, $2, $3)', [b.id, b.next_due, b.kind]);

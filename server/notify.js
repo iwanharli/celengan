@@ -42,9 +42,9 @@ export async function sendToAll(payload) {
 // Tagihan yang perlu diingatkan sekarang (belum pernah diingatkan untuk jatuh tempo itu).
 export async function dueReminders(today = new Date().toLocaleDateString('sv-SE')) {
   return query(
-    `SELECT b.id, b.name, b.amount, b.next_due, b.auto_pay, a.name AS account_name,
+    `SELECT b.id, b.name, b.amount, b.next_due, a.name AS account_name, ab.balance AS account_balance,
             CASE WHEN b.next_due = $1::date THEN 'today' ELSE 'tomorrow' END AS kind
-     FROM bills b LEFT JOIN accounts a ON a.id = b.account_id
+     FROM bills b LEFT JOIN accounts a ON a.id = b.account_id LEFT JOIN account_balances ab ON ab.id = b.account_id
      WHERE b.active AND b.next_due IN ($1::date, $1::date + 1)
        AND NOT EXISTS (
          SELECT 1 FROM bill_reminders r
@@ -58,7 +58,8 @@ export async function dueReminders(today = new Date().toLocaleDateString('sv-SE'
 
 export function reminderMessage(bill) {
   const when = bill.kind === 'today' ? 'Hari ini' : 'Besok';
-  const how = bill.auto_pay && bill.account_name ? `Dipotong otomatis dari ${bill.account_name}.` : 'Jangan lupa dibayar ya.';
+  const short = bill.account_name && bill.account_balance != null && Number(bill.account_balance) < Number(bill.amount);
+  const how = short ? `⚠️ Saldo ${bill.account_name} kurang ${rupiah(bill.amount - bill.account_balance)}, isi dulu ya.` : bill.account_name ? `Jangan lupa dibayar dari ${bill.account_name}.` : 'Jangan lupa dibayar ya.';
   return { title: `${when} jatuh tempo: ${bill.name}`, body: `${rupiah(bill.amount)} · ${how}`, url: '/#bills', tag: `bill-${bill.id}-${bill.next_due}` };
 }
 

@@ -1957,7 +1957,6 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .swal-celengan .swal2-html-container { font-size: 1.05rem; color: var(--text-muted); }
 .swal-celengan .swal2-icon.swal2-warning { border-color: #fbbf24; color: #f59e0b; }
 .swal-celengan .swal2-actions { margin-top: 20px; }
-.auto-pay-badge { margin-left: 6px; vertical-align: middle; }
 .bill-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 520px) { .bill-stats { grid-template-columns: minmax(0, 1fr); } }
 .bill-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
@@ -2065,10 +2064,6 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 
 /* Modal tagihan */
 .bill-row-1 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.auto-pay-toggle { display: flex; gap: 14px; align-items: flex-start; cursor: pointer; }
-.auto-pay-toggle input { margin-top: 4px; width: 20px; height: 20px; accent-color: var(--primary); flex-shrink: 0; }
-.auto-pay-toggle span { display: flex; flex-direction: column; gap: 4px; }
-.auto-pay-toggle strong { display: flex; align-items: center; gap: 6px; }
 @media (max-width: 640px) { .bill-row-1 { grid-template-columns: minmax(0, 1fr); } }
 
 /* Modal utang */
@@ -2200,13 +2195,11 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .bill-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bill-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text-muted); font-size: .9rem; margin-top: 4px; }
 .avatar.tiny { width: 22px; height: 22px; border-radius: 7px; font-size: .75rem; }
-.auto-pay-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; background: var(--primary-soft); color: var(--primary); font-weight: 700; font-size: .8rem; }
 .bill-when { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 120px; }
 .bill-when strong { font-size: 1.05rem; }
 .due-text { font-size: .85rem; font-weight: 700; color: var(--text-muted); }
 .bill-actions { display: flex; align-items: center; gap: 4px; }
 .bill-actions .button { margin-right: 6px; }
-.auto-pay-chip { white-space: nowrap; }
 @media (max-width: 760px) {
   .bill-group-head { flex-direction: column; gap: 2px; }
   .bill-item { grid-template-columns: 50px minmax(0, 1fr); gap: 6px 12px; align-items: start; }
@@ -2216,11 +2209,6 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
   .bill-actions { grid-column: 1 / -1; justify-content: space-between; }
   .bill-actions .button { flex: 1; justify-content: center; }
 }
-.auto-pay-note {
-  display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; padding: 7px 12px; border-radius: 12px;
-  font-size: .85rem; font-weight: 800; white-space: nowrap; color: var(--primary); background: var(--primary-soft);
-}
-@media (max-width: 760px) { .auto-pay-note { flex: 1; justify-content: center; } }
 
 /* Halaman Utang: sub-kelompok per jenis */
 .debt-section-group + .debt-section-group { margin-top: 20px; }
@@ -2238,10 +2226,10 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .debt-tabs-bar .segmented .count { margin-left: 4px; }
 
 /* Tagihan: kolom tetap supaya nominal, status & ikon sejajar di semua baris */
-.bill-item { grid-template-columns: 58px minmax(0, 1fr) 150px 190px auto; }
+.bill-item { grid-template-columns: 58px minmax(0, 1fr) 150px 120px auto; }
 .bill-when { min-width: 0; }
 .bill-status { display: flex; justify-content: flex-start; }
-.bill-status .button, .bill-status .auto-pay-note { width: 100%; justify-content: center; margin: 0; }
+.bill-status .button { width: 100%; justify-content: center; margin: 0; }
 .bill-actions .button { margin-right: 0; }
 .bill-actions .invisible { visibility: hidden; }
 @media (max-width: 760px) {
@@ -2280,3 +2268,6 @@ html:has(body.modal-open), body.modal-open { overflow: hidden; }
 .category-foot { display: flex; align-items: center; gap: 8px; min-height: 32px; }
 .category-foot .category-tags { flex: 1; min-width: 0; }
 .category-card-head small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Tagihan: saldo akun pembayar kurang menjelang jatuh tempo */
+.balance-warning { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: .8rem; font-weight: 800; background: rgba(239, 68, 68, .12); color: var(--negative, #dc2626); white-space: nowrap; }

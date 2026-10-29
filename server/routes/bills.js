@@ -5,11 +5,9 @@ import { afterDebtPayment, debtPaymentKind } from './debts.js';
 const router = Router();
 
 router.get('/', async (req, res) => {
-  await runAutoPay();
   res.json(await query(
     `SELECT b.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color,
-            a.name AS account_name, d.counterparty AS debt_name,
-            (b.auto_pay AND b.next_due <= current_date AND ab.balance < b.amount) AS auto_pay_blocked
+            a.name AS account_name, d.counterparty AS debt_name, ab.balance AS account_balance
      FROM bills b
      LEFT JOIN categories c ON c.id = b.category_id
      LEFT JOIN accounts a   ON a.id = b.account_id
@@ -24,9 +22,9 @@ router.post('/', async (req, res) => {
   required(req.body, ['name', 'amount', 'frequency', 'next_due']);
   const { name, amount, frequency, next_due, category_id, account_id } = req.body;
   const [bill] = await query(
-    `INSERT INTO bills (name, amount, frequency, next_due, category_id, account_id, auto_pay)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [name, amount, frequency, next_due, category_id || null, account_id || null, Boolean(account_id && req.body.auto_pay)],
+    `INSERT INTO bills (name, amount, frequency, next_due, category_id, account_id)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [name, amount, frequency, next_due, category_id || null, account_id || null],
   );
   res.status(201).json(bill);
 });
@@ -42,10 +40,10 @@ router.put('/:id', async (req, res) => {
          frequency = CASE WHEN debt_id IS NULL THEN $3 ELSE 'monthly' END,
          next_due = $4, due_day = extract(day FROM $4::date),
          category_id = CASE WHEN debt_id IS NULL THEN $5::int END,
-         account_id = $6, auto_pay = $8
+         account_id = $6
      WHERE id = $7 AND active
      RETURNING *`,
-    [name, amount, frequency, next_due, category_id || null, account_id || null, req.params.id, Boolean(account_id && req.body.auto_pay)],
+    [name, amount, frequency, next_due, category_id || null, account_id || null, req.params.id],
   );
   if (!bill) throw new HttpError(404, 'Tagihan tidak ditemukan');
   res.json(bill);
@@ -66,7 +64,7 @@ router.get('/ended', async (req, res) => {
   ));
 });
 
-// Berhenti langganan: pengingat & potong otomatis berhenti, riwayat tetap ada.
+// Berhenti langganan: pengingat berhenti, riwayat tetap ada.
 router.post('/:id/stop', async (req, res) => {
   const [bill] = await query(
     `UPDATE bills SET active = false, ended_at = COALESCE($2::date, current_date)
@@ -150,7 +148,7 @@ router.post('/:id/pay', async (req, res) => {
   res.status(204).end();
 });
 
-// Riwayat satu tagihan: pembayaran (manual / potong otomatis) dan periode yang dilewati, terbaru dulu.
+// Riwayat satu tagihan: pembayaran (termasuk potong otomatis lama) dan periode yang dilewati, terbaru dulu.
 router.get('/:id/history', async (req, res) => {
   const payments = await query(
     `SELECT t.id, 'paid' AS type, t.date, t.amount, t.note, a.name AS account_name,
@@ -178,30 +176,6 @@ router.get('/:id/history', async (req, res) => {
     },
   });
 });
-
-// Potong otomatis: tagihan auto_pay yang sudah jatuh tempo dibayar dari akunnya, bertanggal jatuh tempo.
-// Kalau saldo akun tidak cukup, tagihan dibiarkan (tampil "saldo kurang") dan dicoba lagi nanti.
-// Tagihan yang terlewat beberapa periode dibayar satu per satu selama saldonya cukup.
-// Dipanggil saat data tagihan / ringkasan dimuat, jadi tidak butuh penjadwal terpisah.
-export async function runAutoPay() {
-  await withTransaction(async (client) => {
-    await client.query('SELECT pg_advisory_xact_lock(4242)'); // cegah dua permintaan membayar bersamaan
-    for (let round = 0; round < 60; round += 1) {
-      const { rows: [bill] } = await client.query(
-        `SELECT b.* FROM bills b JOIN account_balances ab ON ab.id = b.account_id
-         WHERE b.active AND b.auto_pay AND b.next_due <= current_date AND ab.balance >= b.amount
-         ORDER BY b.next_due, b.id LIMIT 1`,
-      );
-      if (!bill) return;
-      await payBill(client, bill, {
-        amount: bill.amount,
-        account_id: bill.account_id,
-        date: bill.next_due,
-        note: `${bill.name} (potong otomatis)`,
-      });
-    }
-  });
-}
 
 router.post('/:id/skip', async (req, res) => {
   await withTransaction(async (client) => {

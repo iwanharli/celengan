@@ -49,26 +49,21 @@
                   </span>
                   <span class="installment-chip" x-show="bill.debt_id"><i class="ph-fill ph-hand-coins"></i> Cicilan utang</span>
                   <span x-show="!bill.debt_id" x-text="FREQUENCIES[bill.frequency]"></span>
-                  <span class="auto-pay-chip" x-show="bill.auto_pay && billNeedsPayment(bill)" :title="'Dipotong otomatis dari ' + (bill.account_name ?? 'akunnya') + ' saat jatuh tempo'">
-                    <i class="ph-fill ph-lightning"></i> Otomatis · <span x-text="bill.account_name"></span>
+                  <span x-show="bill.account_name && !billWarning(bill)" x-text="'· dari ' + bill.account_name"></span>
+                  <span class="balance-warning" x-show="billWarning(bill)" title="Isi saldo akun ini sebelum jatuh tempo">
+                    <i class="ph-fill ph-warning"></i> <span x-text="billWarning(bill)"></span>
                   </span>
-                  <span x-show="!bill.auto_pay && bill.account_name" x-text="'· dari ' + bill.account_name"></span>
                 </span>
               </div>
               <div class="bill-when">
                 <strong x-text="money(bill.amount)"></strong>
                 <span class="due-text" x-text="billStatus(bill).relative"></span>
               </div>
-              <!-- Kolom status selebar tetap: tombol Bayar ATAU label otomatis -->
               <div class="bill-status">
-                <button class="button small positive" x-show="billNeedsPayment(bill)" @click="openPayBill(bill)"><i class="ph-bold ph-check"></i> Bayar</button>
-                <span class="auto-pay-note" x-show="!billNeedsPayment(bill)" :title="'Dipotong otomatis dari ' + bill.account_name + ' saat jatuh tempo'">
-                  <i class="ph-fill ph-lightning"></i> Otomatis · <span x-text="bill.account_name"></span>
-                </span>
+                <button class="button small positive" @click="openPayBill(bill)"><i class="ph-bold ph-check"></i> Bayar</button>
               </div>
-              <!-- Ikon selalu 5 slot (yang tidak berlaku disembunyikan, tetap makan tempat) supaya kolomnya sejajar -->
+              <!-- Ikon selalu 4 slot (yang tidak berlaku disembunyikan, tetap makan tempat) supaya kolomnya sejajar -->
               <div class="bill-actions">
-                <button class="icon-button subtle" :class="{ invisible: billNeedsPayment(bill) }" title="Bayar sekarang (lebih awal / dari akun lain)" @click="openPayBill(bill)"><i class="ph-duotone ph-hand-coins"></i></button>
                 <button class="icon-button subtle" title="Lewati periode ini" @click="skipBill(bill)"><i class="ph-duotone ph-skip-forward"></i></button>
                 <button class="icon-button subtle" title="Riwayat" @click="openBillHistory(bill)"><i class="ph-duotone ph-clock-counter-clockwise"></i></button>
                 <button class="icon-button subtle" title="Edit" @click="openBill(bill)"><i class="ph-duotone ph-pencil-simple"></i></button>

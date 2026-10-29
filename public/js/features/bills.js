@@ -18,17 +18,24 @@ export default {
   billStatus(bill) {
     const days = daysUntil(bill.next_due);
     const relative = days < 0 ? `Telat ${-days} hari` : days === 0 ? 'Hari ini' : days === 1 ? 'Besok' : `${days} hari lagi`;
-    if (bill.auto_pay_blocked) return { text: 'Saldo kurang, belum terpotong', relative: 'Saldo kurang, belum terpotong', tone: 'danger' };
     if (days < 0) return { text: relative, relative, tone: 'danger' };
+    const short = this.billShortfall(bill);
+    if (short && days <= 7) return { text: `Saldo kurang ${this.money(short)}`, relative: `${relative} · saldo kurang`, tone: 'danger' };
     if (days <= 3) return { text: relative, relative, tone: 'warning' };
     const thisMonth = bill.next_due.slice(0, 7) === todayISO().slice(0, 7);
     return { text: formatDate(bill.next_due), relative, tone: thisMonth || days <= 7 ? 'warning' : 'neutral' };
   },
 
-  // Tombol Bayar hanya untuk tagihan yang perlu dibayar sendiri: tanpa potong otomatis, atau potong otomatis
-  // yang tertahan (saldo kurang / sudah lewat jatuh tempo).
-  billNeedsPayment(bill) {
-    return !bill.auto_pay || !bill.account_id || bill.auto_pay_blocked || daysUntil(bill.next_due) < 0;
+  // Kekurangan saldo akun pembayar untuk tagihan ini (0 kalau cukup / tanpa akun).
+  billShortfall(bill) {
+    if (bill.account_balance == null) return 0;
+    return Math.max(0, bill.amount - bill.account_balance);
+  },
+
+  // Peringatan saldo kurang: tagihan jatuh tempo ≤ 7 hari (atau telat) sementara saldo akunnya tidak cukup.
+  billWarning(bill) {
+    const short = this.billShortfall(bill);
+    return short && daysUntil(bill.next_due) <= 7 ? `Saldo ${bill.account_name} kurang ${this.money(short)}` : '';
   },
 
   // "2026-11-09" → "Nov"
@@ -41,7 +48,7 @@ export default {
     const today = todayISO();
     const groups = new Map();
     for (const bill of [...this.bills].sort((a, b) => a.next_due.localeCompare(b.next_due))) {
-      const late = bill.next_due < today || bill.auto_pay_blocked;
+      const late = bill.next_due < today;
       const month = bill.next_due.slice(0, 7);
       const key = late ? 'late' : month === today.slice(0, 7) ? 'now' : month;
       if (!groups.has(key)) {
@@ -71,9 +78,8 @@ export default {
         date: bill.next_due,
         category_id: bill.category_id ?? '',
         account_id: bill.account_id ?? '',
-        auto_pay: bill.auto_pay,
       }
-      : { frequency: 'monthly', category_id: this.categoriesOf('expense')[0]?.id, account_id: this.defaultAccountId, auto_pay: true });
+      : { frequency: 'monthly', category_id: this.categoriesOf('expense')[0]?.id, account_id: this.defaultAccountId });
   },
 
   saveBill() {
@@ -86,7 +92,6 @@ export default {
         next_due: this.form.date,
         category_id: Number(this.form.category_id) || null,
         account_id: Number(this.form.account_id) || null,
-        auto_pay: Boolean(this.form.auto_pay),
       };
       if (isNew) await api.post('/bills', body);
       else await api.put(`/bills/${this.form.id}`, body);

@@ -226,8 +226,8 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
 -- due_day menyimpan tanggal aslinya. Di bulan pendek dipakai hari terakhir bulan itu,
 -- lalu kembali ke tanggal aslinya di bulan berikutnya (31 Jan → 28 Feb → 31 Mar).
 ALTER TABLE bills ADD COLUMN IF NOT EXISTS due_day int CHECK (due_day BETWEEN 1 AND 31);
--- Potong otomatis: saat jatuh tempo, saldo akun langsung dipotong (kalau saldonya cukup).
-ALTER TABLE bills ADD COLUMN IF NOT EXISTS auto_pay boolean NOT NULL DEFAULT false;
+-- Potong otomatis sudah dihapus: tagihan hanya pengingat, dibayar manual.
+ALTER TABLE bills DROP COLUMN IF EXISTS auto_pay;
 
 -- Tagihan yang dihentikan (berhenti langganan): tidak aktif, tapi riwayatnya tetap bisa dilihat.
 ALTER TABLE bills ADD COLUMN IF NOT EXISTS ended_at date;

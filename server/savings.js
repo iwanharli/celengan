@@ -43,7 +43,9 @@ export async function savingsEstimate(month, startDay, incomeMode, tax = { enabl
     Array.from({ length: historyMonths }, (_, index) =>
       periodTotals(periodRange(shiftMonth(month, -(index + 1)), startDay), tax.categoryIds)),
   );
-  let history = previousPeriods.filter((row) => row.transaction_count > 0);
+  // Bulan yang dihitung = yang punya pemasukan atau pengeluaran harian. Bulan yang isinya hanya pembayaran
+  // cicilan (misal cicilan lama yang dicatat mundur) tidak menggambarkan pola bulanan, jadi dilewati.
+  let history = previousPeriods.filter((row) => row.income > 0 || row.daily_expense > 0);
 
   // Belum ada riwayat: pakai bulan berjalan saja, ditandai sebagai perkiraan kasar.
   const isRough = history.length < historyMonths;

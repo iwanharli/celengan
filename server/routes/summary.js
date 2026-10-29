@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { runAutoPay } from './bills.js';
 import { query } from '../db.js';
 import { periodFromQuery, periodRange, shiftMonth, getStartDay } from '../period.js';
 import { savingsEstimate } from '../savings.js';
@@ -29,7 +28,6 @@ async function incomeAndExpense({ start, end }) {
 }
 
 router.get('/', async (req, res) => {
-  await runAutoPay();
   const period = await periodFromQuery(req.query);
   const startDay = await getStartDay();
 
@@ -63,9 +61,9 @@ router.get('/', async (req, res) => {
       }))),
 
       query(
-        `SELECT b.*, c.icon AS category_icon, c.color AS category_color,
-                (b.auto_pay AND b.next_due <= current_date AND ab.balance < b.amount) AS auto_pay_blocked
+        `SELECT b.*, c.icon AS category_icon, c.color AS category_color, a.name AS account_name, ab.balance AS account_balance
          FROM bills b LEFT JOIN categories c ON c.id = b.category_id
+         LEFT JOIN accounts a ON a.id = b.account_id
          LEFT JOIN account_balances ab ON ab.id = b.account_id
          WHERE b.active AND b.next_due < current_date + 14
          ORDER BY b.next_due`,

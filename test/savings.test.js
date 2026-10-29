@@ -42,3 +42,14 @@ test('mode freelance: rata-rata 6 bulan, skenario bulan sepi & dana cukup berapa
   assert.equal(savings.lowScenario.estimate, 2500000 - savings.monthlyNeed);
   assert.ok(Math.abs(summary.runwayMonths - summary.totalBalance / savings.monthlyNeed) < 1e-9);
 });
+
+test('bulan lalu yang isinya hanya cicilan tidak membuat perkiraan kosong', async () => {
+  // Pakai tahun jauh supaya tidak tercampur data test lain di file ini.
+  const acc = await app.api.post('/accounts', { name: 'Cicilan Only', type: 'bank', initial_balance: 5000000 });
+  const debt = await app.api.post('/debts', { direction: 'payable', type: 'loan', counterparty: 'Pinjol', principal: 900000, count_as_expense: false });
+  await app.api.post(`/debts/${debt.id}/pay`, { amount: 300000, account_id: acc.id, date: '2031-09-05' }); // September: hanya cicilan
+  const salary = await categoryId(app.api, 'Gaji');
+  await app.api.post('/transactions', { kind: 'income', amount: 4000000, account_id: acc.id, category_id: salary, date: '2031-10-02' });
+  const { savings } = await app.api.get('/summary?month=2031-10');
+  assert.equal(savings.income, 4000000);
+});

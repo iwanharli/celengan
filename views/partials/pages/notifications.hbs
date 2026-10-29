@@ -1,0 +1,67 @@
+{{!-- Halaman: Notifikasi — tagihan, saldo kurang, utang, anggaran, posisi LP kripto, tenggat pajak --}}
+<section class="page stack" x-show="page === 'notifications'">
+  <!-- Ringkasan + aksi -->
+  <div class="card inbox-head">
+    <div class="inbox-summary">
+      <span class="inbox-bell" :class="{ ringing: inbox.unread > 0 }"><img :src="emojiUrl('1f514')" alt=""></span>
+      <div>
+        <h2 x-text="inbox.unread ? inbox.unread + ' notifikasi belum dibaca' : 'Semua sudah dibaca'"></h2>
+        <p class="muted">Tagihan, saldo kurang, utang, anggaran, posisi LP, dan tenggat pajak. Diperiksa otomatis tiap 15 menit.</p>
+      </div>
+    </div>
+    <div class="inbox-actions">
+      <button class="button small" x-show="inbox.unread > 0" @click="markAllRead()"><i class="ph-duotone ph-checks"></i> Tandai semua dibaca</button>
+      <button class="button small" x-show="inbox.items.some(item => item.read_at)" @click="clearReadNotifications()"><i class="ph-duotone ph-broom"></i> Bersihkan yang dibaca</button>
+    </div>
+  </div>
+
+  <!-- Ajak aktifkan notifikasi browser (kalau belum) -->
+  <div class="inbox-push" x-show="pushState === 'off'">
+    <i class="ph-duotone ph-bell-ringing"></i>
+    <span><strong>Dapat notifikasi walau aplikasi tertutup?</strong> Aktifkan notifikasi browser untuk pengingat tagihan, saldo kurang, dan LP di luar rentang.</span>
+    <button class="button small primary" @click="enablePush()">Aktifkan</button>
+  </div>
+
+  <!-- Filter -->
+  <div class="chips inbox-filters" x-show="inbox.items.length">
+    <template x-for="filter in inboxFilters" :key="filter.id">
+      <button type="button" class="chip" :class="{ active: inboxFilter === filter.id }" @click="inboxFilter = filter.id">
+        <i class="ph-duotone" :class="'ph-' + filter.icon"></i> <span x-text="filter.label"></span>
+        <span class="chip-count" x-text="filter.count"></span>
+      </button>
+    </template>
+  </div>
+
+  <template x-if="inbox.loaded && inboxGroups.length === 0">
+    <div class="card">
+      {{> components/empty-state emoji="1f389" title="Tidak ada notifikasi" text="Semua aman! Notifikasi muncul di sini saat tagihan jatuh tempo, saldo kurang, anggaran hampir habis, atau posisi LP keluar rentang."}}
+    </div>
+  </template>
+
+  <!-- Daftar per hari -->
+  <template x-for="group in inboxGroups" :key="group.key">
+    <div class="inbox-group">
+      <p class="section-label" x-text="group.label"></p>
+      <ul class="card inbox-list">
+        <template x-for="item in group.items" :key="item.id">
+          <li class="inbox-item" :class="{ ['notice-' + item.tone]: true, unread: !item.read_at }">
+            <button type="button" class="inbox-main" @click="openNotification(item)">
+              <span class="inbox-icon"><i class="ph-duotone" :class="'ph-' + item.icon"></i></span>
+              <span class="inbox-text">
+                <strong x-text="item.title"></strong>
+                <span x-text="item.body"></span>
+                <small class="muted">
+                  <span x-text="NOTIFICATION_KINDS[item.kind]?.label ?? 'Info'"></span> ·
+                  <span x-text="notificationTime(item)"></span>
+                  <span class="inbox-go" x-show="item.page">· Buka <i class="ph-bold ph-arrow-right"></i></span>
+                </small>
+              </span>
+              <span class="unread-dot" x-show="!item.read_at" title="Belum dibaca"></span>
+            </button>
+            <button type="button" class="icon-button subtle inbox-remove" title="Hapus notifikasi" @click="removeNotification(item)"><i class="ph-bold ph-x"></i></button>
+          </li>
+        </template>
+      </ul>
+    </div>
+  </template>
+</section>

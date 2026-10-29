@@ -12,8 +12,8 @@
     </button>
   </div>
 
-  <div class="toolbar" x-show="endedBills.length > 0">
-    <div class="segmented">
+  <div class="toolbar bill-toolbar">
+    <div class="segmented" x-show="endedBills.length > 0">
       <button type="button" :class="{ active: billTab === 'active' }" @click="billTab = 'active'">
         <i class="ph-duotone ph-calendar-check"></i> Aktif <span class="count" x-text="bills.length"></span>
       </button>
@@ -21,9 +21,74 @@
         <i class="ph-duotone ph-pause-circle"></i> Berhenti <span class="count" x-text="endedBills.length"></span>
       </button>
     </div>
+    <div class="segmented compact view-toggle" x-show="billTab === 'active' && bills.length > 0">
+      <button type="button" :class="{ active: billView === 'list' }" @click="billView = 'list'"><i class="ph-duotone ph-list-bullets"></i> Daftar</button>
+      <button type="button" :class="{ active: billView === 'calendar' }" @click="showBillCalendar()"><i class="ph-duotone ph-calendar-dots"></i> Kalender</button>
+    </div>
   </div>
 
-  <div class="card" x-show="billTab === 'active' || endedBills.length === 0">
+  <!-- Kalender bulanan: tagihan & cicilan per tanggal, total per minggu -->
+  <template x-if="billTab === 'active' && billView === 'calendar' && bills.length > 0">
+    <div class="card bill-cal" x-data="{ cal: null }" x-effect="cal = billCalendar">
+      <div class="cal-head">
+        <div class="cal-nav">
+          <button class="icon-button" @click="shiftBillMonth(-1)" aria-label="Bulan sebelumnya"><i class="ph-bold ph-caret-left"></i></button>
+          <h2 x-text="cal.label"></h2>
+          <button class="icon-button" @click="shiftBillMonth(1)" aria-label="Bulan berikutnya"><i class="ph-bold ph-caret-right"></i></button>
+          <button class="link" x-show="billCalMonth !== thisMonthISO" @click="billCalMonth = thisMonthISO">Bulan ini</button>
+        </div>
+        <div class="cal-stats">
+          <div><span class="label">Harus dibayar</span><strong x-text="money(cal.total)"></strong><small class="muted" x-text="cal.count + ' pembayaran'"></small></div>
+          <div x-show="cal.installments"><span class="label"><i class="dot dot-installment"></i> Cicilan utang</span><strong x-text="money(cal.installments)"></strong></div>
+          <div x-show="cal.late"><span class="label tone-negative">Telat</span><strong class="tone-negative" x-text="cal.late + ' tagihan'"></strong></div>
+        </div>
+      </div>
+
+      <div class="cal-grid">
+        <template x-for="name in ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']"><span class="cal-dow" x-text="name"></span></template>
+        <span class="cal-dow cal-week-col">Minggu ini</span>
+        <template x-for="(week, index) in cal.weeks" :key="index">
+          <div class="cal-row">
+            <template x-for="day in week.days" :key="day.date">
+              <div class="cal-day" :class="{ out: !day.inMonth, today: day.today, has: day.items.length }">
+                <span class="cal-num" x-text="day.day"></span>
+                <template x-for="item in day.items.slice(0, 3)" :key="item.key">
+                  <button type="button" class="cal-chip" :class="{ late: item.late, installment: item.bill.debt_id }"
+                          :title="item.bill.name + ' · ' + money(item.bill.amount) + (item.late ? ' · telat' : '')" @click="openPayBill(item.bill)">
+                    <span x-text="item.bill.name"></span><small x-text="moneyShort(item.bill.amount)"></small>
+                  </button>
+                </template>
+                <small class="cal-more" x-show="day.items.length > 3" x-text="'+' + (day.items.length - 3) + ' lagi'"></small>
+              </div>
+            </template>
+            <div class="cal-week" :class="{ busiest: week.total && week.total === cal.busiest }">
+              <span class="label">Minggu <span x-text="index + 1"></span></span>
+              <strong x-text="week.total ? moneyShort(week.total) : '–'"></strong>
+              <div class="cal-week-bar"><span :style="{ width: (cal.busiest ? week.total / cal.busiest * 100 : 0) + '%' }"></span></div>
+            </div>
+          </div>
+        </template>
+      </div>
+      <!-- HP: daftar jadwal bulan ini (kotak kalender terlalu kecil untuk nama) -->
+      <ul class="cal-list">
+        <template x-for="item in billOccurrences(billCalMonth)" :key="item.key">
+          <li :class="{ late: item.late, installment: item.bill.debt_id }" @click="openPayBill(item.bill)">
+            <span class="cal-list-date"><strong x-text="Number(item.date.slice(8, 10))"></strong><small x-text="monthShort(item.date)"></small></span>
+            <span class="cal-list-name" x-text="item.bill.name"></span>
+            <strong x-text="money(item.bill.amount)"></strong>
+          </li>
+        </template>
+      </ul>
+      <p class="hint cal-legend">
+        <span><i class="dot dot-bill"></i> Tagihan</span>
+        <span><i class="dot dot-installment"></i> Cicilan utang</span>
+        <span><i class="dot dot-late"></i> Telat</span>
+        <span class="muted">Yang sudah dibayar tidak ditampilkan · klik untuk mencatat pembayaran · minggu paling berat ditandai</span>
+      </p>
+    </div>
+  </template>
+
+  <div class="card" x-show="(billTab === 'active' || endedBills.length === 0) && (billView === 'list' || bills.length === 0)">
     <template x-if="bills.length === 0">
       {{> components/empty-state emoji="1f4c5" title="Belum ada tagihan rutin" text="Netflix, listrik, internet, kos, asuransi… catat sekali, nanti diingatkan setiap periode." action="openBill()" actionLabel="Tambah tagihan"}}
     </template>

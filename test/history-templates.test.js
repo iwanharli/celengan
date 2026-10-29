@@ -64,15 +64,12 @@ test('restore backup tidak menambah riwayat baru', async () => {
   assert.equal((await app.exportData()).data.transaction_history.length, before);
 });
 
-test('favorit: simpan lalu catat sekali klik', async () => {
+test('favorit: disimpan & tampil di daftar (dipakai untuk mengisi form transaksi)', async () => {
   const template = await app.api.post('/templates', { name: 'Kopi', kind: 'expense', amount: 18000, account_id: bank.id, category_id: food });
-  const start = await balance();
-  const created = await app.api.post(`/templates/${template.id}/use`, {});
-  assert.equal(created.amount, 18000);
-  assert.equal(created.note, 'Kopi');
-  assert.equal(created.date, new Date().toLocaleDateString('sv-SE'));
-  assert.equal(await balance(), start - 18000);
-  assert.deepEqual((await app.api.get('/templates')).map((t) => t.name), ['Kopi']);
+  const [listed] = await app.api.get('/templates');
+  assert.equal(listed.id, template.id);
+  assert.equal(listed.amount, 18000);
+  assert.equal(listed.category_id, food);
 });
 
 test('favorit tanpa kategori ditolak', async () => {

@@ -35,17 +35,4 @@ router.delete('/:id', async (req, res) => {
   res.status(204).end();
 });
 
-// Sekali klik: buat transaksi dari favorit (tanggal hari ini, kecuali dikirim lain).
-router.post('/:id/use', async (req, res) => {
-  const [template] = await query('SELECT * FROM transaction_templates WHERE id = $1', [req.params.id]);
-  if (!template) throw new HttpError(404, 'Favorit tidak ditemukan');
-  const [transaction] = await query(
-    `INSERT INTO transactions (kind, amount, account_id, to_account_id, category_id, date, note)
-     VALUES ($1, $2, $3, $4, $5, COALESCE($6::date, current_date), $7) RETURNING *`,
-    [template.kind, template.amount, template.account_id, template.to_account_id, template.category_id,
-      req.body.date || null, template.note || template.name],
-  );
-  res.status(201).json(transaction);
-});
-
 export default router;

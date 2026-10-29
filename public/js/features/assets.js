@@ -14,8 +14,8 @@ export default {
   // Tanpa argumen: aset baru. Dengan aset: edit detailnya.
   openAsset(asset = null) {
     this.open('asset', asset
-      ? { id: asset.id, name: asset.name, type: asset.type, amountText: formatAmountInput(asset.initial_cost), note: asset.note ?? '' }
-      : { type: 'gold', name: '', note: '' });
+      ? { id: asset.id, name: asset.name, type: asset.type, amountText: formatAmountInput(asset.initial_cost), note: asset.note ?? '', wallet_address: asset.wallet_address ?? '' }
+      : { type: 'gold', name: '', note: '', wallet_address: '' });
   },
 
   saveAsset() {
@@ -23,7 +23,7 @@ export default {
     return this.submit(async () => {
       if (!this.form.name?.trim()) throw new Error('Nama aset wajib diisi');
       const cost = parseAmount(this.form.amountText);
-      const body = { name: this.form.name, type: this.form.type, initial_cost: cost, note: this.form.note };
+      const body = { name: this.form.name, type: this.form.type, initial_cost: cost, note: this.form.note, wallet_address: this.form.wallet_address };
       if (isNew) await api.post('/assets', { ...body, current_value: parseAmount(this.form.valueText) || cost });
       else await api.put(`/assets/${this.form.id}`, body);
     }, isNew ? 'Aset ditambahkan' : 'Aset diperbarui');
@@ -45,6 +45,51 @@ export default {
       requireCheck: count > 0,
       successMessage: 'Aset dihapus',
     }, () => api.delete(`/assets/${asset.id}`));
+  },
+
+  // Wallet Solana: token bernilai dulu, token tanpa harga di belakang.
+  walletTokens(asset) {
+    return asset.wallet_tokens?.tokens ?? [];
+  },
+
+  walletSyncText(asset) {
+    if (!asset.synced_at) return asset.sync_error ? 'Belum berhasil diperbarui' : 'Belum diperbarui';
+    const time = new Date(asset.synced_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return `Diperbarui ${time}`;
+  },
+
+  // "$0.001917", "$99.86", "$1,234"
+  formatUsd(value) {
+    if (value == null) return '–';
+    const digits = value >= 100 ? 0 : value >= 1 ? 2 : Math.min(8, 2 - Math.floor(Math.log10(value)) + 1);
+    return '$' + value.toLocaleString('en-US', { minimumFractionDigits: Math.min(digits, 2), maximumFractionDigits: digits });
+  },
+
+  changeText(change) {
+    return change == null ? '' : `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(1)}%`;
+  },
+
+  // Porsi nilai: token di wallet vs posisi LP (persen).
+  walletSplit(asset) {
+    const lp = (asset.wallet_tokens?.positions ?? []).reduce((sum, p) => sum + p.value, 0);
+    const total = asset.current_value || 1;
+    return { lp: Math.round((lp / total) * 100), wallet: 100 - Math.round((lp / total) * 100) };
+  },
+
+  // Rentang harga LP dalam USD (harga bin × harga USD token kedua) + posisi penanda harga sekarang (0–100%).
+  lpRange(lp) {
+    const range = lp.range;
+    const quoteUsd = lp.tokens[1]?.usd_price;
+    if (!range || !quoteUsd) return null;
+    const marker = ((range.current - range.lower) / (range.upper - range.lower)) * 100;
+    return {
+      lower: range.lower * quoteUsd, upper: range.upper * quoteUsd, current: range.current * quoteUsd,
+      inRange: range.in_range, marker: Math.max(0, Math.min(100, marker)),
+    };
+  },
+
+  formatTokenAmount(amount) {
+    return amount.toLocaleString('id-ID', { maximumFractionDigits: amount < 1 ? 6 : amount < 1000 ? 4 : 0 });
   },
 
   openAssetValue(asset) {

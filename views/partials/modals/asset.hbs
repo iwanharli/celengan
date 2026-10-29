@@ -14,9 +14,14 @@
         </template>
       </div>
     </div>
+    <div class="field" x-show="form.type === 'crypto'">
+      <label>Alamat wallet Solana <span class="muted">(opsional)</span></label>
+      <input placeholder="contoh: alamat wallet Jupiter / Phantom" x-model="form.wallet_address" autocomplete="off" spellcheck="false">
+      <p class="hint">Isi supaya nilai sekarang dihitung otomatis dari saldo SOL & token (harga dari Jupiter, dikonversi ke rupiah). Alamat wallet bersifat publik, hanya dibaca.</p>
+    </div>
     <div class="grid-2 tight">
       {{> components/amount-field label="Modal awal / harga beli" placeholder="contoh: 10jt"}}
-      <div class="field" x-show="!form.id">
+      <div class="field" x-show="!form.id && !(form.type === 'crypto' && form.wallet_address)">
         <label>Nilai sekarang</label>
         <input inputmode="decimal" x-rupiah placeholder="kosongkan jika sama" x-model="form.valueText">
       </div>

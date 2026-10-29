@@ -13,7 +13,7 @@ const ALL_TABLES = [
   'wishlist_events', 'wishlist_parts', 'wishlist_items', 'transaction_attachments', 'transaction_templates',
   'transaction_history', 'transactions', 'bills', 'debt_installments', 'debts',
   'assets', 'accounts', 'net_worth_snapshots', 'categories', 'sessions', 'owner',
-  'recipients', 'bill_skips', 'bill_reminders', 'push_subscriptions',
+  'recipients', 'bill_skips', 'bill_reminders', 'push_subscriptions', 'notifications',
 ];
 
 export async function startTestApp() {

@@ -21,6 +21,7 @@
           <button class="nav-item" :class="{ active: page === item.id }" @click="goTo(item.id)" :title="item.label">
             <span class="nav-icon"><img class="nav-emoji" :src="emojiUrl(item.emoji)" alt=""></span>
             <span class="nav-text" x-text="item.label"></span>
+            <span class="nav-badge" x-show="item.id === 'notifications' && inbox.unread > 0" x-text="inbox.unread > 99 ? '99+' : inbox.unread"></span>
           </button>
         </template>
       </div>

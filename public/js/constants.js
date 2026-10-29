@@ -2,6 +2,7 @@
 
 export const PAGES = [
   { id: 'home', label: 'Beranda', emoji: '1f3e0' },
+  { id: 'notifications', label: 'Notifikasi', emoji: '1f514' },
   { id: 'transactions', label: 'Transaksi', emoji: '1f4dd' },
   { id: 'assets', label: 'Aset', emoji: '1f48e' },
   { id: 'accounts', label: 'Akun', emoji: '1f45b' },
@@ -133,8 +134,17 @@ export const BUDGET_ALERT_STYLE = {
 //   Tagihan & utang = yang harus dibayar (rutin & sampai lunas)
 //   Rencana         = mengatur pengeluaran & menabung untuk impian
 //   Laporan & data  = melihat & mengunduh data
+// Gaya per jenis notifikasi (filter & label di halaman Notifikasi).
+export const NOTIFICATION_KINDS = {
+  bill: { label: 'Tagihan', icon: 'receipt' },
+  debt: { label: 'Utang', icon: 'hand-coins' },
+  budget: { label: 'Anggaran', icon: 'chart-pie-slice' },
+  asset: { label: 'Aset', icon: 'diamond' },
+  tax: { label: 'Pajak', icon: 'file-text' },
+};
+
 export const NAV_GROUPS = [
-  { label: null, pages: ['home'] },
+  { label: null, pages: ['home', 'notifications'] },
   { label: 'Harian', pages: ['transactions', 'assets'] },
   { label: 'Uang saya', pages: ['accounts', 'recipients'] },
   { label: 'Tagihan & utang', pages: ['bills', 'debts'] },

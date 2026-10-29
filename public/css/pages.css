@@ -1,0 +1,605 @@
+/* Celengan — pages.css: Halaman: catat cepat, akun, utang, tagihan, beranda, transaksi, kategori, aset & wallet kripto.
+   Urutan file penting (lihat views/layout.hbs): yang belakangan menimpa yang lebih awal. */
+
+/* ============ Catat cepat (favorit) ============ */
+.favorites { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.favorites-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--text-muted); font-size: .9rem; margin-right: 4px; }
+.favorites-label img { width: 22px; height: 22px; }
+.favorite { position: relative; display: inline-flex; }
+.favorite-use {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px;
+  border: 2px solid var(--border); border-radius: 16px; background: var(--surface); cursor: pointer; text-align: left;
+  transition: border-color .2s, transform .25s var(--spring), box-shadow .2s;
+}
+.favorite-use:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+.favorite-use:active { transform: scale(.96); }
+.favorite-use span:last-child { display: flex; flex-direction: column; line-height: 1.15; }
+.favorite-use strong { font-size: .9rem; }
+.favorite-use small { color: var(--text-muted); font-size: .78rem; font-weight: 700; }
+.avatar.small { width: 32px; height: 32px; border-radius: 10px; font-size: .9rem; }
+.favorite-remove {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; display: none; place-items: center;
+  border: 0; border-radius: 50%; background: var(--text-muted); color: #fff; font-size: .65rem; cursor: pointer;
+}
+.favorite:hover .favorite-remove { display: grid; }
+.favorite-remove:hover { background: var(--negative); }
+.template-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: -6px; }
+.template-chips .ph-star { color: #f59e0b; }
+.save-template { color: #d97706; }
+
+/* Riwayat & baris yang bisa diklik */
+.list .row.clickable { cursor: pointer; }
+.history-entry { align-items: flex-start !important; }
+.history-change { display: block; font-size: .9rem; }
+.history-change del { color: var(--text-muted); }
+.history-time { font-size: .8rem; white-space: nowrap; }
+.toast { gap: 12px; }
+.toast-action {
+  border: 0; border-radius: 999px; padding: 4px 12px; background: var(--bg); color: var(--text);
+  font-weight: 800; cursor: pointer;
+}
+
+/* ============ Halaman Akun (versi baru) ============ */
+.accounts-summary { gap: 14px; }
+.accounts-summary-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.share-bar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--surface-2); gap: 3px; }
+.share-bar span { height: 100%; transition: width .6s var(--spring); }
+.share-bank { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+.share-ewallet { background: linear-gradient(90deg, #06b6d4, #0ea5e9); }
+.share-cash { background: linear-gradient(90deg, #22c55e, #16a34a); }
+.share-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: .9rem; }
+.share-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.share-legend .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+.group-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.group-title h2 { display: flex; align-items: center; gap: 8px; }
+.group-title h2 .ph-duotone { color: var(--primary); }
+
+.account-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 18px; }
+.account-card {
+  display: flex; flex-direction: column; border-radius: 24px; overflow: hidden;
+  background: var(--surface); border: 2px solid var(--border); box-shadow: var(--shadow);
+  transition: transform .35s var(--spring), box-shadow .35s;
+}
+.account-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.account-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: #fff; position: relative; overflow: hidden; }
+.account-head::after {
+  content: ''; position: absolute; right: -30px; top: -40px; width: 120px; height: 120px; border-radius: 50%;
+  background: rgba(255, 255, 255, .14); pointer-events: none;
+}
+.type-bank .account-head { background: linear-gradient(120deg, #3b82f6, #6366f1); }
+.type-ewallet .account-head { background: linear-gradient(120deg, #06b6d4, #0ea5e9); }
+.type-cash .account-head { background: linear-gradient(120deg, #22c55e, #16a34a); }
+.account-icon {
+  width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px;
+  background: rgba(255, 255, 255, .22); font-size: 1.3rem;
+}
+.account-icon .ph-duotone { font-size: inherit; vertical-align: 0; }
+.account-head strong { display: block; font-size: 1.05rem; }
+.account-head small { opacity: .85; font-weight: 700; }
+.account-edit {
+  position: relative; z-index: 1; width: 36px; height: 36px; display: grid; place-items: center;
+  border: 0; border-radius: 12px; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer;
+}
+.account-edit:hover { background: rgba(255, 255, 255, .32); }
+.account-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 6px; }
+.account-balance { font-family: 'Fredoka', sans-serif; font-size: 1.85rem; font-weight: 700; line-height: 1.1; }
+.account-share { display: flex; align-items: center; gap: 10px; }
+.account-share .progress { flex: 1; height: 10px; padding: 2px; }
+.account-share small { white-space: nowrap; font-size: .78rem; }
+.account-card .account-number { margin-top: auto; min-height: 58px; }
+.account-number .label { display: block; font-size: .78rem; }
+.account-holder { min-height: 1.2em; font-size: .82rem; }
+.icon-button.small { width: 34px; height: 34px; }
+.account-actions { display: flex; align-items: center; gap: 8px; padding: 10px 16px 14px; border-top: 2px dashed var(--border); }
+
+/* ============ Kartu utang / piutang (versi baru) ============ */
+.debt-card {
+  display: flex; flex-direction: column; border-radius: 24px; overflow: hidden;
+  background: var(--surface); border: 2px solid var(--border); box-shadow: var(--shadow);
+  transition: transform .35s var(--spring), box-shadow .35s;
+}
+.debt-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.debt-card.settled { opacity: .75; }
+.debt-head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; color: #fff; position: relative; overflow: hidden; }
+.debt-head::after {
+  content: ''; position: absolute; right: -30px; top: -40px; width: 120px; height: 120px; border-radius: 50%;
+  background: rgba(255, 255, 255, .14); pointer-events: none;
+}
+.kind-payable .debt-head { background: linear-gradient(120deg, #fb7185, #f97316); }
+.kind-receivable .debt-head { background: linear-gradient(120deg, #22c55e, #14b8a6); }
+.kind-invoice .debt-head { background: linear-gradient(120deg, #0ea5e9, #6366f1); }
+.settled .debt-head { background: linear-gradient(120deg, #94a3b8, #64748b); }
+.debt-initial {
+  width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px;
+  background: rgba(255, 255, 255, .25); font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 1.2rem;
+}
+.debt-head strong { display: block; font-size: 1.05rem; }
+.debt-head small { display: block; opacity: .9; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.debt-head .grow { min-width: 0; }
+.head-button {
+  position: relative; z-index: 1; width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center;
+  border: 0; border-radius: 11px; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer;
+}
+.head-button:hover { background: rgba(255, 255, 255, .34); }
+.debt-body { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.debt-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.debt-remaining { font-family: 'Fredoka', sans-serif; font-size: 1.75rem; font-weight: 700; line-height: 1.15; }
+.debt-progress { display: flex; align-items: center; gap: 10px; }
+.debt-progress .progress { flex: 1; height: 12px; padding: 2px; }
+.debt-progress strong { font-size: .85rem; min-width: 38px; text-align: right; }
+.debt-meta { font-size: .85rem; margin-top: -4px; }
+.debt-actions { display: flex; gap: 8px; padding: 12px 16px 14px; border-top: 2px dashed var(--border); }
+.debt-actions .button { flex: 1; }
+/* Masonry: kartu pendek mengisi celah di bawahnya (tidak ada ruang kosong karena kartu tinggi) */
+.debt-grid { columns: 3 330px; column-gap: 18px; }
+.debt-grid > .debt-card { break-inside: avoid; margin-bottom: 18px; display: inline-flex; width: 100%; }
+.debt-main { flex-wrap: wrap; }
+.debt-main .badge { max-width: 100%; white-space: normal; }
+.account-edit.starred { background: #fde047; color: #a16207; }
+.account-edit.starred:hover { background: #facc15; }
+.primary-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; vertical-align: 2px;
+  background: #fde047; color: #713f12; font-size: .7rem; font-weight: 800;
+}
+.button.danger-text.save-template { color: #d97706; }
+
+/* ============ Scroll saat modal terbuka ============ */
+/* Halaman di belakang tidak ikut bergulir & scrollbar halaman tidak tampil di atas latar modal */
+html:has(body.modal-open), body.modal-open { overflow: hidden; }
+/* Scrollbar modal dipotong mengikuti sudut membulat, dengan jarak dari tepi */
+.modal { clip-path: inset(0 round 28px); scrollbar-gutter: stable; padding-right: 22px; }
+.modal::-webkit-scrollbar { width: 14px; }
+.modal::-webkit-scrollbar-thumb { border: 4px solid transparent; background-clip: padding-box; }
+.modal::-webkit-scrollbar-track { margin-block: 28px; }
+.wish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 960px) { .wish-grid { grid-template-columns: minmax(0, 1fr); } }
+/* Kartu wishlist sama tinggi; tombol Sisihkan/Beli selalu di bawah */
+.wish-grid { align-items: stretch; }
+.wish-grid > .card.wish { height: 100%; }
+.wish .wish-actions { margin-top: auto; }
+.share-goal { background: linear-gradient(90deg, #f472b6, #a855f7); }
+.type-goal .account-head { background: linear-gradient(120deg, #f472b6, #a855f7); }
+.expense-toggle { align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.expense-toggle small { display: block; font-weight: 600; font-size: .82rem; margin-top: 2px; }
+.expense-badge { align-self: flex-start; }
+.income-toggle { display: flex; flex-direction: column; gap: 12px; }
+
+/* Beranda: kartu wishlist & impian */
+.home-wish { display: flex; flex-direction: column; gap: 16px; }
+.home-wish .card-header { margin-bottom: 0; align-items: flex-start; }
+.home-wish .card-header p { margin: 4px 0 0; }
+.home-wish-total { height: 12px; }
+.home-wish-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.home-wish-item {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface-2, rgba(139, 92, 246, .06)); border: 1px solid var(--border); border-radius: 20px;
+  transition: transform .25s var(--spring), box-shadow .25s;
+}
+.home-wish-item:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(139, 92, 246, .14); }
+.home-wish-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.home-wish-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.home-wish-top strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-wish-percent { font-weight: 800; color: var(--primary, #8b5cf6); }
+.home-wish-item .progress { background: var(--surface); height: 8px; }
+.home-wish-foot { display: flex; justify-content: space-between; gap: 8px; }
+.home-wish-foot small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Beranda: kartu grafik */
+.chart-card { display: flex; flex-direction: column; gap: 18px; }
+.chart-card .card-header { margin-bottom: 0; }
+.chart-card .card-header p { margin: 4px 0 0; }
+.chart-card .donut-wrap { flex: 1; gap: 32px; }
+.chart-card .donut { position: relative; width: 240px; margin: 0 auto; }
+.donut-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.donut-center small { color: var(--text-muted); font-weight: 700; }
+.donut-center strong { font-size: 1.35rem; font-weight: 800; }
+.chart-card .legend { gap: 14px; }
+.chart-card .legend li { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+.legend-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.legend-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-pct { color: var(--text-muted); font-size: .9rem; }
+.chart-card .legend li strong { margin-left: 0; text-align: right; }
+.legend-bar { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.legend-bar > div { height: 100%; border-radius: inherit; transition: width .8s var(--spring); }
+
+.trend-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.trend-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 16px; background: var(--surface-2); }
+.trend-stat span { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: .9rem; font-weight: 700; }
+.trend-stat strong { font-size: 1.1rem; }
+.trend-stat .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.trend-stat.income .dot { background: #34d399; }
+.trend-stat.expense .dot { background: #fb7185; }
+.trend-stat.net .dot { background: #a78bfa; }
+.trend-stat.income strong { color: var(--positive); }
+.trend-stat.expense strong { color: var(--negative); }
+.trend-stat.net.minus strong { color: var(--negative); }
+.chart-card .trend { height: 250px; }
+@media (max-width: 520px) { .trend-stats { grid-template-columns: 1fr 1fr; } }
+
+/* SweetAlert2: peringatan bergaya Celengan */
+.swal2-container { z-index: 2000; }
+.swal2-popup.swal-celengan {
+  border-radius: 28px; padding: 28px 24px 24px; background: var(--surface); color: var(--text);
+  font-family: 'Nunito', system-ui, sans-serif; box-shadow: var(--shadow-hover);
+}
+.swal-celengan .swal2-title { font-size: 1.35rem; font-weight: 800; color: var(--text); }
+.swal-celengan .swal2-html-container { font-size: 1.05rem; color: var(--text-muted); }
+.swal-celengan .swal2-icon.swal2-warning { border-color: #fbbf24; color: #f59e0b; }
+.swal-celengan .swal2-actions { margin-top: 20px; }
+.bill-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .bill-stats { grid-template-columns: minmax(0, 1fr); } }
+.bill-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.bill-stat small { color: var(--text-muted); font-weight: 700; }
+.bill-stat strong { font-size: 1.1rem; }
+.bill-row.ended > .avatar, .bill-row.ended > .row-main { opacity: .6; filter: saturate(.5); }
+
+/* Penerima */
+.recipient-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.recipient-card { display: flex; flex-direction: column; gap: 14px; }
+.recipient-head { display: flex; align-items: center; gap: 12px; }
+.recipient-head strong { display: block; font-size: 1.1rem; }
+.recipient-head .badge { margin-top: 4px; display: inline-flex; gap: 4px; align-items: center; background: var(--surface-2); }
+.recipient-avatar {
+  width: 48px; height: 48px; border-radius: 16px; flex-shrink: 0; display: grid; place-items: center;
+  color: #fff; font-weight: 800; font-size: 1.05rem; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12);
+}
+.recipient-dest { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.recipient-dest > i { font-size: 1.5rem; color: var(--primary); }
+.recipient-dest .grow { display: flex; flex-direction: column; min-width: 0; }
+.recipient-dest strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recipient-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.recipient-stats > div { display: flex; flex-direction: column; }
+.recipient-stats small { color: var(--text-muted); font-weight: 700; }
+.recipient-dest strong.mono { white-space: normal; overflow: visible; font-size: .98rem; letter-spacing: .02em; word-break: break-all; }
+.mono-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88rem; word-break: break-all; }
+
+/* Beranda: wawasan otomatis */
+.insights .card-header h2 { display: flex; align-items: center; gap: 8px; }
+.insight-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.insight { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); line-height: 1.45; }
+.insight[role="button"] { cursor: pointer; transition: transform .2s var(--spring); }
+.insight[role="button"]:hover { transform: translateX(3px); }
+.insight-icon { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; font-size: 1.3rem; }
+.insight-positive .insight-icon { background: rgba(52, 211, 153, .18); color: var(--positive); }
+.insight-info .insight-icon { background: rgba(99, 102, 241, .14); color: var(--info); }
+.insight-warning .insight-icon { background: rgba(245, 158, 11, .18); color: #d97706; }
+.insight-danger .insight-icon { background: rgba(225, 29, 72, .14); color: var(--negative); }
+
+/* Beranda: kartu angka (pemasukan, pengeluaran, dana darurat / aman dipakai) */
+.kpi-row { align-items: stretch; }
+.kpi { display: flex; flex-direction: column; gap: 10px; padding: 20px 22px; }
+.kpi-head { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+.kpi-head .label { font-weight: 700; color: var(--text-muted); }
+.kpi-head .badge { margin-left: auto; }
+.kpi-icon { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; font-size: 1.05rem; flex-shrink: 0; }
+.kpi-income .kpi-icon { background: rgba(52, 211, 153, .18); color: var(--positive); }
+.kpi-expense .kpi-icon { background: rgba(251, 113, 133, .18); color: var(--negative); }
+.kpi-icon-info { background: rgba(99, 102, 241, .15); color: var(--info); }
+.kpi-emoji { width: 34px; height: 34px; }
+.kpi-change { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: .85rem; font-weight: 800; padding: 3px 9px; border-radius: 99px; background: var(--surface-2); white-space: nowrap; }
+.kpi .stat-value { font-size: 1.75rem; line-height: 1.1; }
+.kpi-spark { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; height: 64px; margin-top: auto; }
+.kpi-spark-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+.kpi-spark-col span { width: 100%; max-width: 30px; border-radius: 7px; opacity: .35; transition: height .8s var(--spring); }
+.kpi-spark-col span.current { opacity: 1; }
+.kpi-spark-col small { font-size: .72rem; color: var(--text-muted); font-weight: 700; }
+.kpi-income .kpi-spark-col span { background: #34d399; }
+.kpi-expense .kpi-spark-col span { background: #fb7185; }
+
+.runway-meter { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+.runway-track { position: relative; height: 12px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.runway-track > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; transition: width .8s var(--spring); }
+.runway-track > i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--surface); }
+.runway-ok { background: linear-gradient(90deg, #34d399, #10b981); }
+.runway-warning { background: linear-gradient(90deg, #fcd34d, #f59e0b); }
+.runway-danger { background: linear-gradient(90deg, #fda4af, #e11d48); }
+.runway-scale { position: relative; height: 16px; }
+.runway-scale small { position: absolute; font-size: .72rem; color: var(--text-muted); font-weight: 700; transform: translateX(-50%); }
+.runway-scale small:first-child { transform: none; }
+.runway-scale small.end { right: 0; transform: none; }
+
+/* Pengaturan pajak: pilihan metode */
+.tax-methods { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.tax-method {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border-radius: 18px; cursor: pointer;
+  font: inherit; color: inherit; background: var(--surface); border: 2px solid var(--border); transition: border-color .2s, transform .2s var(--spring);
+}
+.tax-method:hover { transform: translateY(-2px); }
+.tax-method.active { border-color: var(--primary); background: var(--primary-soft); }
+.tax-method-answer { font-size: .85rem; font-weight: 800; color: var(--primary); }
+.tax-method small { color: var(--text-muted); line-height: 1.4; }
+.tax-note { display: flex; gap: 8px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); }
+.tax-preview { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 16px; background: var(--surface-2); }
+
+/* Modal transaksi: nominal | akun & tanggal, lalu kategori, lalu catatan & isian tambahan | foto */
+.tx-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.tx-where { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.tx-note-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.tx-note-row.with-date { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.tx-bottom > .stack:last-child, .tx-bottom > .tx-photos { position: static; }
+.tx-photos .photo-dropzone .filepond--root { margin-bottom: 0; }
+.tx-photos .camera-button { align-self: flex-start; }
+@media (max-width: 860px) {
+  .tx-top { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+}
+.tx-photos .photo-dropzone .filepond--drop-label { min-height: 118px; }
+.swal-celengan .swal2-actions { gap: 10px; }
+.runway-track > i.runway-target { width: 3px; background: var(--text); opacity: .55; }
+.runway-scale small.target { color: var(--text); }
+.share-emoney { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.type-emoney .account-head { background: linear-gradient(120deg, #fbbf24, #f97316); }
+
+/* Modal tagihan */
+.bill-row-1 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 640px) { .bill-row-1 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Modal utang */
+.debt-section { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 18px; background: var(--surface-2); }
+.tenor-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.tenor-row .chips { flex: 1; }
+.tenor-row .tenor-input { width: 130px; margin: 0; }
+.debt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 640px) { .debt-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Menu samping di layar yang tidak terlalu tinggi (laptop): lebih rapat supaya semua kelompok muat tanpa scroll */
+@media (min-width: 861px) and (max-height: 940px) {
+  .nav-item { padding: 4px 10px; }
+  .nav-icon { width: 30px; height: 30px; }
+  .nav-emoji { width: 22px; height: 22px; }
+  .nav-group + .nav-group { margin-top: 5px; padding-top: 5px; }
+  .nav-label { padding: 2px 12px; }
+  .brand { padding-bottom: 10px; }
+}
+
+/* Halaman Transaksi: baris alat ringkas + panel filter */
+.tx-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tx-toolbar .search { flex: 1 1 260px; min-width: 200px; }
+.kind-filter { padding: 4px; }
+.kind-filter button { padding: 8px 14px; }
+.tx-toolbar .button.filter-on { border-color: var(--primary); color: var(--primary); }
+.tx-toolbar .count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: inline-grid; place-items: center; font-size: .78rem; background: var(--primary); color: #fff; }
+.tx-filters {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 14px; align-items: end;
+  padding: 14px 16px; border-radius: 18px; background: var(--surface-2);
+}
+.tx-filters .field { gap: 4px; }
+.tx-filters label { font-size: .85rem; }
+.tx-filters select, .tx-filters input { padding: 8px 12px; font-size: .92rem; }
+.range-inputs { display: flex; align-items: center; gap: 6px; }
+.range-inputs input { min-width: 0; }
+.segmented.compact { padding: 3px; }
+.segmented.compact button { padding: 6px 10px; font-size: .88rem; }
+.tx-filters-actions { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1.5px dashed var(--border); }
+@media (max-width: 640px) {
+  .kind-filter { order: 3; width: 100%; }
+  .kind-filter button { flex: 1; }
+}
+.guideline p { flex: 1; margin: 0; }
+.guideline .button { flex-shrink: 0; }
+.add-fee { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: .92rem; white-space: nowrap; width: auto; }
+
+/* Halaman Akun: tab horizontal per jenis */
+.account-tabs-bar { display: flex; gap: 12px; align-items: center; }
+.account-tabs {
+  flex: 1; min-width: 0; display: flex; gap: 6px; padding: 6px; overflow-x: auto; scrollbar-width: none;
+  border-radius: 20px; background: var(--surface); border: 2px solid var(--border); box-shadow: var(--shadow);
+}
+.account-tabs::-webkit-scrollbar { display: none; }
+.account-tab {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 0; border-radius: 15px;
+  background: none; cursor: pointer; text-align: left; color: var(--text-muted); font: inherit; transition: background .2s;
+}
+.account-tab:hover { background: var(--surface-2); }
+.account-tab.active { background: var(--primary-soft); }
+.account-tab-icon { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px; color: #fff; font-size: 1.1rem; }
+.account-tab-icon.all { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
+.account-tab-icon.share-goal { background: linear-gradient(135deg, #f472b6, #a855f7); }
+.account-tab strong { color: var(--text); font-size: .95rem; white-space: nowrap; }
+.account-tab.active strong { color: var(--primary); }
+.account-tab-count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; display: inline-grid; place-items: center; font-size: .78rem; font-weight: 800; background: var(--surface-2); }
+.account-tab.active .account-tab-count { background: var(--primary); color: #fff; }
+.share-legend .share-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 0; border-radius: 10px; background: none; font: inherit; color: inherit; cursor: pointer; }
+.share-legend .share-item:hover { background: var(--surface-2); }
+@media (max-width: 640px) {
+  .account-tabs-bar { flex-direction: column; align-items: stretch; }
+}
+
+/* Wawasan: tiap item berbingkai, garis kiri berwarna sesuai nada */
+.insight { border: 1.5px solid var(--border); border-left-width: 5px; }
+.insight-positive { border-left-color: #34d399; }
+.insight-info { border-left-color: #818cf8; }
+.insight-warning { border-left-color: #f59e0b; }
+.insight-danger { border-left-color: #fb7185; }
+.insight[role="button"]:hover { border-color: var(--primary); }
+
+/* Beranda: dana pajak versi ringkas (satu baris) */
+.card.tax-strip { flex-direction: row; align-items: center; gap: 16px; padding: 16px 20px; }
+.tax-strip-emoji { width: 40px; height: 40px; flex-shrink: 0; }
+.tax-strip-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.tax-strip-top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.tax-strip-top .muted { font-size: .88rem; }
+.tax-strip .progress { height: 8px; }
+@media (max-width: 640px) {
+  .card.tax-strip { flex-wrap: wrap; }
+  .tax-strip .row-actions { width: 100%; justify-content: flex-end; }
+}
+
+.bill-history-empty { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; border: 2px dashed var(--border); }
+.bill-history-empty img { width: 44px; height: 44px; flex-shrink: 0; }
+.bill-history-empty p { margin: 2px 0 0; font-size: .92rem; }
+
+/* Label oranye (jatuh tempo bulan ini) & merah (lewat jatuh tempo) di mode gelap: lebih redup, tetap jelas */
+@media (prefers-color-scheme: dark) {
+  .badge-warning { background: rgba(245, 158, 11, .18); color: #fbbf24; }
+  .badge-danger { background: rgba(244, 63, 94, .18); color: #fb7185; }
+}
+
+/* Halaman Tagihan: dikelompokkan per waktu, kotak tanggal bergaya kalender */
+.bill-group + .bill-group { margin-top: 18px; }
+.bill-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 4px 8px; font-weight: 800; font-size: .95rem; }
+.bill-group-head small { font-weight: 700; }
+.tone-warning { color: #d97706; }
+@media (prefers-color-scheme: dark) { .tone-warning { color: #fbbf24; } }
+.bill-item {
+  display: grid; gap: 16px; align-items: center;
+  padding: 12px 10px; border-bottom: 1.5px dashed var(--border);
+}
+.bill-item:last-child { border-bottom: 0; }
+.due-tile {
+  width: 58px; height: 58px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--surface-2); border: 2px solid var(--border); line-height: 1;
+}
+.due-tile strong { font-family: 'Fredoka', sans-serif; font-size: 1.45rem; }
+.due-tile small { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-top: 2px; }
+.due-warning .due-tile { background: rgba(245, 158, 11, .14); border-color: rgba(245, 158, 11, .55); }
+.due-warning .due-tile strong, .due-warning .due-tile small, .due-warning .due-text { color: #d97706; }
+.due-danger .due-tile { background: rgba(244, 63, 94, .14); border-color: rgba(244, 63, 94, .6); }
+.due-danger .due-tile strong, .due-danger .due-tile small, .due-danger .due-text { color: #e11d48; }
+@media (prefers-color-scheme: dark) {
+  .due-warning .due-tile strong, .due-warning .due-tile small, .due-warning .due-text { color: #fbbf24; }
+  .due-danger .due-tile strong, .due-danger .due-tile small, .due-danger .due-text { color: #fb7185; }
+}
+.bill-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bill-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text-muted); font-size: .9rem; margin-top: 4px; }
+.avatar.tiny { width: 22px; height: 22px; border-radius: 7px; font-size: .75rem; }
+.bill-when { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.bill-when strong { font-size: 1.05rem; }
+.due-text { font-size: .85rem; font-weight: 700; color: var(--text-muted); }
+.bill-actions { display: flex; align-items: center; gap: 4px; }
+@media (max-width: 760px) {
+  .bill-group-head { flex-direction: column; gap: 2px; }
+  .bill-item { gap: 6px 12px; align-items: start; }
+  .due-tile { width: 50px; height: 50px; grid-row: span 2; }
+  .bill-name { white-space: normal; }
+  .bill-when { grid-column: 2; flex-direction: row; align-items: baseline; justify-content: space-between; min-width: 0; }
+  .bill-actions { grid-column: 1 / -1; justify-content: space-between; }
+  .bill-actions .button { flex: 1; justify-content: center; }
+}
+
+/* Halaman Utang: sub-kelompok per jenis */
+.debt-section-group + .debt-section-group { margin-top: 20px; }
+.debt-subhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.debt-subhead-icon { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-size: 1.05rem; }
+.debt-subhead strong { font-size: 1rem; }
+.debt-subhead small { margin-left: auto; font-weight: 700; }
+
+/* Halaman Utang: sub-menu Utang saya / Piutang */
+.debt-tabs-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.debt-tabs { flex: 0 1 auto; }
+.debt-tab-negative { background: linear-gradient(135deg, #fb7185, #f97316); }
+.debt-tab-positive { background: linear-gradient(135deg, #34d399, #10b981); }
+.debt-tabs-bar .segmented .count { margin-left: 4px; }
+
+/* Tagihan: kolom tetap supaya nominal, status & ikon sejajar di semua baris */
+.bill-item { grid-template-columns: 58px minmax(0, 1fr) 150px 120px auto; }
+.bill-when { min-width: 0; }
+.bill-status { display: flex; justify-content: flex-start; }
+.bill-status .button { width: 100%; justify-content: center; margin: 0; }
+.bill-actions .button { margin-right: 0; }
+.bill-actions .invisible { visibility: hidden; }
+@media (max-width: 760px) {
+  .bill-item { grid-template-columns: 50px minmax(0, 1fr); }
+  .bill-status { grid-column: 1 / -1; }
+}
+.debt-tabs-actions { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+.debt-tabs-bar .segmented.compact { margin-left: 0; }
+
+/* Tagihan cicilan utang: aksen kuning */
+.bill-item.is-installment { background: rgba(250, 204, 21, .07); border-left: 4px solid #facc15; border-radius: 14px; }
+.bill-item.is-installment .avatar.tiny { background: #eab308 !important; }
+.installment-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: .8rem; font-weight: 800; background: #fef3c7; color: #a16207; }
+@media (prefers-color-scheme: dark) { .installment-chip { background: rgba(250, 204, 21, .16); color: #fde047; } }
+
+/* Halaman Kategori: grid kartu */
+.category-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.category-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 14px 16px; border-radius: 20px;
+  background: var(--surface); border: 2px solid var(--border); border-left: 5px solid var(--cat, var(--primary));
+  box-shadow: var(--shadow); transition: transform .2s var(--spring), box-shadow .2s;
+}
+.category-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.category-card.archived { opacity: .55; }
+.category-card-head { display: flex; align-items: center; gap: 12px; }
+.category-card-head .row-main { min-width: 0; }
+.category-card-head strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.category-card-head small { font-size: .82rem; }
+.category-card-actions { display: flex; margin-left: auto; opacity: .45; transition: opacity .2s; }
+.category-card:hover .category-card-actions, .category-card:focus-within .category-card-actions { opacity: 1; }
+.category-card-actions .icon-button { width: 32px; height: 32px; }
+.category-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.category-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: .78rem; font-weight: 700; background: var(--surface-2); color: var(--text); }
+.category-tag.muted-tag { color: var(--text-muted); font-weight: 600; }
+@media (hover: none) { .category-card-actions { opacity: 1; } }
+.category-foot { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.category-foot .category-tags { flex: 1; min-width: 0; }
+.category-card-head small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Tagihan: saldo akun pembayar kurang menjelang jatuh tempo */
+.balance-warning { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: .8rem; font-weight: 800; background: rgba(239, 68, 68, .12); color: var(--negative, #dc2626); white-space: nowrap; }
+
+/* Aset: wallet kripto Solana */
+.wallet-card { display: flex; flex-direction: column; gap: 14px; }
+.wallet-top { display: flex; align-items: center; gap: 12px; }
+.wallet-top .row-main { display: flex; flex-direction: column; min-width: 0; }
+.wallet-address { font-family: ui-monospace, monospace; font-size: .85rem; }
+.wallet-total { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; text-align: right; }
+.wallet-total strong { font-size: 1.3rem; }
+.wallet-total span { display: flex; gap: 8px; }
+.change { font-weight: 700; font-size: .8rem; white-space: nowrap; }
+
+.wallet-split { display: flex; flex-direction: column; gap: 6px; }
+.split-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--border); }
+.split-wallet { background: #8b5cf6; }
+.split-lp { background: #f97316; }
+.split-legend { display: flex; gap: 16px; font-size: .85rem; color: var(--text-muted); }
+.split-legend strong { color: var(--text); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.dot-wallet { background: #8b5cf6; }
+.dot-lp { background: #f97316; }
+
+.wallet-section { display: flex; flex-direction: column; gap: 4px; }
+.section-label { margin: 0; font-size: .75rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.wallet-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.wallet-lines li { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.wallet-lines li + li { border-top: 1px dashed var(--border); }
+.wallet-lines.compact li { padding: 4px 0; }
+.line-name { display: flex; flex-direction: column; min-width: 0; }
+.line-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line-value { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+.wallet-lines .unpriced .line-name { font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.token-icon { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.token-icon.small { width: 22px; height: 22px; }
+.token-icon.placeholder { display: inline-flex; align-items: center; justify-content: center; background: var(--primary-soft); color: var(--primary); }
+.token-icon.lp { background: rgba(249, 115, 22, .14); color: #f97316; }
+
+.lp-box { padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(249, 115, 22, .3); background: rgba(249, 115, 22, .05); gap: 10px; }
+.lp-head { display: flex; align-items: center; gap: 10px; }
+.lp-head .line-name { flex-direction: row; align-items: baseline; gap: 6px; }
+.lp-head .line-value { font-size: 1.05rem; }
+.lp-range { display: flex; flex-direction: column; gap: 4px; }
+.range-bar { position: relative; height: 6px; border-radius: 99px; background: linear-gradient(90deg, rgba(249, 115, 22, .25), rgba(249, 115, 22, .6)); }
+.range-marker { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 3px solid #f97316; transform: translate(-50%, -50%); }
+.range-labels { display: flex; justify-content: space-between; gap: 8px; }
+.lp-fee { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: .88rem; }
+.lp-fee i { color: #f97316; }
+
+.wallet-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: .88rem; padding-top: 10px; border-top: 1px solid var(--border); }
+.wallet-sync { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.contents { display: contents; }
+@media (max-width: 520px) {
+  .lp-head { flex-wrap: wrap; }
+  .lp-head .line-name { white-space: nowrap; }
+  .lp-head .badge { order: 3; margin-left: 38px; }
+  .lp-head .line-value { order: 4; }
+  .range-labels small:nth-child(2) { text-align: center; }
+}
+.wallet-tools { display: flex; flex-direction: column; gap: 6px; margin-left: 4px; }
+.wallet-tools .icon-button { width: 34px; height: 34px; border-radius: 10px; }
+.wallet-tools .icon-button.edit { color: var(--primary); background: var(--primary-soft); }
+.wallet-tools .icon-button.remove { color: var(--negative); background: rgba(225, 29, 72, .1); }
+.wallet-tools .icon-button:hover { filter: brightness(.95); transform: translateY(-1px); }

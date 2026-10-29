@@ -55,6 +55,84 @@
   </div>
 
 
+  <!-- Rencana bebas utang: urutan pelunasan & kapan lunas, dengan dana tambahan per bulan -->
+  <template x-if="debtDirection === 'payable' && debtTab === 'active' && debtsBy('payable').length > 0">
+    <div class="card payoff" x-data="{ plan: null }" x-effect="plan = payoffPlan">
+      <div class="payoff-head">
+        <div>
+          <h2><img :src="emojiUrl('1f3c1')" alt=""> Rencana bebas utang</h2>
+          <p class="muted">Cicilan tetap dibayar sesuai jadwal. Dana tambahan diarahkan ke satu utang sampai lunas, lalu cicilannya ikut dipakai untuk utang berikutnya.</p>
+        </div>
+        <div class="segmented compact">
+          <button type="button" :class="{ active: payoffStrategy === 'avalanche' }" @click="setPayoffStrategy('avalanche')" title="Hemat biaya: utang berbunga paling tinggi dilunasi dulu">
+            <i class="ph-duotone ph-percent"></i> Bunga tertinggi dulu
+          </button>
+          <button type="button" :class="{ active: payoffStrategy === 'snowball' }" @click="setPayoffStrategy('snowball')" title="Cepat terasa: utang dengan sisa paling kecil dilunasi dulu">
+            <i class="ph-duotone ph-snowflake"></i> Terkecil dulu
+          </button>
+        </div>
+      </div>
+
+      <div class="payoff-body">
+        <!-- Dana per bulan -->
+        <div class="payoff-input">
+          <label class="label">Dana tambahan untuk utang per bulan</label>
+          <div class="chips">
+            <template x-for="amount in payoffExtraChoices" :key="amount">
+              <button type="button" class="chip small" :class="{ active: payoffExtra === amount }" @click="setPayoffExtra(amount)"
+                      x-text="amount ? moneyShort(amount) + (amount === Math.round((summary?.savings?.estimate ?? 0) / 50000) * 50000 ? ' · tabunganmu' : '') : 'Tanpa tambahan'"></button>
+            </template>
+          </div>
+          <input inputmode="numeric" x-rupiah placeholder="atau ketik sendiri" x-model="payoffExtraText" @change="setPayoffExtra(payoffExtra)">
+          <p class="hint">
+            Total per bulan <strong x-text="money(payoffMonthlyInstallments + payoffExtra)"></strong>
+            = cicilan <span x-text="money(payoffMonthlyInstallments)"></span> + tambahan <span x-text="money(payoffExtra)"></span>
+          </p>
+        </div>
+
+        <!-- Hasil -->
+        <div class="payoff-result" :class="{ stuck: plan?.stuck }">
+          <template x-if="plan && !plan.stuck">
+            <div>
+              <p class="label">Bebas utang</p>
+              <p class="payoff-date" x-text="plan.finish"></p>
+              <p class="muted" x-text="'dalam ' + plan.months + ' bulan'"></p>
+              <p class="payoff-compare tone-positive" x-show="plan.base && (plan.base.stuck || plan.base.months > plan.months)"
+                 x-text="plan.base?.stuck ? 'Tanpa tambahan, utang tanpa cicilan tidak akan lunas' : (plan.base?.months - plan.months) + ' bulan lebih cepat dibanding tanpa tambahan'"></p>
+              <p class="payoff-compare muted" x-show="plan.other && !plan.other.stuck && plan.other.months !== plan.months"
+                 x-text="'Strategi lain: ' + plan.other?.finish"></p>
+            </div>
+          </template>
+          <template x-if="plan?.stuck">
+            <div>
+              <p class="label">Belum ada tanggal lunas</p>
+              <p class="payoff-date small">Tambahkan dana per bulan</p>
+              <p class="muted">Utang tanpa cicilan (misal ke teman/keluarga) baru bisa lunas kalau ada dana tambahan.</p>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Urutan pelunasan + garis waktu -->
+      <ol class="payoff-steps">
+        <template x-for="(step, index) in plan?.order ?? []" :key="step.debt.id">
+          <li>
+            <span class="payoff-num" x-text="index + 1"></span>
+            <div class="payoff-name">
+              <strong x-text="step.debt.counterparty"></strong>
+              <small class="muted" x-text="DEBT_TYPES[step.debt.type] + ' · sisa ' + money(step.debt.remaining)
+                + (debtCost(step.debt) > 0 ? ' · biaya ' + Math.round(debtCost(step.debt) * 100) + '%' : ' · tanpa bunga')"></small>
+            </div>
+            <div class="payoff-bar" :title="step.finish ? 'Lunas ' + step.finish : 'Belum terjadwal'">
+              <span :class="{ open: !step.month }" :style="{ width: (step.month ? step.month / plan.maxMonth * 100 : 100) + '%' }"></span>
+            </div>
+            <span class="payoff-when" :class="{ muted: !step.finish }" x-text="step.finish ? 'Lunas ' + step.finish : 'Belum terjadwal'"></span>
+          </li>
+        </template>
+      </ol>
+    </div>
+  </template>
+
   <template x-for="group in [
     { direction: 'payable', title: 'Utang saya', action: 'Bayar' },
     { direction: 'receivable', title: 'Piutang', action: 'Terima' },

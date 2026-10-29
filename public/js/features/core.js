@@ -27,15 +27,18 @@ const DATA_SOURCES = {
   debts: () => '/debts',
   assets: () => '/assets',
   wishlist: () => '/wishlist',
+  // Di halaman Notifikasi: periksa kondisi terbaru dulu (collect), di halaman lain cukup jumlah belum dibaca.
+  inbox() { return `/notifications/inbox${this.page === 'notifications' ? '?collect=1' : ''}`; },
 };
 // Data tambahan per halaman (selain data dasar).
 const PAGE_DATA = {
   home: ['bills', 'debts', 'wishlist'],
   transactions: ['transactions', 'bills', 'endedBills'],
-  bills: ['bills', 'endedBills'],
+  bills: ['bills', 'endedBills', 'debts'],
   debts: ['debts'],
   assets: ['assets'],
   wishlist: ['wishlist'],
+  notifications: ['inbox'],
 };
 
 export default {
@@ -60,6 +63,7 @@ export default {
   templates: [],
   staleData: null,
   assets: { assets: [], netWorth: null, history: [] },
+  inbox: { items: [], unread: 0, loaded: false },
 
   modal: null, // nama form yang sedang terbuka
   form: {},
@@ -74,6 +78,7 @@ export default {
       this.hideAmounts = localStorage.getItem('hideAmounts') === '1';
       this.sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === '1';
     } catch {}
+    this.restorePayoffSettings();
     // Semua peringatan form tampil sebagai SweetAlert, bukan teks merah di bawah form.
     const titles = { formError: 'Ups, belum bisa disimpan', authError: 'Gagal masuk', exportError: 'Export gagal' };
     for (const [key, title] of Object.entries(titles)) {
@@ -113,11 +118,12 @@ export default {
     const run = (this.reloadRun = (this.reloadRun ?? 0) + 1);
     this.staleData = new Set(Object.keys(DATA_SOURCES));
     await Promise.all([
-      this.loadData(['summary', 'accounts', 'categories', 'templates', 'recipients'], run),
+      this.loadData(['summary', 'accounts', 'categories', 'templates', 'recipients', ...(this.page === 'notifications' ? [] : ['inbox'])], run),
       this.loadPageData(run),
     ]);
     if (run !== this.reloadRun) return;
     if (this.page === 'settings') { this.loadAutoBackups(); this.loadBackupMirror(); this.loadPushState(); }
+    if (this.page === 'notifications') this.loadPushState();
     if (this.page === 'reports') await this.loadReport();
     if (this.page === 'export') this.refreshExportPreview();
     this.$nextTick(() => this.drawCharts());
